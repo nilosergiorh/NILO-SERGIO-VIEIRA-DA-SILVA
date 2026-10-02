@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ponto → Domínio</title>
+<style>
+/* Identidade Exato Soluções Contábeis: vermelho #CC0000→#A50000, preto #111111, branco */
+:root{--bg:#f4f4f5;--card:#fff;--tx:#161616;--mut:#6b6b70;--bd:#e4e4e7;--ac:#cc0000;--ac-d:#a50000;--ac2:#fff1f1;
+--grad:linear-gradient(135deg,#d40000,#a50000);
+--ok:#15803d;--okb:#dcfce7;--warn:#b45309;--warnb:#fef3c7;--bad:#b91c1c;--badb:#fee2e2;--side:#111111;--sidetx:#d4d4d8;--sidehov:#1f1f1f;--sidebd:#262626}
+@media (prefers-color-scheme:dark){:root{--bg:#0c0c0c;--card:#171717;--tx:#ededed;--mut:#a1a1aa;--bd:#2a2a2a;--ac:#e11d1d;--ac2:#2a1111;
+--ok:#4ade80;--okb:#12321f;--warn:#fbbf24;--warnb:#3a2d0c;--bad:#f87171;--badb:#3b1515;--side:#0a0a0a}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 "Segoe UI",system-ui,sans-serif;display:flex;min-height:100vh}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px}
+button:hover{border-color:var(--ac)}
+button.pri{background:var(--grad);border-color:var(--ac-d);color:#fff;font-weight:600}
+button.pri:hover{filter:brightness(1.1)}
+button:disabled{opacity:.5;cursor:default}
+aside{width:260px;background:var(--side);color:var(--sidetx);padding:18px 14px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
+.brand{margin:-6px -4px 0;text-align:center}
+.brand img{width:100%;max-width:230px;display:block;margin:0 auto}
+.brand div{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#a1a1aa;margin-top:-10px;padding-bottom:4px}
+.brand div b{color:#ff3b3b;font-weight:700}
+.cli{border-top:1px solid var(--sidebd);padding-top:12px}
+.cli-n{display:flex;justify-content:space-between;align-items:center;font-weight:600;color:#fff;margin:0 4px 6px}
+.cli-n button{padding:3px 9px;font-size:12px;background:transparent;color:var(--sidetx);border-color:#3f3f46}
+.cli-n button:hover{border-color:#ff3b3b;color:#fff}
+.mes{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;color:var(--sidetx)}
+.mes:hover{background:var(--sidehov)}.mes.sel{background:var(--grad);color:#fff}
+.dot{width:9px;height:9px;border-radius:50%;background:#64748b;flex-shrink:0}
+.dot.ok{background:#22c55e}.dot.warn{background:#f59e0b}
+.mes small{margin-left:auto;opacity:.75;font-size:11px}
+.sysinfo{margin-top:auto;font-size:11.5px;color:#a1a1aa;border-top:1px solid var(--sidebd);padding-top:10px;line-height:1.7}
+main{flex:1;padding:24px 28px;min-width:0}
+.vazio{max-width:560px;margin:12vh auto;text-align:center;color:var(--mut)}
+.vazio h2{color:var(--tx)}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:16px}
+.top h2{margin:0;font-size:24px}.top p{margin:2px 0 0;color:var(--mut)}
+.acoes{display:flex;flex-wrap:wrap;gap:8px}
+.banner{border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-weight:600}
+.banner.ok{background:var(--okb);color:var(--ok)}.banner.warn{background:var(--warnb);color:var(--warn)}.banner.bad{background:var(--badb);color:var(--bad)}
+.banner .grow{flex:1;min-width:200px}.banner small{display:block;font-weight:400;opacity:.9}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;border-top:3px solid var(--c,var(--ac))}
+.kpi .l{font-size:11.5px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.03em}
+.kpi .v{font-size:28px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums;color:var(--c,var(--tx))}
+.kpi .s{font-size:12px;color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--bd);padding:0 10px}
+.tab{padding:12px 14px;cursor:pointer;color:var(--mut);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.sel{color:var(--ac);border-color:var(--ac)}
+.tab b{background:var(--bd);color:var(--tx);border-radius:99px;padding:0 7px;font-size:12px;margin-left:4px}
+.tab.sel b{background:var(--ac);color:#fff}
+.pane{padding:14px 16px;overflow-x:auto}
+.pane-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--mut);padding:8px 10px;border-bottom:1px solid var(--bd);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--bd);vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.pill{display:inline-block;border-radius:99px;padding:1px 9px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--okb);color:var(--ok)}.pill.warn{background:var(--warnb);color:var(--warn)}.pill.bad{background:var(--badb);color:var(--bad)}.pill.mut{background:var(--bd);color:var(--mut)}
+.bar{height:6px;border-radius:3px;background:var(--bd);margin-top:4px;display:flex;overflow:hidden;min-width:80px}
+.bar i{display:block;height:100%}
+.msg{color:var(--mut);font-size:12.5px;max-width:520px}
+.copy{padding:3px 9px;font-size:12px}
+.overlay{position:fixed;inset:0;background:rgba(10,10,10,.6);display:none;align-items:center;justify-content:center;z-index:50}
+.overlay.on{display:flex}
+.box{background:var(--card);border-radius:14px;padding:22px 24px;width:min(560px,92vw);box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.box h3{margin:0 0 6px}
+.spin{width:34px;height:34px;border:4px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:g 1s linear infinite;margin:0 auto 12px}
+@keyframes g{to{transform:rotate(360deg)}}
+.drop{border:2px dashed var(--bd);border-radius:12px;padding:26px;text-align:center;color:var(--mut);cursor:pointer;margin:14px 0}
+.drop.over{border-color:var(--ac);background:var(--ac2)}
+.files{font-size:13px;max-height:150px;overflow:auto}
+.files div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--bd)}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+select{font:inherit;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);width:100%}
+.toast{position:fixed;right:20px;bottom:20px;background:var(--side);color:#fff;padding:12px 16px;border-radius:10px;max-width:420px;z-index:60;display:none;white-space:pre-line}
+.toast.on{display:block}
+.txtok{margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+@media (max-width:800px){body{flex-direction:column}aside{width:auto}main{padding:16px}}
+/* ---------- cadastro da empresa ---------- */
+.side-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;color:var(--sidetx);font-size:13px}
+.side-btn:hover{background:var(--sidehov)}.side-btn.sel{background:var(--grad);color:#fff}
+.novo-cli{width:100%;background:transparent;color:var(--sidetx);border:1px dashed #3f3f46;margin-top:4px}
+.novo-cli:hover{border-color:#ff3b3b;color:#fff}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px 16px}
+.fld{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--mut)}
+.fld.w2{grid-column:span 2}.fld.all{grid-column:1/-1}
+.fld input,.fld textarea,.fld select,.inp{font:inherit;font-weight:400;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);width:100%}
+.fld input:focus,.fld textarea:focus,.fld select:focus,.inp:focus{outline:0;border-color:var(--ac);box-shadow:0 0 0 3px var(--ac2)}
+.fld textarea{min-height:72px;resize:vertical}
+.fld small{font-weight:400;font-size:11.5px}
+.fld.chk{flex-direction:row;align-items:center;gap:8px;color:var(--tx)}.fld.chk input{width:auto}
+.nota{background:var(--ac2);color:var(--tx);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px}
+h4.sec{margin:20px 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ac)}
+h4.sec:first-child{margin-top:0}
+.box.larga{width:min(760px,94vw);max-height:92vh;overflow:auto}
+.lixo{padding:5px 10px;font-size:12px}
+@media (max-width:560px){.fld.w2{grid-column:auto}}
+/* ---------- mascote E-exato (lobo-robô) ---------- */
+#exa{position:fixed;right:44px;bottom:40px;z-index:40;display:flex;align-items:flex-end;gap:14px;pointer-events:none}
+#exa>*{pointer-events:auto}
+#lobo{position:relative;width:112px;height:122px}
+#exaBot{width:112px;height:122px;cursor:pointer;filter:drop-shadow(0 10px 14px rgba(0,0,0,.3));animation:bob 3.2s ease-in-out infinite;transition:transform .25s;position:relative;z-index:2}
+#lobo:hover #exaBot{transform:scale(1.06)}
+@keyframes bob{0%,100%{translate:0 0}50%{translate:0 -5px}}
+#exaBot .iris{transform-box:fill-box;transform-origin:center;animation:pisca 5s infinite}
+@keyframes pisca{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+#exaBot .brilho{animation:acende 2.4s ease-in-out infinite}
+@keyframes acende{50%{opacity:.82}}
+#exaBot .orelha{transform-box:fill-box;transition:transform .3s}
+#exaBot .orelha.e{transform-origin:80% 100%}#exaBot .orelha.d{transform-origin:20% 100%}
+#lobo:hover .orelha.e{animation:orelhaE .6s ease-in-out 2}
+#lobo:hover .orelha.d{animation:orelhaD .6s ease-in-out 2 .1s}
+@keyframes orelhaE{50%{transform:rotate(-12deg)}}@keyframes orelhaD{50%{transform:rotate(12deg)}}
+#exaBot .antena{animation:antena 1.6s ease-in-out infinite}
+#lobo:hover .antena,#exaBot.pensando .antena{animation-duration:.4s}
+@keyframes antena{50%{fill:#ff6b6b;filter:drop-shadow(0 0 3px #ff2020)}}
+#exaBot.pensando{animation:bob .7s ease-in-out infinite}
+#exaBot.pensando .iris{translate:1.5px -2px;transition:translate .3s}
+/* anel de qualidades: aparece ao passar o mouse e fica girando */
+#orbita{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0;transform:scale(.4) rotate(-90deg);
+ transition:opacity .35s,transform .45s cubic-bezier(.3,1.5,.5,1);pointer-events:none;z-index:1}
+#lobo:hover #orbita{opacity:1;transform:scale(1) rotate(0);pointer-events:auto}
+#orbita .anel{position:absolute;inset:0;animation:orbita 16s linear infinite}
+#orbita:hover .anel,#orbita:hover .q i{animation-play-state:paused}
+@keyframes orbita{to{transform:rotate(360deg)}}
+#orbita .q{position:absolute;left:0;top:0;transform:rotate(var(--a)) translateX(96px) rotate(calc(-1*var(--a)))}
+#orbita .q i{display:grid;place-items:center;width:38px;height:38px;margin:-19px 0 0 -19px;border-radius:50%;background:var(--c);color:#fff;
+ border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.35);animation:contra 16s linear infinite;cursor:default;position:relative;font-style:normal}
+@keyframes contra{to{transform:rotate(-360deg)}}
+#orbita .q i svg{width:19px;height:19px}
+#orbita .q i::after{content:attr(data-n);position:absolute;top:42px;left:50%;translate:-50% 0;white-space:nowrap;background:#111;color:#fff;
+ font:600 11px "Segoe UI",sans-serif;padding:3px 8px;border-radius:99px;opacity:0;transition:opacity .2s;pointer-events:none}
+#orbita .q i:hover::after{opacity:1}
+#orbita .q i:hover{scale:1.15}
+#exa:has(#lobo:hover) .balao{opacity:0;pointer-events:none}
+.balao{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:14px 14px 4px 14px;padding:10px 14px;max-width:270px;
+ font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.14);margin-bottom:64px;cursor:pointer;animation:surge .35s ease-out;transition:opacity .2s}
+.balao b{color:var(--ac)}
+@keyframes surge{from{opacity:0;transform:translateY(8px) scale(.96)}}
+#chat{position:fixed;right:22px;bottom:172px;width:min(400px,calc(100vw - 32px));height:min(560px,calc(100vh - 150px));background:var(--card);
+ border:1px solid var(--bd);border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.28);z-index:45;display:none;flex-direction:column;overflow:hidden}
+#chat.on{display:flex;animation:surge .25s ease-out}
+.chat-h{background:var(--grad);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px}
+.chat-h b{font-size:15px}.chat-h small{display:block;opacity:.85;font-size:11.5px}
+.chat-h button{margin-left:auto;background:transparent;border:0;color:#fff;font-size:18px;padding:2px 6px}
+.chat-m{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.m{max-width:88%;padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.5;word-wrap:break-word}
+.m.eu{align-self:flex-end;background:var(--grad);color:#fff;border-bottom-right-radius:4px}
+.m.exa{align-self:flex-start;background:var(--card);border:1px solid var(--bd);border-bottom-left-radius:4px}
+.m.exa ul{margin:4px 0;padding-left:18px}.m.exa p{margin:0 0 6px}.m.exa p:last-child{margin:0}
+.m .cp{display:block;margin-top:6px;font-size:11.5px;padding:2px 8px}
+.digitando span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--mut);margin:0 2px;animation:dd 1s infinite}
+.digitando span:nth-child(2){animation-delay:.15s}.digitando span:nth-child(3){animation-delay:.3s}
+@keyframes dd{50%{opacity:.2;transform:translateY(-3px)}}
+.sug{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px 0;background:var(--card)}
+.sug button{font-size:12px;padding:4px 10px;border-radius:99px;background:var(--ac2);border-color:transparent;color:var(--ac)}
+.chat-i{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--bd);background:var(--card)}
+.chat-i textarea{flex:1;resize:none;font:inherit;border:1px solid var(--bd);border-radius:10px;padding:8px 10px;background:var(--bg);color:var(--tx);height:40px}
+.chat-i button{padding:0 14px}
+.chave{display:flex;gap:6px;margin-top:8px}.chave input{flex:1;font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)}
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand"><img src="/logo" alt="Exato Soluções Contábeis"><div>Ponto <b>→</b> Domínio</div></div>
+  <div id="lista"></div>
+  <div class="sysinfo" id="sys"></div>
+</aside>
+<main id="main"><div class="vazio"><div class="spin"></div>Carregando...</div></main>
+
+<div class="overlay" id="busy"><div class="box" style="text-align:center"><div class="spin"></div><b id="busyMsg">Aguarde...</b><div class="msg" style="margin:6px auto 0" id="busySub"></div></div></div>
+
+<div class="overlay" id="up"><div class="box">
+  <h3>Enviar ponto do mês</h3>
+  <div class="msg">Espelho do relógio (Excel), planilha-modelo preenchida, fotos ou PDF. Pode enviar vários arquivos juntos.</div>
+  <div style="margin-top:12px"><select id="upCli"></select></div>
+  <div class="drop" id="drop">Arraste os arquivos aqui ou <u>clique para escolher</u><input type="file" id="file" multiple hidden accept=".xlsx,.xlsm,.csv,.pdf,.jpg,.jpeg,.png,.webp,.heic"></div>
+  <div class="files" id="files"></div>
+  <div class="row"><button id="upCancel">Cancelar</button><button class="pri" id="upGo" disabled>Gerar planilha do mês</button></div>
+</div></div>
+
+<div class="overlay" id="fm"><div class="box larga" id="fmBox"></div></div>
+
+<div class="toast" id="toast"></div>
+
+<div id="exa">
+  <div class="balao" id="exaBalao" hidden></div>
+  <div id="lobo">
+  <div id="orbita"><div class="anel">
+    <span class="q" style="--a:-90deg"><i style="--c:#cc0000" data-n="Inteligente · entende números e legislação"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.8 10.6c.7.6 1 1.4 1 2.4h5.6c0-1 .3-1.8 1-2.4A6 6 0 0 0 12 3z"/></svg></i></span>
+    <span class="q" style="--a:-30deg"><i style="--c:#52525b" data-n="Preciso · não trabalha com achismos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg></i></span>
+    <span class="q" style="--a:30deg"><i style="--c:#111" data-n="Observador · encontra erros e oportunidades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.5 5.5"/></svg></i></span>
+    <span class="q" style="--a:90deg"><i style="--c:#a50000" data-n="Estratégico · pensa antes de agir"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 21h10v-2H7zm1.2-3h7.6l-.9-5.2 2.1-2.3-2.6-4.6L10.3 3 9.6 5.3 7 6.8l.7 3.5 3.4-1.2-2.9 3.8z"/></svg></i></span>
+    <span class="q" style="--a:150deg"><i style="--c:#71717a" data-n="Confiável · sempre ao lado do cliente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3l7 3v5c0 5-3.4 8.5-7 10-3.6-1.5-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></i></span>
+    <span class="q" style="--a:210deg"><i style="--c:#262626" data-n="Carismático · fala a sua língua"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1.3 2.2 1.9 3.5 1.9s2.5-.6 3.5-1.9"/><path d="M9 9.5h.01M15 9.5h.01" stroke-width="3"/></svg></i></span>
+  </div></div>
+  <svg id="exaBot" viewBox="0 0 120 130" aria-label="E-exato, assistente do ponto" role="button">
+    <!-- husky/lobo com equipamento tecnológico (ilustração própria, cores Exato) -->
+    <defs>
+      <linearGradient id="pelo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6e737d"/><stop offset="1" stop-color="#3a3e46"/></linearGradient>
+      <linearGradient id="peloClaro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fafbfc"/><stop offset="1" stop-color="#d3d6db"/></linearGradient>
+      <linearGradient id="aco" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a3a9b2"/><stop offset=".5" stop-color="#6b717a"/><stop offset="1" stop-color="#3f444c"/></linearGradient>
+      <linearGradient id="armadura" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4049"/><stop offset="1" stop-color="#15181d"/></linearGradient>
+      <radialGradient id="ambar" cx=".45" cy=".45"><stop offset="0" stop-color="#ffd27a"/><stop offset=".6" stop-color="#f0a42a"/><stop offset="1" stop-color="#a86400"/></radialGradient>
+      <filter id="luz" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+    <ellipse cx="60" cy="128" rx="40" ry="2.5" fill="#000" opacity=".15"/>
+    <!-- armadura: ombros, peito e gola -->
+    <path d="M6 130 Q8 104 34 97 L86 97 Q112 104 114 130 Z" fill="url(#armadura)"/>
+    <path d="M8 124 Q11 105 31 100 L38 113 Q24 116 19 129 Z" fill="#454b55" stroke="#5c636e" stroke-width=".8"/>
+    <path d="M112 124 Q109 105 89 100 L82 113 Q96 116 101 129 Z" fill="#454b55" stroke="#5c636e" stroke-width=".8"/>
+    <path d="M43 106 H77 L73 128 H47 Z" fill="#2c3139" stroke="#4d545e" stroke-width=".8"/>
+    <path d="M47 112 H73 M49 119 H71" stroke="#4d545e" stroke-width=".8"/>
+    <rect class="antena" x="55" y="108" width="10" height="2.4" rx="1.2" fill="#ff2a2a" filter="url(#luz)"/>
+    <circle cx="26" cy="114" r="1.6" fill="#ff2a2a" filter="url(#luz)"/><circle cx="94" cy="114" r="1.6" fill="#ff2a2a" filter="url(#luz)"/>
+    <path d="M32 94 Q60 106 88 94 L88 101 Q60 113 32 101 Z" fill="url(#aco)" stroke="#2a2e34" stroke-width=".8"/>
+    <g fill="#c7ccd3"><circle cx="40" cy="99.5" r="1.2"/><circle cx="52" cy="103.5" r="1.2"/><circle cx="68" cy="103.5" r="1.2"/><circle cx="80" cy="99.5" r="1.2"/></g>
+    <!-- orelhas -->
+    <g class="orelha e"><path d="M25 50 L19 6 Q34 12 49 31 Z" fill="url(#pelo)"/><path d="M28 44 L24 15 Q33 21 42 32 Z" fill="#c9ccd2"/><path d="M27 40 L25 22 M31 38 L28 20" stroke="#fff" stroke-width=".8" opacity=".6"/></g>
+    <g class="orelha d"><path d="M95 50 L101 6 Q86 12 71 31 Z" fill="url(#pelo)"/><path d="M92 44 L96 15 Q87 21 78 32 Z" fill="#c9ccd2"/><path d="M93 40 L95 22 M89 38 L92 20" stroke="#fff" stroke-width=".8" opacity=".6"/></g>
+    <!-- cabeça (pelagem escura) -->
+    <path d="M22 46 Q24 28 44 25 Q60 21 76 25 Q96 28 98 46 Q104 62 98 77 Q91 92 60 98 Q29 92 22 77 Q16 62 22 46 Z" fill="url(#pelo)"/>
+    <!-- tufos de pelo nas bochechas -->
+    <path d="M25 68 L15 72 L23 76 L14 82 L25 82 L19 89 L31 86 Z" fill="#e3e5e9"/>
+    <path d="M95 68 L105 72 L97 76 L106 82 L95 82 L101 89 L89 86 Z" fill="#e3e5e9"/>
+    <!-- máscara branca do husky -->
+    <path d="M29 63 Q33 51 45 51 Q54 50 58 57 L60 60 L62 57 Q66 50 75 51 Q87 51 91 63 Q97 77 87 87 Q75 97 60 97 Q45 97 33 87 Q23 77 29 63 Z" fill="url(#peloClaro)"/>
+    <path d="M54 60 Q56 42 60 31 Q64 42 66 60 Z" fill="#eef0f3"/>
+    <path d="M60 31 L57.6 50 Q60 55 62.4 50 Z" fill="#3c4048"/>
+    <ellipse cx="44" cy="45" rx="5.5" ry="3" fill="#eceef1" transform="rotate(-12 44 45)"/>
+    <ellipse cx="76" cy="45" rx="5.5" ry="3" fill="#eceef1" transform="rotate(12 76 45)"/>
+    <path d="M38 36 Q42 41 42 45 M82 36 Q78 41 78 45 M49 32 Q51 37 51 41 M71 32 Q69 37 69 41" stroke="#2c3036" stroke-width=".9" fill="none" opacity=".55"/>
+    <!-- olhos âmbar -->
+    <path d="M34 57 Q44 47 55 56 Q45 64 34 57 Z" fill="#2a2d33"/>
+    <path d="M86 57 Q76 47 65 56 Q75 64 86 57 Z" fill="#2a2d33"/>
+    <g class="iris"><path class="brilho" d="M37 56.5 Q45 50 52.5 55.5 Q45 60.5 37 56.5 Z" fill="url(#ambar)"/><circle cx="45.5" cy="55.6" r="2.3" fill="#1c1000"/><circle cx="47" cy="54.2" r="1" fill="#fff"/></g>
+    <g class="iris"><path class="brilho" d="M83 56.5 Q75 50 67.5 55.5 Q75 60.5 83 56.5 Z" fill="url(#ambar)"/><circle cx="74.5" cy="55.6" r="2.3" fill="#1c1000"/><circle cx="76" cy="54.2" r="1" fill="#fff"/></g>
+    <!-- focinho, nariz e boca -->
+    <path d="M49 70 Q60 64 71 70 Q70 80 60 84 Q50 80 49 70 Z" fill="#f4f5f7" opacity=".7"/>
+    <path d="M52.5 71 Q60 66.5 67.5 71 Q66.5 77.5 60 78.8 Q53.5 77.5 52.5 71 Z" fill="#141414"/>
+    <ellipse cx="57.5" cy="70.8" rx="2.4" ry="1.2" fill="#fff" opacity=".5"/>
+    <path d="M60 78.8 V83.5 M52 85.5 Q56 88.5 60 85.5 Q64 88.5 68 85.5" stroke="#5d626b" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <!-- faixa tecnológica na testa + fones laterais -->
+    <path d="M23 40 Q60 17 97 40 L95.5 46.5 Q60 25 24.5 46.5 Z" fill="url(#aco)" stroke="#23262b" stroke-width=".9"/>
+    <path d="M30 40 Q60 23 90 40" stroke="#cfd4da" stroke-width=".7" fill="none" opacity=".7"/>
+    <g fill="#d5d9df" stroke="#3a3e45" stroke-width=".5"><circle cx="34" cy="38.5" r="1.4"/><circle cx="46" cy="32" r="1.4"/><circle cx="74" cy="32" r="1.4"/><circle cx="86" cy="38.5" r="1.4"/></g>
+    <rect x="52" y="22" width="16" height="9" rx="2.2" fill="#2b2f36" stroke="#6b717a" stroke-width=".9"/>
+    <circle class="antena" cx="60" cy="26.5" r="2.4" fill="#ff2a2a" filter="url(#luz)"/>
+    <path d="M22 41 L13 45 L13 62 L21 64 Z" fill="url(#aco)" stroke="#23262b" stroke-width=".9"/>
+    <path d="M98 41 L107 45 L107 62 L99 64 Z" fill="url(#aco)" stroke="#23262b" stroke-width=".9"/>
+    <path d="M13 50 H18 M13 55 H18 M107 50 H102 M107 55 H102" stroke="#2b2f36" stroke-width="1"/>
+    <circle cx="104" cy="59" r="1.5" fill="#ff2a2a" filter="url(#luz)"/>
+    <path d="M107 60 Q112 70 104 80" stroke="#3f444c" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </svg>
+  </div>
+</div>
+
+<div id="chat">
+  <div class="chat-h"><svg viewBox="16 8 88 98" width="32" height="34"><path d="M22 50 L30 10 L55 36 Z M98 50 L90 10 L65 36 Z" fill="#e4e4e7"/><path d="M31 41 L34 23 L46 36 Z M89 41 L86 23 L74 36 Z" fill="#7a0000"/>
+      <path d="M20 44 Q60 22 100 44 V68 Q100 90 60 104 Q20 90 20 68 Z" fill="#f4f4f5"/>
+      <circle cx="44" cy="58" r="11" fill="#111"/><circle cx="76" cy="58" r="11" fill="#111"/><circle cx="44" cy="58" r="5" fill="#f5a524"/><circle cx="76" cy="58" r="5" fill="#f5a524"/>
+      <path d="M54 76 Q60 72 66 76 Q64 81 60 82 Q56 81 54 76 Z" fill="#111"/></svg>
+    <div><b>E-exato</b><small id="chatSub">assistente do ponto da Exato</small></div><button id="chatX" title="Fechar">✕</button></div>
+  <div class="chat-m" id="chatM"></div>
+  <div class="sug" id="sug"></div>
+  <div class="chat-i"><textarea id="chatT" placeholder="Pergunte sobre o mês aberto..."></textarea><button class="pri" id="chatEnv">Enviar</button></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hm = m => { m = Math.round(m || 0); const s = m < 0 ? '-' : ''; m = Math.abs(m); return `${s}${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`; };
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const nomeMes = m => { const [a, n] = m.split('-'); return `${MESES[+n-1][0].toUpperCase()+MESES[+n-1].slice(1)}/${a}`; };
+const dt = d => d ? d.slice(8,10) + '/' + d.slice(5,7) : '';
+const q = o => new URLSearchParams(o).toString();
+async function api(url, opt) {
+  const r = await fetch(url, opt); const j = await r.json().catch(() => ({erro: 'resposta inválida'}));
+  if (!r.ok) throw new Error(j.erro || 'erro'); return j;
+}
+function busy(on, msg = 'Aguarde...', sub = '') { $('#busy').classList.toggle('on', on); $('#busyMsg').textContent = msg; $('#busySub').textContent = sub; }
+function toast(t, ms = 5000) { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove('on'), ms); }
+
+let E = null, SEL = null, P = null, ABA = 'pend';
+
+async function carregar() {
+  E = await api('/api/estado');
+  $('#lista').innerHTML = E.clientes.map(c => `<div class="cli"><div class="cli-n">${esc(c.empresa)}<button data-novo="${esc(c.nome)}">+ Novo mês</button></div>` +
+    `<div class="side-btn${CAD && CAD.cliente === c.nome ? ' sel' : ''}" data-cad="${esc(c.nome)}">📋 Cadastro da empresa</div>` +
+    (c.meses.length ? c.meses.map(m => {
+      const st = m.status, cls = !st ? '' : st.pronto ? 'ok' : 'warn';
+      const info = !st ? '' : st.pronto ? (st.txt ? 'TXT ✓' : 'pronto') : `${st.pendencias} pend.`;
+      const sel = SEL && SEL.cliente === c.nome && SEL.mes === m.mes ? ' sel' : '';
+      return `<div class="mes${sel}" data-c="${esc(c.nome)}" data-m="${m.mes}"><span class="dot ${cls}"></span>${nomeMes(m.mes)}<small>${info}</small></div>`;
+    }).join('') : '<div class="mes" style="cursor:default;opacity:.6">nenhum mês ainda</div>') + '</div>').join('') +
+    '<div class="cli"><button class="novo-cli" onclick="novoCliente()">+ Novo cliente</button></div>';
+  $('#sys').innerHTML = `Recálculo automático: ${E.libreoffice ? '✅ LibreOffice' : '⚠️ sem LibreOffice'}<br>Leitura de foto/PDF: ${E.ia ? '✅ IA configurada' : '⚪ sem chave da IA'}`;
+  $('#upCli').innerHTML = E.clientes.map(c => `<option value="${esc(c.nome)}">${esc(c.empresa)}</option>`).join('');
+}
+$('#lista').onclick = e => {
+  const n = e.target.closest('[data-novo]'); if (n) return abrirEnvio(n.dataset.novo);
+  const cd = e.target.closest('[data-cad]'); if (cd) return abrirCadastro(cd.dataset.cad);
+  const m = e.target.closest('[data-m]'); if (m) abrirMes(m.dataset.c, m.dataset.m);
+};
+
+function inicio() {
+  const tot = E.clientes.reduce((a, c) => a + c.meses.length, 0);
+  $('#main').innerHTML = `<div class="vazio"><h2>Bem-vindo</h2><p>${tot ? 'Escolha um mês na lista à esquerda para ver o painel,' : 'Comece'} ou envie o ponto de um novo mês.</p>
+    <button class="pri" onclick="abrirEnvio()">Enviar ponto do mês</button></div>`;
+}
+
+async function abrirMes(c, m, recalc = false) {
+  if (CAD) { if (!saiCadastro()) return; CAD = null; SUJO = false; }
+  SEL = {cliente: c, mes: m}; carregar();
+  busy(true, recalc ? 'Recalculando a planilha...' : 'Abrindo o mês...', 'Pode levar até 1 minuto.');
+  try { P = await api('/api/painel?' + q({cliente: c, mes: m, recalcular: recalc ? 1 : 0})); render(); }
+  catch (e) { $('#main').innerHTML = `<div class="vazio"><h2>Não foi possível abrir</h2><p>${esc(e.message)}</p></div>`; }
+  finally { busy(false); carregar(); }
+}
+
+function render() {
+  const t = P.totais, emp = E.clientes.find(c => c.nome === P.cliente)?.empresa || P.cliente;
+  const kpi = (l, v, s, c) => `<div class="kpi" style="--c:${c}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  let banner;
+  if (P.desatualizado) banner = `<div class="banner warn"><div class="grow">A planilha foi alterada depois do último cálculo<small>Clique em Atualizar para ver os números novos.</small></div><button onclick="abrirMes(SEL.cliente,SEL.mes,true)">Atualizar agora</button></div>`;
+  else if (P.pronto) banner = `<div class="banner ok"><div class="grow">✅ Pronto para importar no Domínio<small>${P.lancamentos} lançamento(s) no TXT.</small></div></div>`;
+  else banner = `<div class="banner warn"><div class="grow">⚠️ Ainda não importar: ${t.pendencias} item(ns) para confirmar com o cliente${P.codigos_faltando ? ` · ${P.codigos_faltando} código(s) do Domínio faltando` : ''}${P.bloqueados ? ` · ${P.bloqueados} funcionário(s) bloqueado(s)` : ''}
+     <small>Veja a aba Pendências, corrija no PONTO_BRUTO da planilha, salve e clique em Atualizar.</small></div></div>`;
+  $('#main').innerHTML = `
+  <div class="top"><div><h2>${esc(emp)} · ${nomeMes(P.mes)}</h2><p>Apuração de ${dt(P.ini)} a ${dt(P.fim)} · calculado em ${P.atualizado.slice(8,10)}/${P.atualizado.slice(5,7)}/${P.atualizado.slice(0,4)} às ${P.atualizado.slice(11,16)}</p></div>
+    <div class="acoes"><button onclick="post('abrir')">📝 Abrir planilha no Excel</button><button onclick="abrirMes(SEL.cliente,SEL.mes,true)">🔄 Atualizar</button>
+    <button onclick="post('pasta')">📁 Abrir pasta</button><button class="pri" onclick="gerarTxt()">⬇ Gerar TXT para o Domínio</button></div></div>
+  ${banner}
+  <div class="kpis">
+    ${kpi('Funcionários', t.funcionarios, 'com controle de ponto', 'var(--tx)')}
+    ${kpi('Horas extras 70%', hm(t.he70), 'até o limite do mês', 'var(--ac)')}
+    ${kpi('Horas extras 100%', hm(t.he100), 'domingos, feriados e excedente', 'var(--ac-d)')}
+    ${kpi('Adicional noturno', hm(t.noturno), 'horas entre 22h e 5h', '#52525b')}
+    ${kpi('Faltas / atrasos', hm(t.faltas_h), `${t.faltas_dias} dia(s) inteiro(s)`, '#52525b')}
+    ${kpi('DSR descontado', t.dsr, 'semana(s)', '#52525b')}
+    ${kpi('A confirmar', t.pendencias, 'com o cliente', t.pendencias ? 'var(--warn)' : 'var(--ok)')}
+    ${kpi('Irregularidades', t.irregulares, 'dia(s) com risco legal', t.irregulares ? 'var(--bad)' : 'var(--ok)')}
+  </div>
+  <div class="card"><div class="tabs">
+    <div class="tab" data-a="pend">Pendências <b>${t.pendencias}</b></div>
+    <div class="tab" data-a="func">Funcionários <b>${P.funcionarios.length}</b></div>
+    <div class="tab" data-a="irr">Irregularidades legais <b>${t.irregulares}</b></div></div>
+    <div class="pane" id="pane"></div></div>
+  ${P.txt ? `<div class="txtok"><span class="pill ok">TXT gerado</span> ${esc(P.txt)} <a href="/api/arquivo?${q({cliente: P.cliente, mes: P.mes, nome: P.txt})}"><button>Baixar TXT</button></a></div>` : ''}`;
+  document.querySelectorAll('.tab').forEach(e => e.onclick = () => { ABA = e.dataset.a; aba(); });
+  aba();
+}
+
+function aba() {
+  document.querySelectorAll('.tab').forEach(e => e.classList.toggle('sel', e.dataset.a === ABA));
+  const el = $('#pane');
+  if (ABA === 'pend') {
+    el.innerHTML = !P.pendencias.length ? '<p class="msg">Nenhuma pendência. 🎉</p>' :
+      `<div class="pane-top"><span>Mensagens prontas para enviar ao cliente (WhatsApp/e-mail).</span><button onclick="copiarTodas()">📋 Copiar todas as mensagens</button></div>
+      <table><tr><th>Funcionário</th><th>Data</th><th>Marcações</th><th>Tipo</th><th>O que confirmar</th><th></th></tr>
+      ${P.pendencias.map((p, i) => `<tr><td><b>${esc(p.func)}</b></td><td>${dt(p.data)} (${esc(p.dia)})</td><td>${esc(p.marc) || '<span class="msg">sem marcações</span>'}</td>
+        <td><span class="pill ${/sem marca/i.test(p.tipo) ? 'bad' : 'warn'}">${esc(p.tipo)}</span></td><td class="msg">${esc(p.confirmar)}</td>
+        <td><button class="copy" onclick="copiar(${i})">Copiar</button></td></tr>`).join('')}</table>`;
+  } else if (ABA === 'func') {
+    const max = Math.max(1, ...P.funcionarios.map(f => f.he70 + f.he100));
+    const st = s => s.startsWith('OK') ? 'ok' : s.startsWith('REVISAR') ? 'warn' : s.startsWith('BLOQ') ? 'bad' : 'mut';
+    el.innerHTML = `<table><tr><th>Funcionário</th><th>Cód.</th><th>Situação</th><th class="n">HE 70%</th><th class="n">HE 100%</th><th>Extras</th><th class="n">Noturno</th><th class="n">Faltas (h)</th><th class="n">Faltas (dias)</th><th class="n">DSR</th></tr>
+    ${P.funcionarios.map(f => `<tr><td><b>${esc(f.nome)}</b></td><td>${f.codigo ?? '<span class="pill bad">faltando</span>'}</td>
+      <td><span class="pill ${st(f.status)}">${esc(f.status.split(' - ')[0])}</span></td>
+      <td class="n">${f.he70 ? hm(f.he70) : '–'}</td><td class="n">${f.he100 ? hm(f.he100) : '–'}</td>
+      <td><div class="bar" style="width:${Math.max(4, (f.he70 + f.he100) / max * 100)}%"><i style="width:${(f.he70 / Math.max(1, f.he70 + f.he100)) * 100}%;background:#cc0000"></i><i style="flex:1;background:#f08080"></i></div></td>
+      <td class="n">${f.noturno ? hm(f.noturno) : '–'}</td><td class="n">${f.faltas_h ? hm(f.faltas_h) : '–'}</td><td class="n">${f.faltas_dias || '–'}</td><td class="n">${f.dsr || '–'}</td></tr>`).join('')}</table>
+    <p class="msg">Faltas (h) já incluem os dias inteiros convertidos em horas, como vão para o Domínio.</p>`;
+  } else {
+    el.innerHTML = `<table><tr><th>Irregularidade</th><th class="n">Dias</th></tr>${P.irreg.map(r => `<tr><td>${esc(r.nome)}</td><td class="n">${r.dias ? `<span class="pill bad">${r.dias}</span>` : '<span class="pill ok">0</span>'}</td></tr>`).join('')}</table>
+    ${P.dias_irreg.length ? `<h4 style="margin:18px 0 6px">Dias com irregularidade</h4><table><tr><th>Funcionário</th><th>Data</th><th>Alertas</th></tr>
+    ${P.dias_irreg.map(d => `<tr><td>${esc(d.func)}</td><td>${dt(d.data)}</td><td class="msg">${esc(d.alerta)}</td></tr>`).join('')}</table>` : ''}
+    <p class="msg">São riscos trabalhistas: não mudam a folha, mas vale orientar o cliente.</p>`;
+  }
+}
+function copiar(i) { navigator.clipboard.writeText(P.pendencias[i].mensagem); toast('Mensagem copiada.', 2000); }
+function copiarTodas() {
+  const t = `Olá! Para fechar o ponto de ${nomeMes(P.mes)}, preciso confirmar:\n\n` + P.pendencias.map((p, i) => `${i + 1}. ${p.mensagem}`).join('\n');
+  navigator.clipboard.writeText(t); toast('Todas as mensagens copiadas. É só colar no WhatsApp ou e-mail.', 3000);
+}
+async function post(acao) { try { await api(`/api/${acao}?` + q(SEL), {method: 'POST'}); } catch (e) { toast(e.message); } }
+
+async function gerarTxt(forcar = 0) {
+  busy(true, 'Gerando o TXT...', 'Recalculando a planilha e conferindo as pendências.');
+  try {
+    const r = await api('/api/txt?' + q({...SEL, forcar}), {method: 'POST'});
+    busy(false);
+    if (!r.ok && /Semáforo/.test(r.mensagem)) {
+      if (confirm(r.mensagem + '\n\nGerar o TXT MESMO ASSIM? (só se já conferiu as pendências)')) return gerarTxt(1);
+      return;
+    }
+    if (!r.ok) return alert(r.mensagem);
+    toast(r.mensagem, 6000);
+    location.href = '/api/arquivo?' + q({...SEL, nome: r.arquivo});
+    abrirMes(SEL.cliente, SEL.mes);
+  } catch (e) { busy(false); alert(e.message); }
+}
+
+// ---------- envio de arquivos
+let ARQS = [];
+function abrirEnvio(cli) {
+  ARQS = []; listar(); if (cli) $('#upCli').value = cli; else if (SEL) $('#upCli').value = SEL.cliente;
+  $('#up').classList.add('on');
+}
+function listar() {
+  $('#files').innerHTML = ARQS.map((f, i) => `<div><span>${esc(f.name)}</span><span class="msg">${(f.size / 1024).toFixed(0)} KB · <a href="#" onclick="ARQS.splice(${i},1);listar();return false">remover</a></span></div>`).join('');
+  $('#upGo').disabled = !ARQS.length;
+}
+const drop = $('#drop');
+drop.onclick = () => $('#file').click();
+$('#file').onchange = e => { ARQS.push(...e.target.files); e.target.value = ''; listar(); };
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); ARQS.push(...e.dataTransfer.files); listar(); };
+$('#upCancel').onclick = () => $('#up').classList.remove('on');
+$('#upGo').onclick = async () => {
+  const cli = $('#upCli').value; $('#up').classList.remove('on');
+  const temIA = ARQS.some(f => !/\.(xlsx|xlsm)$/i.test(f.name));
+  busy(true, 'Enviando arquivos...');
+  try {
+    await api('/api/cancelar_envio?' + q({cliente: cli}), {method: 'POST'});
+    for (const f of ARQS) await api('/api/upload?' + q({cliente: cli, nome: f.name}), {method: 'POST', body: f});
+    busy(true, 'Lendo o ponto e montando a planilha...', temIA ? 'Fotos/PDF são lidos pela IA: pode levar 1 a 3 minutos.' : 'Pode levar até 1 minuto.');
+    const r = await api('/api/gerar?' + q({cliente: cli}), {method: 'POST'});
+    busy(false);
+    toast(`Planilha de ${nomeMes(r.mes)} gerada.` + (r.feriados && r.feriados !== 'nenhum' ? `\nFeriados: ${r.feriados}` : '') + (r.avisos.length ? '\n⚠ ' + r.avisos.join('\n⚠ ') : ''), 9000);
+    await carregar(); abrirMes(cli, r.mes);
+  } catch (e) { busy(false); alert('Erro: ' + e.message); }
+};
+
+// ---------- cadastro da empresa (grava no config.json do cliente)
+let CAD = null, CABA = 'emp', SUJO = false, FM = null;
+const dtc = d => d ? d.split('-').reverse().join('/') : '';
+const saiCadastro = () => !SUJO || confirm('Há alterações no cadastro que não foram salvas.\n\nSair sem salvar?');
+const pega = k => k.split('.').reduce((o, p) => o?.[p], CAD);
+function poe(k, v) { const ps = k.split('.'), u = ps.pop(); ps.reduce((o, p) => o[p], CAD)[u] = v; }
+function sujo(on = true) {
+  SUJO = on; const s = $('#sujo'); if (s) s.hidden = !on;
+}
+// campo do formulário: o = {t: tipo | 'area' | 'sel', opts: [[valor, texto]], ph, ajuda, w: 'w2' | 'all'}
+function fld(rot, k, o = {}) {
+  const v = pega(k) ?? '', a = `data-k="${k}" placeholder="${esc(o.ph || '')}"`;
+  const inp = o.t === 'area' ? `<textarea ${a}>${esc(v)}</textarea>`
+    : o.t === 'sel' ? `<select ${a}>${o.opts.map(([x, n]) => `<option value="${esc(x)}"${String(x) === String(v) ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>`
+    : `<input ${a} type="${o.t || 'text'}" value="${esc(v)}">`;
+  return `<label class="fld ${o.w || ''}"><span>${rot}</span>${inp}${o.ajuda ? `<small>${o.ajuda}</small>` : ''}</label>`;
+}
+document.addEventListener('input', e => {
+  const k = e.target.dataset?.k; if (!k || !CAD) return;
+  poe(k, e.target.type === 'checkbox' ? e.target.checked : e.target.value); sujo();
+});
+document.addEventListener('change', e => {  // campos que mudam o que aparece na tela
+  if (e.target.dataset?.k && e.target.type === 'checkbox' && FM) funcForm();
+});
+window.addEventListener('beforeunload', e => { if (SUJO) { e.preventDefault(); e.returnValue = ''; } });
+
+async function abrirCadastro(c) {
+  if (CAD && CAD.cliente === c) return renderCad();
+  if (CAD && !saiCadastro()) return;
+  busy(true, 'Abrindo o cadastro...');
+  try {
+    CAD = await api('/api/cadastro?' + q({cliente: c})); SUJO = false; SEL = null; P = null;
+    if (!['emp', 'cct', 'rub', 'jor', 'func'].includes(CABA)) CABA = 'emp';
+    carregar(); renderCad();
+    falar(`Aqui fica tudo da <b>${esc(CAD.empresa.nome)}</b>: CCT, rubricas, jornada e funcionários. Não esqueça de clicar em <b>Salvar</b>! 🐺`, 8000);
+  } catch (e) { toast(e.message); }
+  finally { busy(false); }
+}
+
+function renderCad() {
+  const faltando = CAD.funcionarios.filter(f => f.controla && (f.codigo === null || f.codigo === '')).length;
+  $('#main').innerHTML = `
+  <div class="top"><div><h2>Cadastro · ${esc(CAD.empresa.nome || CAD.cliente)}</h2>
+    <p>Dados usados no cálculo do ponto e no TXT do Domínio, mais informações para consulta.</p></div>
+    <div class="acoes"><span class="pill warn" id="sujo" style="align-self:center" ${SUJO ? '' : 'hidden'}>alterações não salvas</span>
+    <button onclick="descartarCad()">Descartar alterações</button><button class="pri" onclick="salvarCad()">💾 Salvar</button></div></div>
+  <div class="card"><div class="tabs">
+    <div class="tab" data-c="emp">Empresa</div><div class="tab" data-c="cct">Sindicato / CCT</div>
+    <div class="tab" data-c="rub">Rubricas</div><div class="tab" data-c="jor">Jornada e feriados</div>
+    <div class="tab" data-c="func">Funcionários <b>${CAD.funcionarios.length}</b>${faltando ? ` <span class="pill bad">${faltando} sem código</span>` : ''}</div></div>
+    <div class="pane" id="cad"></div></div>`;
+  document.querySelectorAll('.tab[data-c]').forEach(e => e.onclick = () => { CABA = e.dataset.c; abaCad(); });
+  abaCad();
+}
+
+function abaCad() {
+  document.querySelectorAll('.tab[data-c]').forEach(e => e.classList.toggle('sel', e.dataset.c === CABA));
+  const el = $('#cad');
+  if (CABA === 'emp') {
+    el.innerHTML = `<div class="form">
+      ${fld('Nome da empresa', 'empresa.nome', {w: 'w2'})}
+      ${fld('CNPJ', 'empresa.cnpj', {ph: '00.000.000/0000-00'})}
+      ${fld('Código da empresa no Domínio', 'empresa.codigo', {t: 'number', ajuda: 'Sem ele o TXT não é gerado (evita importar na empresa errada).'})}
+      ${fld('Tipo da folha na importação', 'empresa.tipo_folha', {t: 'sel', opts: [[11, '11 - Mensal'], [41, '41 - Adiantamento'], [42, '42 - Complementar'], [51, '51 - 13º (1ª parcela)'], [52, '52 - 13º (2ª parcela)']]})}
+      ${fld('Anotações sobre a empresa', 'empresa.origem', {t: 'area', w: 'all', ajuda: 'Ex.: de onde veio o código, contato do RH, particularidades.'})}</div>`;
+  } else if (CABA === 'cct') {
+    el.innerHTML = `<div class="nota">📌 <b>Só para consulta.</b> O cálculo do ponto usa as regras da aba <b>Jornada e feriados</b> e os códigos da aba <b>Rubricas</b>. Se a CCT mudar, ajuste lá também.</div>
+    <h4 class="sec">Sindicatos</h4><div class="form">
+      ${fld('Sindicato dos empregados', 'cct.sindicato_laboral', {w: 'w2'})}
+      ${fld('Sindicato patronal', 'cct.sindicato_patronal', {w: 'w2'})}
+      ${fld('Nº de registro no MTE (Mediador)', 'cct.registro_mte', {ph: 'SC000000/2026'})}</div>
+    <h4 class="sec">Vigência</h4><div class="form">
+      ${fld('Início da vigência', 'cct.vigencia_ini', {t: 'date'})}
+      ${fld('Fim da vigência', 'cct.vigencia_fim', {t: 'date'})}
+      ${fld('Data-base', 'cct.data_base', {ph: 'ex.: maio'})}</div>
+    <h4 class="sec">Valores e percentuais</h4><div class="form">
+      ${fld('Piso salarial', 'cct.piso', {ph: 'ex.: R$ 1.950,00'})}
+      ${fld('Hora extra em dia útil', 'cct.he_perc1', {ph: 'ex.: 70% até 30h no mês'})}
+      ${fld('Hora extra domingo/feriado', 'cct.he_perc2', {ph: 'ex.: 100%'})}
+      ${fld('Adicional noturno', 'cct.noturno_perc', {ph: 'ex.: 35%'})}</div>
+    <h4 class="sec">Regras</h4><div class="form">
+      ${fld('Banco de horas / compensação', 'cct.banco_horas', {t: 'area', w: 'all'})}
+      ${fld('Outras cláusulas importantes', 'cct.obs', {t: 'area', w: 'all', ph: 'ex.: cl. 12 - vale-alimentação; cl. 20 - atestados'})}</div>`;
+    const vf = CAD.cct.vigencia_fim;
+    if (vf && vf < new Date().toISOString().slice(0, 10)) el.insertAdjacentHTML('afterbegin', `<div class="banner bad">⚠️ A vigência desta CCT terminou em ${dtc(vf)}. Confira se já saiu a nova convenção.</div>`);
+  } else if (CABA === 'rub') {
+    el.innerHTML = `<div class="nota">Códigos das rubricas <b>desta empresa</b> no Domínio (veja no relatório de Movimentos). Rubrica em branco não é exportada no TXT.</div>
+    <table><tr><th>O que é lançado</th><th style="width:180px">Código no Domínio</th></tr>
+    ${CAD.rubricas.map((r, i) => `<tr><td>${esc(r.nome)}</td><td><input class="inp" type="number" data-k="rubricas.${i}.codigo" value="${esc(r.codigo ?? '')}"></td></tr>`).join('')}</table>`;
+  } else if (CABA === 'jor') {
+    el.innerHTML = `<div class="form">
+      ${fld('Jornada diária (seg a sex)', 'jornada.jornada', {ph: '08:00', ajuda: 'horas:minutos'})}
+      ${fld('Tolerância por dia', 'jornada.tolerancia', {ph: '00:10', ajuda: 'CLT art. 58 §1º: até 10 min/dia'})}
+      ${fld('Horas extras a 70% por mês (limite)', 'jornada.he_lim', {ph: '30:00', ajuda: 'Acima disso vai para 100%'})}
+      ${fld('Horas de 1 dia (falta e DSR)', 'jornada.horas_dia_falta', {ph: '07:20', ajuda: 'Como o Domínio lança 1 dia inteiro'})}
+      ${fld('Sábado trabalhado vai a 100%?', 'jornada.sab100', {t: 'sel', opts: [['SIM', 'Sim - sábado é compensado na semana'], ['NÃO', 'Não - segue a faixa de 70%']]})}
+      ${fld('Dia sem almoço batido', 'jornada.interv_modo', {t: 'sel', w: 'w2', opts: [[2, 'Paga como hora extra (não desconta o almoço)'], [1, 'Desconta 1h de almoço (foi só esquecimento)']]})}</div>
+    <h4 class="sec">Feriados estaduais e municipais</h4>
+    <p class="msg" style="margin-top:0">Os nacionais já entram sozinhos. Use <b>DD/MM</b> para feriado que se repete todo ano (ex.: 11/08) ou uma data completa para feriado só daquele ano.</p>
+    <table><tr><th style="width:190px">Data</th><th>Nome do feriado</th><th></th></tr>
+    ${CAD.feriados.map((f, i) => `<tr><td><input class="inp" data-k="feriados.${i}.data" value="${esc(f.data)}" placeholder="DD/MM"></td>
+      <td><input class="inp" data-k="feriados.${i}.nome" value="${esc(f.nome)}"></td><td><button class="lixo" onclick="CAD.feriados.splice(${i},1);sujo();abaCad()">Remover</button></td></tr>`).join('')
+      || '<tr><td colspan="3" class="msg">Nenhum feriado local cadastrado.</td></tr>'}</table>
+    <button style="margin-top:10px" onclick="CAD.feriados.push({data:'',nome:''});sujo();abaCad()">+ Adicionar feriado</button>`;
+  } else {
+    const sit = f => {
+      const s = [];
+      if (!f.controla) s.push(['mut', 'Não bate ponto']);
+      if (f.afast_ini) s.push(['warn', f.afast_fim ? `Afastado ${dtc(f.afast_ini)} a ${dtc(f.afast_fim)}` : `Afastado desde ${dtc(f.afast_ini)}`]);
+      if (f.ferias_ini) s.push(['warn', `Férias ${dtc(f.ferias_ini)} a ${dtc(f.ferias_fim)}`]);
+      if (f.rescisao) s.push(['bad', `Rescisão ${dtc(f.rescisao)}`]);
+      return (s.length ? s : [['ok', 'Ativo']]).map(([c, t]) => `<span class="pill ${c}">${t}</span>`).join(' ');
+    };
+    el.innerHTML = `<div class="pane-top"><span>O nome deve ser igual ao do espelho de ponto (pode ser só o primeiro nome, se não houver outro igual).</span>
+      <button class="pri" onclick="editarFunc(-1)">+ Adicionar funcionário</button></div>
+    <table><tr><th>Nome no ponto</th><th>Código</th><th>Cargo</th><th>Admissão</th><th>Situação</th><th></th></tr>
+    ${CAD.funcionarios.map((f, i) => `<tr><td><b>${esc(f.nome)}</b>${f.nome_completo ? `<div class="msg">${esc(f.nome_completo)}</div>` : ''}</td>
+      <td>${f.codigo ?? ''}${f.controla && (f.codigo === null || f.codigo === '') ? '<span class="pill bad">faltando</span>' : ''}</td>
+      <td>${esc(f.cargo)}</td><td>${dtc(f.admissao)}</td><td>${sit(f)}</td>
+      <td><button class="copy" onclick="editarFunc(${i})">Editar</button></td></tr>`).join('')
+      || '<tr><td colspan="6" class="msg">Nenhum funcionário cadastrado.</td></tr>'}</table>`;
+  }
+}
+
+// janela de edição de um funcionário (edita CAD direto; Cancelar desfaz)
+function editarFunc(i) {
+  if (i < 0) {
+    CAD.funcionarios.push({nome: '', codigo: '', nome_completo: '', cargo: '', admissao: '', controla: true, motivo_nao_controla: '',
+      ferias_ini: '', ferias_fim: '', ferias_obs: '', afast_ini: '', afast_fim: '', afast_tipo: '', afast_obs: '', rescisao: '', obs: ''});
+    i = CAD.funcionarios.length - 1; FM = {i, novo: true, antes: null, sujo: SUJO};
+  } else FM = {i, novo: false, antes: JSON.parse(JSON.stringify(CAD.funcionarios[i])), sujo: SUJO};
+  funcForm(); $('#fm').classList.add('on');
+  $('#fmBox input')?.focus();
+}
+function funcForm() {
+  const k = c => `funcionarios.${FM.i}.${c}`, f = CAD.funcionarios[FM.i];
+  $('#fmBox').innerHTML = `<h3>${FM.novo ? 'Novo funcionário' : esc(f.nome)}</h3>
+    <h4 class="sec">Identificação</h4><div class="form">
+      ${fld('Nome no ponto *', k('nome'), {ajuda: 'Igual ao espelho do relógio'})}
+      ${fld('Código no Domínio', k('codigo'), {t: 'number'})}
+      ${fld('Nome completo', k('nome_completo'), {w: 'w2'})}
+      ${fld('Cargo', k('cargo'))}
+      ${fld('Data de admissão', k('admissao'), {t: 'date'})}</div>
+    <h4 class="sec">Controle de ponto</h4><div class="form">
+      <label class="fld chk all"><input type="checkbox" data-k="${k('controla')}" ${f.controla ? 'checked' : ''}> Registra ponto (desmarque para proprietário, aprendiz sem ponto etc.)</label>
+      ${f.controla ? '' : fld('Motivo de não bater ponto', k('motivo_nao_controla'), {w: 'all', ph: 'ex.: Proprietária da empresa'})}</div>
+    <h4 class="sec">Férias</h4><div class="form">
+      ${fld('Início', k('ferias_ini'), {t: 'date'})}${fld('Fim', k('ferias_fim'), {t: 'date'})}
+      ${fld('Observação', k('ferias_obs'), {w: 'all'})}</div>
+    <h4 class="sec">Afastamento</h4><div class="form">
+      ${fld('Início', k('afast_ini'), {t: 'date'})}${fld('Fim', k('afast_fim'), {t: 'date', ajuda: 'Em branco = sem previsão de volta'})}
+      ${fld('Tipo', k('afast_tipo'), {ph: 'ex.: ACIDENTE DE TRABALHO, AUXÍLIO-DOENÇA'})}
+      ${fld('Observação', k('afast_obs'), {w: 'all'})}</div>
+    <h4 class="sec">Rescisão e observações</h4><div class="form">
+      ${fld('Último dia trabalhado (rescisão)', k('rescisao'), {t: 'date', ajuda: 'Dias depois disso não são apurados'})}
+      ${fld('Observação geral', k('obs'), {t: 'area', w: 'all'})}</div>
+    <div class="nota" style="margin:14px 0 0">As férias, afastamentos e rescisões daqui entram no cálculo: esses dias não viram falta.</div>
+    <div class="row">${FM.novo ? '' : '<button style="margin-right:auto;color:var(--bad)" onclick="removerFunc()">Remover funcionário</button>'}
+      <button onclick="fecharFunc(false)">Cancelar</button><button class="pri" onclick="fecharFunc(true)">OK</button></div>`;
+}
+function fecharFunc(ok) {
+  const f = CAD.funcionarios[FM.i];
+  if (ok && !f.nome.trim()) return alert('Informe o nome do funcionário como aparece no ponto.');
+  if (!ok) { if (FM.novo) CAD.funcionarios.splice(FM.i, 1); else CAD.funcionarios[FM.i] = FM.antes; SUJO = FM.sujo; }
+  FM = null; $('#fm').classList.remove('on'); renderCad();
+  if (ok) toast('Lembre de clicar em 💾 Salvar para gravar.', 3000);
+}
+function removerFunc() {
+  if (!confirm(`Remover ${CAD.funcionarios[FM.i].nome} do cadastro?`)) return;
+  CAD.funcionarios.splice(FM.i, 1); FM = null; $('#fm').classList.remove('on'); sujo(); renderCad();
+}
+
+async function salvarCad() {
+  busy(true, 'Salvando o cadastro...');
+  try {
+    CAD = await api('/api/cadastro?' + q({cliente: CAD.cliente}), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(CAD)});
+    SUJO = false; renderCad(); await carregar();
+    toast('✅ Cadastro salvo. Vale a partir da próxima planilha gerada ou do próximo "Atualizar".', 5000);
+  } catch (e) { alert('Não foi possível salvar:\n\n' + e.message); }
+  finally { busy(false); }
+}
+function descartarCad() {
+  if (SUJO && !confirm('Descartar as alterações não salvas?')) return;
+  SUJO = false; const c = CAD.cliente; CAD = null; abrirCadastro(c);
+}
+async function novoCliente() {
+  if (CAD && !saiCadastro()) return;
+  const nome = prompt('Nome do novo cliente (ex.: EMPRESA_ABC):'); if (!nome || !nome.trim()) return;
+  try {
+    const r = await api('/api/cliente_novo', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nome})});
+    SUJO = false; CAD = null; await carregar(); CABA = 'emp'; abrirCadastro(r.cliente);
+  } catch (e) { alert(e.message); }
+}
+
+// ---------- mascote E-exato
+const HIST = {};
+const chaveH = () => SEL ? `${SEL.cliente}|${SEL.mes}` : '-';
+let balaoT;
+function falar(html, ms = 12000) {
+  const b = $('#exaBalao'); b.innerHTML = html; b.hidden = false;
+  b.style.animation = 'none'; b.offsetHeight; b.style.animation = '';
+  clearTimeout(balaoT); balaoT = setTimeout(() => b.hidden = true, ms);
+}
+function comentar() {
+  if (!P) return falar('Oi! Eu sou o <b>E-exato</b> 🐺 Escolha um mês à esquerda ou clique em <b>+ Novo mês</b>. Se tiver dúvida, clique em mim!');
+  const t = P.totais, m = nomeMes(P.mes).split('/')[0];
+  if (P.desatualizado) return falar(`A planilha de <b>${m}</b> mudou. Clique em <b>Atualizar</b> que eu refaço as contas! 🔄`);
+  if (P.pronto) return falar(`Tudo certo em <b>${m}</b>! 🎉 Já pode <b>gerar o TXT</b> para o Domínio.`);
+  const top = [...P.funcionarios].sort((a, b) => (b.he70 + b.he100) - (a.he70 + a.he100))[0];
+  falar(`<b>${m}</b> tem <b>${t.pendencias} pendência(s)</b> para confirmar com o cliente.` +
+    (top && top.he70 + top.he100 ? ` Quem mais fez extra: <b>${esc(top.nome.split(' ')[0])}</b> (${hm(top.he70 + top.he100)}).` : '') +
+    `<br>Quer que eu escreva a mensagem para o cliente? Clique aqui.`);
+}
+function md(s) {
+  const linhas = esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split('\n');
+  let out = '', lista = false;
+  for (const l of linhas) {
+    const it = l.match(/^\s*(?:[-•*]|\d+[.)])\s+(.*)/);
+    if (it) { if (!lista) { out += '<ul>'; lista = true; } out += `<li>${it[1]}</li>`; continue; }
+    if (lista) { out += '</ul>'; lista = false; }
+    out += l.trim() ? `<p>${l}</p>` : '';
+  }
+  return out + (lista ? '</ul>' : '');
+}
+function renderChat() {
+  const h = HIST[chaveH()] ||= [];
+  $('#chatSub').textContent = P ? `${E.clientes.find(c => c.nome === P.cliente)?.empresa || ''} · ${nomeMes(P.mes)}` : 'assistente do ponto da Exato';
+  const boas = P ? `Oi! Sou o <b>E-exato</b> 🐺 Estou de olho em <b>${nomeMes(P.mes)}</b>. Posso resumir o mês, explicar os números de cada funcionário ou escrever a mensagem de pendências para o cliente.`
+                 : 'Oi! Sou o <b>E-exato</b> 🐺 Abra um mês à esquerda para eu analisar os números com você.';
+  $('#chatM').innerHTML = `<div class="m exa">${boas}</div>` + h.map((m, i) => m.role === 'user' ? `<div class="m eu">${esc(m.content)}</div>`
+    : m.chave ? `<div class="m exa">${m.content}<div class="chave"><input id="chaveIn" type="password" placeholder="sk-ant-..."><button class="pri" onclick="salvarChave()">Salvar</button></div></div>`
+    : `<div class="m exa">${md(m.content)}<button class="cp" onclick="navigator.clipboard.writeText(HIST[chaveH()][${i}].content);toast('Copiado.',1500)">Copiar</button></div>`).join('')
+    + (ESPERA ? '<div class="m exa digitando"><span></span><span></span><span></span></div>' : '');
+  $('#chatM').scrollTop = 1e9;
+  const sug = P ? ['Resumo do mês', 'Mensagem de pendências para o cliente', 'Quem fez mais hora extra?', 'Já posso importar no Domínio?', 'Explique as irregularidades']
+                : ['Como funciona o sistema?'];
+  $('#sug').innerHTML = h.length > 1 ? '' : sug.map(s => `<button onclick="enviar('${s}')">${s}</button>`).join('');
+}
+let ESPERA = false;
+async function enviar(txt) {
+  txt = (txt ?? $('#chatT').value).trim(); if (!txt || ESPERA) return;
+  $('#chatT').value = '';
+  const k = chaveH(), h = HIST[k] ||= [];
+  h.push({role: 'user', content: txt}); ESPERA = true; $('#exaBot').classList.add('pensando'); renderChat();
+  try {
+    const r = await api('/api/chat', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({...(SEL || {}), mensagens: h.filter(m => !m.chave)})});
+    if (r.sem_chave) h.push({role: 'assistant', chave: true, content: 'Para eu conversar, preciso da <b>chave da API da Anthropic</b> (começa com <b>sk-ant-</b>). Ela fica salva só neste computador e também libera a leitura de fotos e PDFs.'});
+    else h.push({role: 'assistant', content: r.resposta});
+  } catch (e) { h.push({role: 'assistant', content: 'Ops, não consegui responder agora: ' + e.message}); }
+  ESPERA = false; $('#exaBot').classList.remove('pensando'); renderChat();
+}
+async function salvarChave() {
+  try {
+    await api('/api/chave', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({chave: $('#chaveIn').value})});
+    const h = HIST[chaveH()]; h.pop(); toast('Chave salva! ✅', 2000); carregar();
+    const ult = h.pop(); if (ult) enviar(ult.content); else renderChat();
+  } catch (e) { toast(e.message); }
+}
+function abrirChat() { $('#exaBalao').hidden = true; $('#chat').classList.add('on'); renderChat(); $('#chatT').focus(); }
+$('#exaBot').onclick = () => $('#chat').classList.contains('on') ? $('#chat').classList.remove('on') : abrirChat();
+$('#exaBalao').onclick = () => { abrirChat(); if (P && !P.pronto && !(HIST[chaveH()] || []).length) enviar('Mensagem de pendências para o cliente'); };
+$('#chatX').onclick = () => $('#chat').classList.remove('on');
+$('#chatEnv').onclick = () => enviar();
+$('#chatT').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } };
+const _render = render; render = function () { _render(); comentar(); if ($('#chat').classList.contains('on')) renderChat(); };
+
+carregar().then(() => { inicio(); comentar(); }).catch(e => $('#main').innerHTML = `<div class="vazio"><h2>Erro</h2><p>${esc(e.message)}</p></div>`);
+</script>
+</body>
+</html>

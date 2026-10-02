@@ -1,0 +1,19 @@
+# Dados de clientes e funcionários (LGPD): ficam só no computador do escritório
+clientes/*
+!clientes/_MODELO/
+!clientes/_MODELO/config.json
+
+# Senhas, chaves e registros
+chave_api.txt
+usuarios.json
+logs/
+
+# Arquivos temporários
+__pycache__/
+*.pyc
+*.leitura.json
+*.painel.json
+~$*
+
+# Guia antigo (cita cliente): fica só neste computador
+COMO_USAR_TODO_MES_antigo.md
