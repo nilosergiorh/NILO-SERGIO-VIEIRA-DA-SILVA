@@ -28,3 +28,7 @@ venv/
 dist/
 build/
 *.spec
+
+# Dados reais de clientes: nunca versionar
+exportacao/
+*.zip

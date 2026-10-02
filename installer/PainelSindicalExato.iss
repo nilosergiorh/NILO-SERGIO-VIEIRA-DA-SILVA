@@ -1,8 +1,8 @@
 ﻿; Instalador do Painel Sindical Exato (Inno Setup 6)
-; Compilado pelo GitHub Actions: iscc /DMyAppVersion=1.0.0 installer\PainelSindicalExato.iss
+; Compilado pelo GitHub Actions: iscc /DMyAppVersion=2.0.0 installer\PainelSindicalExato.iss
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.0"
+  #define MyAppVersion "2.0.0"
 #endif
 #define MyAppName "Painel Sindical Exato"
 #define MyAppExe "PainelSindicalExato.exe"
@@ -40,4 +40,4 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: deskto
 [Run]
 Filename: "{app}\{#MyAppExe}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
 
-; Os dados ficam em %APPDATA%\PainelSindicalExato e NÃO são apagados ao desinstalar.
+; Os dados (banco, PDFs, backups) ficam em %APPDATA%\PainelSindicalExato e NÃO são apagados ao desinstalar.

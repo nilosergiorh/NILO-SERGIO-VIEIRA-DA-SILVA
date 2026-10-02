@@ -1,4 +1,4 @@
-from painel_sindical_exato.ui.app import main
+from painel_sindical_exato.app import main
 
 if __name__ == "__main__":
     main()

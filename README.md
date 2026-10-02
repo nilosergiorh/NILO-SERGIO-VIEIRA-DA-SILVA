@@ -2,68 +2,70 @@
 
 Repositório pessoal de Nilo Sergio Vieira da Silva.
 
-## Painel Sindical Exato
+## Painel Sindical Exato — versão para computador
 
-Programa de computador (Windows) para controlar o **enquadramento sindical** dos clientes da Exato:
-sindicatos, CCTs, pisos por função, contribuições e prazos — com alertas automáticos.
+Programa para Windows com **as mesmas telas e funções do app "Painel Sindical Exato" do Claude**,
+com os dados guardados no próprio computador (funciona sem internet).
 
-### O que ele faz
-
-| Aba | Função |
+| Tela | O que faz |
 |---|---|
-| **Painel** | Indicadores (clientes, CCTs vigentes etc.) e lista de alertas por severidade. Dois cliques abrem o cadastro. |
-| **Clientes** | Razão social, CNPJ (com validação), CNAE, município, CCT aplicável, grau de confiança do enquadramento. |
-| **CCTs** | Registro MTE, sindicatos laboral/patronal, vigência, data-base, abrangência, CNAEs, PDF da CCT (botão *Abrir*). |
-| **Sindicatos** | Laborais e patronais, CNPJ, base territorial, contatos. |
-| **Pisos por função** | Piso de experiência e efetivo por CCT, carga horária e cláusula. |
-| **Contribuições e prazos** | Assistencial/negocial/confederativa, quem paga, vencimento e prazo de oposição. |
-| **Conferir piso** | Salário x piso proporcional à jornada (OJ 358 TST) e estimativa de passivo retroativo com reflexos. |
+| **Visão geral** | Indicadores, atalhos, calendário de obrigações, clientes por convenção, CCTs a renovar, cobertura da carteira, resultado da última busca de convenções |
+| **Clientes** | Filtros (convenção, status, confiança, confirmado), edição do enquadramento, exportar CSV |
+| **Convenções** | Cartões com vigência, pisos, sindicatos, pontos de atenção, base territorial, links e PDFs (anexar/abrir/remover) |
+| **Pisos por função** | Piso da CCT x piso estadual SC 2026 |
+| **Prazos** | Contribuições e obrigações, marcar como feito |
+| **Alertas** | Pendências por prioridade, marcar como resolvido |
+| **Buscar por município** | Quais CCTs cobrem a cidade |
+| **Enquadrar empresa** | Pedidos de enquadramento com sugestão da IA (E-exato) e "Aplicar ao cliente" |
+| **Sindicatos e sites** | Sites e páginas de CCT de cada sindicato |
+| **Dados e configurações** | Importar dados, backup, pasta de dados, seu nome, chave da IA |
 
-**Alertas gerados:** CCT vencida ou a vencer (prazo configurável), CCT sem registro no MTE, prazo de oposição/vencimento
-de contribuição nos próximos 30 dias, cliente sem CCT, município do cliente fora da abrangência da CCT,
-enquadramento com confiança BAIXA.
+### Instalar
 
-**Menu Arquivo:** backup do banco, exportar tudo para CSV (abre no Excel), abrir pasta de dados.
+1. GitHub → aba **Actions** → *Gerar instalador Windows* → execução mais recente (verde) → **Artifacts** →
+   baixe `PainelSindicalExato-Instalador`, descompacte e rode o `Setup`. Não precisa de administrador.
+2. Se o SmartScreen avisar "editor desconhecido": *Mais informações* → *Executar assim mesmo*.
+3. Na primeira abertura, clique em **Importar dados (.zip)** e escolha o arquivo de dados exportado do app.
 
-### Como instalar no Windows
+O programa abre numa janela própria do Microsoft Edge (já vem no Windows 10/11) e fecha sozinho quando a janela é fechada.
 
-1. No GitHub, abra a aba **Actions** → *Gerar instalador Windows* → execução mais recente (verde).
-2. Em **Artifacts**, baixe `PainelSindicalExato-Instalador` e descompacte.
-3. Execute `PainelSindicalExato-Setup-x.y.z.exe`. Não precisa de senha de administrador.
-   O Windows SmartScreen pode avisar "editor desconhecido" (o programa não tem certificado digital pago):
-   clique em *Mais informações* → *Executar assim mesmo*.
+### Dados
 
-Para publicar uma versão na aba **Releases**, crie uma tag `v1.0.0` (o instalador é anexado automaticamente).
+- Ficam em `%APPDATA%\PainelSindicalExato` (banco `painel_sindical.db`, pasta `pdfs`, `backups`). Não são apagados ao desinstalar.
+- **Faça backup** em *Dados e configurações → Fazer backup* (gera um .zip na pasta Downloads). Para backup automático,
+  defina a variável de ambiente `PAINEL_SINDICAL_DADOS` apontando para uma pasta do OneDrive.
+- Os dados de clientes **não** ficam neste repositório (`exportacao/` e `*.zip` estão no `.gitignore`).
 
-### Onde ficam os dados
+### IA (opcional)
 
-- Banco local SQLite em `%APPDATA%\PainelSindicalExato\painel_sindical.db` (não é apagado ao desinstalar).
-- Para usar outra pasta (ex.: OneDrive), defina a variável de ambiente `PAINEL_SINDICAL_DADOS`.
-- Faça backups periódicos pelo menu *Arquivo → Fazer backup do banco*.
+A sugestão de enquadramento usa a API do Claude (modelo `claude-opus-5-5`). Crie uma chave em
+console.anthropic.com e informe em *Dados e configurações*. O uso é cobrado pela Anthropic, por consulta.
+Sem a chave, todo o resto funciona. A busca automática de convenções vencidas continua sendo feita pelo Claude
+(o botão mostra o texto para colar numa conversa).
 
-### Rodar a partir do código (opcional)
-
-Requer Python 3.10+ (com Tkinter, que já vem no instalador oficial do Python para Windows).
+### Rodar a partir do código
 
 ```bash
-python main.py              # ou dê dois cliques em executar_windows.bat
-python -m unittest discover -s tests   # testes
+pip install -r requirements.txt
+python main.py                          # ou executar_windows.bat
+python -m unittest discover -s tests    # testes
 ```
 
 ### Estrutura
 
 ```
-main.py                         ponto de entrada
+main.py                              ponto de entrada
 painel_sindical_exato/
-  modelos.py                    campos de cada cadastro
-  db.py                         banco SQLite, backup, exportação CSV
-  regras.py                     alertas, conferência de piso, estimativa de passivo
-  formatos.py                   datas, valores em R$, CNPJ
-  ui/                           telas (Tkinter)
-installer/PainelSindicalExato.iss   instalador (Inno Setup)
-.github/workflows/build-windows.yml gera o .exe e o instalador
-tests/                          testes automatizados
+  app.py                             abre a janela e encerra quando ela fecha
+  server.py                          servidor local (127.0.0.1, com token) e API
+  store.py                           banco SQLite, PDFs, backup e importação
+  ia.py                              sugestão de enquadramento via API do Claude
+  config.py                          pasta de dados e preferências
+  web/index.html                     tela do app (mesma do Claude)
+  web/local.js                       adaptador: liga a tela ao banco local
+installer/PainelSindicalExato.iss    instalador (Inno Setup)
+.github/workflows/build-windows.yml  gera o .exe e o instalador
+tests/                               testes automatizados
 ```
 
-> As informações do painel dependem do que for cadastrado. Sempre confirme registro, vigência e cláusulas
-> da CCT no Mediador/MTE. A estimativa de passivo é aproximada (não inclui INSS patronal, correção e juros).
+> Confirme registro e vigência no Mediador antes de aplicar uma CCT na folha.
