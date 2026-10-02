@@ -7,7 +7,8 @@ Repositório pessoal de Nilo Sergio Vieira da Silva.
 Programa para Windows com **as mesmas telas e funções do app "Painel Sindical Exato" do Claude**,
 com os dados guardados no próprio computador (funciona sem internet).
 Visual 3D: painéis em vidro com profundidade, cartões que inclinam com o mouse, cubo da Exato girando e fundo animado.
-O mascote E-exato é o lobo com moletom vermelho da Exato, com o anel de qualidades ao passar o mouse;
+O mascote E-exato é o lobo de óculos com moletom vermelho e a logo da Exato (também é o ícone do programa),
+com o anel de qualidades ao passar o mouse;
 pode ser trocado por outra imagem em *Dados e configurações*.
 
 | Tela | O que faz |

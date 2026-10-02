@@ -26,7 +26,7 @@ jobs:
         run: python -m unittest discover -s tests -v
 
       - name: Gerar executável (PyInstaller)
-        run: pyinstaller --noconfirm --windowed --name PainelSindicalExato --add-data "painel_sindical_exato/web;painel_sindical_exato/web" main.py
+        run: pyinstaller --noconfirm --windowed --name PainelSindicalExato --icon installer/icone.ico --add-data "painel_sindical_exato/web;painel_sindical_exato/web" main.py
 
       - name: Gerar instalador (Inno Setup)
         shell: pwsh
