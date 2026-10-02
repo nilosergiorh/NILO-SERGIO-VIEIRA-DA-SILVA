@@ -150,7 +150,22 @@
         <p class="meta full" style="margin:0">${i.ia ? "✅ IA ativa." : "IA desativada: sem a chave, o restante do programa funciona normalmente."} A chave é criada em console.anthropic.com e o uso é cobrado pela Anthropic.</p>
         <div class="actions full"><button class="btn" type="submit">Salvar</button>${i.ia ? '<button class="btn danger" type="button" id="pse-rm">Remover chave</button>' : ""}</div>
       </form>
+      <div class="panel help"><div class="panel-h"><h2>Mascote E-exato</h2></div>
+        <p class="meta" style="margin:0 0 10px">${i.mascote ? "Usando a sua imagem do lobo." : "Usando o lobo desenhado do app."} Envie uma imagem (PNG com fundo transparente fica melhor).</p>
+        <div class="actions">
+          <label class="btn up">🐺 Escolher imagem do mascote<input type="file" id="pse-masc" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+          ${i.mascote ? '<button class="btn ghost" id="pse-masc-rm">Voltar ao lobo desenhado</button>' : ""}
+        </div><p class="count" id="pse-masc-st"></p></div>
       <p class="meta">${esc(i.app)} ${esc(i.versao)} · versão para computador</p>`, () => {
+      document.getElementById("pse-masc").onchange = async ev => {
+        const f = ev.target.files[0]; if (!f) return;
+        try {
+          await api("/api/mascote", { method: "POST", body: await f.arrayBuffer(), headers: { "Content-Type": f.type || "image/png" } });
+          aplicarMascote(true); toast("Mascote atualizado."); closeDrawer();
+        } catch (e) { document.getElementById("pse-masc-st").textContent = e.message; }
+      };
+      const mrm = document.getElementById("pse-masc-rm");
+      if (mrm) mrm.onclick = async () => { await api("/api/mascote", { method: "DELETE" }); location.reload(); };
       const st = document.getElementById("pse-st");
       document.getElementById("pse-imp").onchange = async ev => {
         const f = ev.target.files[0]; if (!f) return;
@@ -177,7 +192,42 @@
       };
     });
   }
-  window.PSE = { abrirConfig };
+  // ---------- mascote: troca o lobo desenhado pela imagem escolhida ----------
+  function aplicarMascote(ativo) {
+    if (!ativo) return;
+    const src = "/api/mascote?t=" + encodeURIComponent(TOKEN) + "&v=" + Date.now();
+    const fab = document.getElementById("fab"), wrap = document.getElementById("mwrap");
+    if (fab) {
+      const svg = fab.querySelector("svg.wolf");
+      if (svg) svg.style.display = "none";
+      let img = fab.querySelector(".mascote-img");
+      if (!img) { img = document.createElement("img"); img.className = "mascote-img"; img.alt = ""; fab.appendChild(img); }
+      img.src = src;
+      fab.classList.add("com-imagem"); wrap && wrap.classList.add("com-imagem");
+    }
+    document.querySelectorAll(".aihead .wolfic").forEach(ic => {
+      const svg = ic.querySelector("svg"); if (svg) svg.style.display = "none";
+      let img = ic.querySelector(".mascote-img");
+      if (!img) { img = document.createElement("img"); img.className = "mascote-img"; img.alt = ""; ic.appendChild(img); }
+      img.src = src;
+    });
+  }
+
+  // ---------- cartões que inclinam com o mouse (efeito 3D) ----------
+  const reduzMovimento = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.addEventListener("pointermove", e => {
+    if (reduzMovimento) return;
+    const k = e.target.closest && e.target.closest(".kpi");
+    document.querySelectorAll(".kpi[data-tilt]").forEach(el => { if (el !== k) { el.style.transform = ""; el.removeAttribute("data-tilt"); } });
+    if (!k) return;
+    const r = k.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    k.setAttribute("data-tilt", "");
+    k.style.transform = `rotateX(${((0.5 - y) * 14).toFixed(2)}deg) rotateY(${((x - 0.5) * 18).toFixed(2)}deg) translateZ(6px)`;
+    k.style.setProperty("--mx", (x * 100).toFixed(1) + "%");
+    k.style.setProperty("--my", (y * 100).toFixed(1) + "%");
+  }, { passive: true });
+
+  window.PSE = { abrirConfig, aplicarMascote };
 
   window.addEventListener("DOMContentLoaded", async () => {
     const b = document.getElementById("helpbtn");
@@ -186,6 +236,7 @@
       b.onclick = () => abrirConfig(false);
     }
     const i = await pronto;
+    if (i && i.mascote) aplicarMascote(true);
     if (i && i.vazio) abrirConfig(true);
   });
 })();

@@ -6,6 +6,8 @@ Repositório pessoal de Nilo Sergio Vieira da Silva.
 
 Programa para Windows com **as mesmas telas e funções do app "Painel Sindical Exato" do Claude**,
 com os dados guardados no próprio computador (funciona sem internet).
+Visual 3D: painéis em vidro com profundidade, cartões que inclinam com o mouse, cubo da Exato girando e fundo animado.
+O mascote E-exato pode ser trocado por uma imagem (ex.: o lobo) em *Dados e configurações*.
 
 | Tela | O que faz |
 |---|---|
@@ -18,7 +20,7 @@ com os dados guardados no próprio computador (funciona sem internet).
 | **Buscar por município** | Quais CCTs cobrem a cidade |
 | **Enquadrar empresa** | Pedidos de enquadramento com sugestão da IA (E-exato) e "Aplicar ao cliente" |
 | **Sindicatos e sites** | Sites e páginas de CCT de cada sindicato |
-| **Dados e configurações** | Importar dados, backup, pasta de dados, seu nome, chave da IA |
+| **Dados e configurações** | Importar dados, backup, pasta de dados, seu nome, chave da IA, imagem do mascote |
 
 ### Instalar
 
@@ -63,6 +65,7 @@ painel_sindical_exato/
   config.py                          pasta de dados e preferências
   web/index.html                     tela do app (mesma do Claude)
   web/local.js                       adaptador: liga a tela ao banco local
+  web/tema3d.css                     visual 3D aplicado sobre a tela do app
 installer/PainelSindicalExato.iss    instalador (Inno Setup)
 .github/workflows/build-windows.yml  gera o .exe e o instalador
 tests/                               testes automatizados

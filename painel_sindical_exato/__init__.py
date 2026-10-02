@@ -1,4 +1,4 @@
 """Painel Sindical Exato — versão desktop do app de enquadramento sindical."""
 
 NOME_APP = "Painel Sindical Exato"
-VERSAO = "2.0.0"
+VERSAO = "2.1.0"

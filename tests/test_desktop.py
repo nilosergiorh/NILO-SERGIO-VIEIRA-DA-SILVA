@@ -127,6 +127,20 @@ class TestServidor(unittest.TestCase):
         self.assertTrue(self.store.caminho_pdf(info["id"]).exists())
         self.assertEqual(self.req("POST", "/api/abrir", {"url": "file:///etc/passwd"})[0], 400)
 
+    def test_tema_e_mascote(self):
+        status, corpo = self.req("GET", "/tema3d.css", token=False)
+        self.assertEqual(status, 200)
+        self.assertIn(b".cubo", corpo)
+        self.assertEqual(self.req("GET", "/api/mascote")[0], 404)
+        self.assertEqual(self.req("POST", "/api/mascote", b"nao e imagem")[0], 400)
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20
+        self.assertEqual(self.req("POST", "/api/mascote", png)[0], 200)
+        self.assertTrue(json.loads(self.req("GET", "/api/info")[1])["mascote"])
+        status, corpo = self.req("GET", f"/api/mascote?t={self.estado.token}", token=False)
+        self.assertEqual((status, corpo), (200, png))
+        self.req("DELETE", "/api/mascote")
+        self.assertFalse(json.loads(self.req("GET", "/api/info")[1])["mascote"])
+
     def test_ia_sem_chave(self):
         with mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}):
             status, corpo = self.req("POST", "/api/ia", {"prompt": "x"})

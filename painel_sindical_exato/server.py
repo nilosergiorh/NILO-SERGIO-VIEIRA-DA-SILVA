@@ -20,6 +20,26 @@ from .config import Preferencias, pasta_downloads
 from .store import ErroDados, Store
 
 LIMITE_UPLOAD = 60 * 1024 * 1024
+ESTATICOS = {"local.js": "text/javascript; charset=utf-8", "tema3d.css": "text/css; charset=utf-8"}
+IMAGENS = {b"\x89PNG": ("png", "image/png"), b"\xff\xd8\xff": ("jpg", "image/jpeg"),
+           b"RIFF": ("webp", "image/webp"), b"GIF8": ("gif", "image/gif")}
+
+
+def tipo_imagem(conteudo: bytes):
+    for assinatura, tipo in IMAGENS.items():
+        if conteudo.startswith(assinatura):
+            if tipo[0] == "webp" and conteudo[8:12] != b"WEBP":
+                continue
+            return tipo
+    return None
+
+
+def arquivo_mascote(pasta: Path):
+    for ext in ("png", "jpg", "webp", "gif"):
+        alvo = Path(pasta) / f"mascote.{ext}"
+        if alvo.exists():
+            return alvo
+    return None
 
 
 def pasta_web() -> Path:
@@ -123,8 +143,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if metodo == "GET" and url.path in ("/", "/index.html"):
                 return self._pagina()
-            if metodo == "GET" and url.path == "/local.js":
-                return self._responder(200, (pasta_web() / "local.js").read_bytes(), "text/javascript; charset=utf-8")
+            if metodo == "GET" and url.path.lstrip("/") in ESTATICOS:
+                nome = url.path.lstrip("/")
+                return self._responder(200, (pasta_web() / nome).read_bytes(), ESTATICOS[nome])
             if not partes or partes[0] != "api":
                 return self._erro(404, "Não encontrado.")
             if not self._autorizado(url):
@@ -209,10 +230,33 @@ class Handler(BaseHTTPRequestHandler):
                     raise ErroDados(f"Não foi possível importar: {erro}") from None
             return self._responder(200, {"ok": True, "contagem": contagem})
 
+        if rota == ("GET", "mascote"):
+            alvo = arquivo_mascote(st.pasta)
+            if not alvo:
+                return self._erro(404, "Sem imagem do mascote.", "not_found")
+            mime = dict(IMAGENS.values())[alvo.suffix.lstrip(".")]
+            return self._responder(200, alvo.read_bytes(), mime)
+        if rota == ("POST", "mascote"):
+            conteudo = self._corpo()
+            tipo = tipo_imagem(conteudo)
+            if not tipo:
+                raise ErroDados("Envie uma imagem PNG, JPG, WEBP ou GIF.")
+            antigo = arquivo_mascote(st.pasta)
+            if antigo:
+                antigo.unlink()
+            (st.pasta / f"mascote.{tipo[0]}").write_bytes(conteudo)
+            return self._responder(200, {"ok": True})
+        if rota == ("DELETE", "mascote"):
+            antigo = arquivo_mascote(st.pasta)
+            if antigo:
+                antigo.unlink()
+            return self._responder(200, {"ok": True})
+
         if rota == ("GET", "info"):
             return self._responder(200, {
                 "app": NOME_APP, "versao": VERSAO, "nome": prefs.nome(), "pasta": str(st.pasta),
                 "ia": bool(prefs.chave_ia()), "vazio": st.vazio(), "contagem": st.contagem(),
+                "mascote": arquivo_mascote(st.pasta) is not None,
             })
         if rota == ("POST", "config"):
             dados = self._json()
