@@ -1,0 +1,29 @@
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores e IDEs
+.vscode/
+.idea/
+*.swp
+*~
+
+# Arquivos temporários do Office
+~$*
+*.tmp
+
+# Ambientes e dependências
+.env
+.env.*
+!.env.example
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs e builds
+*.log
+dist/
+build/
