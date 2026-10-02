@@ -20,7 +20,8 @@ from .config import Preferencias, pasta_downloads
 from .store import ErroDados, Store
 
 LIMITE_UPLOAD = 60 * 1024 * 1024
-ESTATICOS = {"local.js": "text/javascript; charset=utf-8", "tema3d.css": "text/css; charset=utf-8"}
+ESTATICOS = {"local.js": "text/javascript; charset=utf-8", "tema3d.css": "text/css; charset=utf-8",
+             "mascote_padrao.png": "image/png", "mascote_rosto.png": "image/png"}
 IMAGENS = {b"\x89PNG": ("png", "image/png"), b"\xff\xd8\xff": ("jpg", "image/jpeg"),
            b"RIFF": ("webp", "image/webp"), b"GIF8": ("gif", "image/gif")}
 

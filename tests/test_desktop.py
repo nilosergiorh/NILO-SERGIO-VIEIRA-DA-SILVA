@@ -131,6 +131,9 @@ class TestServidor(unittest.TestCase):
         status, corpo = self.req("GET", "/tema3d.css", token=False)
         self.assertEqual(status, 200)
         self.assertIn(b".cubo", corpo)
+        status, corpo = self.req("GET", "/mascote_padrao.png", token=False)
+        self.assertEqual(status, 200)
+        self.assertTrue(corpo.startswith(b"\x89PNG"))
         self.assertEqual(self.req("GET", "/api/mascote")[0], 404)
         self.assertEqual(self.req("POST", "/api/mascote", b"nao e imagem")[0], 400)
         png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20

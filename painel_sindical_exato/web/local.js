@@ -151,10 +151,10 @@
         <div class="actions full"><button class="btn" type="submit">Salvar</button>${i.ia ? '<button class="btn danger" type="button" id="pse-rm">Remover chave</button>' : ""}</div>
       </form>
       <div class="panel help"><div class="panel-h"><h2>Mascote E-exato</h2></div>
-        <p class="meta" style="margin:0 0 10px">${i.mascote ? "Usando a sua imagem do lobo." : "Usando o lobo desenhado do app."} Envie uma imagem (PNG com fundo transparente fica melhor).</p>
+        <p class="meta" style="margin:0 0 10px">${i.mascote ? "Usando a imagem que você enviou." : "Usando o lobo padrão da Exato."} Para trocar, envie uma imagem (PNG com fundo transparente fica melhor).</p>
         <div class="actions">
           <label class="btn up">🐺 Escolher imagem do mascote<input type="file" id="pse-masc" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
-          ${i.mascote ? '<button class="btn ghost" id="pse-masc-rm">Voltar ao lobo desenhado</button>' : ""}
+          ${i.mascote ? '<button class="btn ghost" id="pse-masc-rm">Voltar ao lobo padrão</button>' : ""}
         </div><p class="count" id="pse-masc-st"></p></div>
       <p class="meta">${esc(i.app)} ${esc(i.versao)} · versão para computador</p>`, () => {
       document.getElementById("pse-masc").onchange = async ev => {
@@ -193,9 +193,10 @@
     });
   }
   // ---------- mascote: troca o lobo desenhado pela imagem escolhida ----------
-  function aplicarMascote(ativo) {
-    if (!ativo) return;
-    const src = "/api/mascote?t=" + encodeURIComponent(TOKEN) + "&v=" + Date.now();
+  // Sem imagem própria, usa o lobo padrão da Exato (moletom vermelho).
+  function aplicarMascote(personalizado) {
+    const src = personalizado ? "/api/mascote?t=" + encodeURIComponent(TOKEN) + "&v=" + Date.now() : "/mascote_padrao.png";
+    const rosto = personalizado ? src : "/mascote_rosto.png";
     const fab = document.getElementById("fab"), wrap = document.getElementById("mwrap");
     if (fab) {
       const svg = fab.querySelector("svg.wolf");
@@ -209,7 +210,7 @@
       const svg = ic.querySelector("svg"); if (svg) svg.style.display = "none";
       let img = ic.querySelector(".mascote-img");
       if (!img) { img = document.createElement("img"); img.className = "mascote-img"; img.alt = ""; ic.appendChild(img); }
-      img.src = src;
+      img.src = rosto;
     });
   }
 
@@ -236,7 +237,7 @@
       b.onclick = () => abrirConfig(false);
     }
     const i = await pronto;
-    if (i && i.mascote) aplicarMascote(true);
+    aplicarMascote(!!(i && i.mascote));
     if (i && i.vazio) abrirConfig(true);
   });
 })();
