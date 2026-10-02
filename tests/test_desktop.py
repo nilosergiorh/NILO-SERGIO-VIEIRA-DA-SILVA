@@ -101,7 +101,8 @@ class TestServidor(unittest.TestCase):
         status, corpo = self.req("GET", "/", token=False)
         self.assertEqual(status, 200)
         self.assertIn(self.estado.token.encode(), corpo)
-        self.assertIn(b"Painel Sindical Exato", corpo)
+        self.assertIn(b"EXATO FLOW", corpo)
+        self.assertIn(b"/local.js", corpo)
 
     def test_api_exige_token_e_host(self):
         self.assertEqual(self.req("GET", "/api/col/clientes", token=False)[0], 403)
@@ -127,22 +128,37 @@ class TestServidor(unittest.TestCase):
         self.assertTrue(self.store.caminho_pdf(info["id"]).exists())
         self.assertEqual(self.req("POST", "/api/abrir", {"url": "file:///etc/passwd"})[0], 400)
 
-    def test_tema_e_mascote(self):
-        status, corpo = self.req("GET", "/tema3d.css", token=False)
+    def test_arquivos_do_flow(self):
+        for caminho, trecho in [("/nucleo/tema-exato.css", b"fx-bg"), ("/nucleo/flow-dados.js", b"FlowDados"),
+                                ("/modulos/clientes.html", b"flow-dados.js"), ("/modulos/painel-sindical.html", b"tema-sindical.css"),
+                                ("/modulos/auditoria-guias.html", b"../vendor/pdf-lib.min.js"), ("/vendor/pdf.min.mjs", b"")]:
+            status, corpo = self.req("GET", caminho, token=False)
+            self.assertEqual(status, 200, caminho)
+            self.assertIn(trecho, corpo, caminho)
+        # nada fora da pasta da tela, nem tipos não previstos
+        for caminho in ["/../server.py", "/%2e%2e/server.py", "/modulos/../../config.py", "/nao-existe.html"]:
+            self.assertEqual(self.req("GET", caminho, token=False)[0], 404, caminho)
+        self.assertEqual(self.req("PUT", "/api/doc/auditorias/12345678000190", {"ultima": {"st": "ok"}})[0], 200)
+
+    def test_mascote(self):
+        status, corpo = self.req("GET", "/nucleo/mascote.png", token=False)
         self.assertEqual(status, 200)
-        self.assertIn(b".cubo", corpo)
-        status, corpo = self.req("GET", "/mascote_padrao.png", token=False)
-        self.assertEqual(status, 200)
-        self.assertTrue(corpo.startswith(b"\x89PNG"))
-        self.assertEqual(self.req("GET", "/api/mascote")[0], 404)
+        padrao = corpo
+        self.assertTrue(padrao.startswith(b"\x89PNG"))
         self.assertEqual(self.req("POST", "/api/mascote", b"nao e imagem")[0], 400)
         png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20
         self.assertEqual(self.req("POST", "/api/mascote", png)[0], 200)
         self.assertTrue(json.loads(self.req("GET", "/api/info")[1])["mascote"])
-        status, corpo = self.req("GET", f"/api/mascote?t={self.estado.token}", token=False)
-        self.assertEqual((status, corpo), (200, png))
+        self.assertEqual(self.req("GET", "/nucleo/mascote.png", token=False), (200, png))
+        self.assertEqual(self.req("GET", "/nucleo/mascote-rosto.png", token=False), (200, png))
         self.req("DELETE", "/api/mascote")
-        self.assertFalse(json.loads(self.req("GET", "/api/info")[1])["mascote"])
+        self.assertEqual(self.req("GET", "/nucleo/mascote.png", token=False), (200, padrao))
+
+    def test_salvar_binario(self):
+        with tempfile.TemporaryDirectory() as casa, mock.patch("painel_sindical_exato.server.pasta_downloads", return_value=Path(casa)):
+            status, corpo = self.req("POST", "/api/salvar_bin", PDF)
+            self.assertEqual(status, 200)
+            self.assertEqual(Path(json.loads(corpo)["path"]).read_bytes(), PDF)
 
     def test_ia_sem_chave(self):
         with mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}):

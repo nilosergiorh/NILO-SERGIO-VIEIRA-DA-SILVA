@@ -1,0 +1,358 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Clientes · Exato Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: cabeçalho + faixa de resumo que filtra + tabela de clientes; ficha lateral para editar. Mesmos tokens do Exato Flow. */
+:root{
+  --red:#C00000; --red-hi:#e01515; --red-soft:rgba(192,0,0,.08);
+  --bg:#f3f3f5; --surf:#ffffff; --surf2:#f7f7f9; --ink:#16171a; --mute:#5f626b; --line:#e2e3e8; --hover:#fbf4f4;
+  --ok:#14804f; --ok-bg:#e2f4ea; --at:#9a5b00; --at-bg:#fff1d6; --er:#b00000; --er-bg:#fde6e6; --nt:#4a4d55; --nt-bg:#ececf0;
+  --scrim:rgba(17,17,17,.45);
+  --f-disp:"Sora","Segoe UI",system-ui,sans-serif;
+  --f-body:"Manrope","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",Consolas,ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.1);
+  --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#c3c5cc; --nt-bg:rgba(255,255,255,.08);
+  --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.1);
+  --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#c3c5cc; --nt-bg:rgba(255,255,255,.08);
+  --scrim:rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.5 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--red-hi);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:24px;padding-block:24px 48px;display:grid;gap:18px}
+
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.head h1{margin:0;font:800 1.6rem/1.15 var(--f-disp);letter-spacing:-.02em}
+.head p{margin:4px 0 0;color:var(--mute);font-size:.9rem;max-width:62ch}
+.acts{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.sync{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--mute)}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--mute)}
+.sync.on i{background:var(--ok)} .sync.err i{background:var(--er)}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:10px;padding:9px 16px;font:700 .86rem var(--f-disp);cursor:pointer;background:var(--red);color:#fff;white-space:nowrap}
+.btn:hover{background:var(--red-hi)}
+.btn.ghost{background:var(--surf);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--red-hi);color:var(--red-hi)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* resumo que filtra */
+.sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.st{display:grid;gap:2px;text-align:left;padding:14px 16px;border-radius:14px;background:var(--surf);border:1px solid var(--line);cursor:pointer}
+.st:hover{border-color:var(--mute)}
+.st[aria-pressed="true"]{border-color:var(--red-hi);box-shadow:inset 0 0 0 1px var(--red-hi)}
+.st .v{font:800 1.75rem/1.1 var(--f-disp);font-variant-numeric:tabular-nums}
+.st .l{font-weight:700;font-size:.86rem}
+.st .d{font-size:.78rem;color:var(--mute)}
+.st.er .v{color:var(--er)} .st.at .v{color:var(--at)}
+
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.filters input,.filters select{background:var(--surf);border:1px solid var(--line);border-radius:999px;padding:8px 14px;min-width:0}
+.filters input{flex:1 1 260px;max-width:420px}
+.filters .count{margin-left:auto;font-size:.82rem;color:var(--mute)}
+
+.tbox{overflow-x:auto;background:var(--surf);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:960px;font-size:.86rem}
+th{font:700 10.5px var(--f-disp);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:left;padding:11px 12px;background:var(--surf2);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tr.row{cursor:pointer} tr.row:hover td{background:var(--hover)}
+tr.row.ina td{color:var(--mute)}
+td.cod{font-family:var(--f-mono);font-size:.8rem;white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+td b{font-weight:700;display:block}
+td small{display:block;color:var(--mute);font-family:var(--f-mono);font-size:.72rem}
+.pill{display:inline-block;font:500 10px var(--f-mono);letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--ok-bg);color:var(--ok)} .p-at{background:var(--at-bg);color:var(--at)} .p-er{background:var(--er-bg);color:var(--er)} .p-nt{background:var(--nt-bg);color:var(--nt)}
+.pend{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;white-space:nowrap}
+.pend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.pend .alta{background:var(--er)} .pend .media{background:var(--at)} .pend .baixa{background:var(--mute)}
+.empty{padding:40px 20px;text-align:center;color:var(--mute)}
+.banner{background:var(--at-bg);color:var(--at);border-radius:10px;padding:10px 14px;font-size:.88rem}
+
+/* ficha */
+.drawer{position:fixed;inset:0;background:var(--scrim);display:flex;justify-content:flex-end;z-index:20}
+.panel{width:min(640px,100%);height:100%;overflow:auto;background:var(--surf);border-left:3px solid var(--red);padding-inline:24px;padding-block:20px 28px;display:grid;align-content:start;gap:18px}
+.panel .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.panel h2{margin:0;font:800 1.2rem/1.25 var(--f-disp);text-wrap:balance}
+.panel .sub{margin:4px 0 0;color:var(--mute);font-size:.84rem}
+.close{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;flex:none}
+.box{border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:10px}
+.box h3{margin:0;font:700 .78rem var(--f-disp);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.plist{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:.88rem}
+.plist li{display:flex;gap:8px;align-items:baseline}
+.plist i{flex:none;width:8px;height:8px;border-radius:50%;transform:translateY(-1px)}
+.plist .alta{background:var(--er)} .plist .media{background:var(--at)} .plist .baixa{background:var(--mute)}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.form .full{grid-column:1/-1}
+.form label{display:grid;gap:4px;font-size:.76rem;font-weight:700;color:var(--mute)}
+.form input,.form select,.form textarea{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.9rem;font-weight:500;width:100%;min-width:0}
+.form textarea{min-height:70px;resize:vertical}
+.form input:focus,.form select:focus,.form textarea:focus{border-color:var(--red-hi);outline:none}
+.form input[readonly]{color:var(--mute)}
+.kv{display:grid;grid-template-columns:150px minmax(0,1fr);gap:6px 12px;margin:0;font-size:.86rem}
+.kv dt{color:var(--mute)} .kv dd{margin:0;min-width:0}
+.link{background:none;border:0;padding:0;color:var(--red-hi);font-weight:700;cursor:pointer;justify-self:start}
+.hist{width:100%;min-width:0;font-size:.82rem}
+.hist td,.hist th{padding:7px 8px}
+.msgs{margin:0;padding-left:18px;font-size:.84rem;color:var(--mute);display:grid;gap:3px}
+.foot{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.meta{font-size:.76rem;color:var(--mute)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,560px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.88rem;z-index:40}
+
+@media (max-width:900px){.sum{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){
+  .wrap{padding-inline:16px;padding-block:18px 36px}
+  .form{grid-template-columns:1fr}
+  .kv{grid-template-columns:1fr}
+  .kv dt{margin-top:4px}
+  .panel{padding-inline:16px}
+  .filters .count{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<link rel="stylesheet" href="../nucleo/tema-exato.css">
+</head><body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1>Clientes</h1>
+      <p>Cadastro único usado por todos os módulos do Flow. O enquadramento sindical continua no Painel Sindical; aqui ficam os dados de Departamento Pessoal e o resultado das auditorias.</p>
+    </div>
+    <div class="acts">
+      <span class="sync" id="sync"><i></i><span>Conectando…</span></span>
+      <button class="btn" type="button" id="btnNovo">Novo cliente</button>
+    </div>
+  </header>
+
+  <div class="banner" id="aviso" hidden></div>
+
+  <section class="sum" aria-label="Resumo do cadastro">
+    <button class="st" type="button" data-f="ativos" id="s-ativos"><span class="v" id="n-ativos">–</span><span class="l">Clientes ativos</span><span class="d" id="d-ativos">no cadastro</span></button>
+    <button class="st er" type="button" data-f="pend" id="s-pend"><span class="v" id="n-pend">–</span><span class="l">Com pendência grave</span><span class="d">CNPJ, código ou CCT</span></button>
+    <button class="st at" type="button" data-f="cct" id="s-cct"><span class="v" id="n-cct">–</span><span class="l">CCT vencida ou vencendo</span><span class="d">próximos 90 dias</span></button>
+    <button class="st er" type="button" data-f="aud" id="s-aud"><span class="v" id="n-aud">–</span><span class="l">Erro na última auditoria</span><span class="d">guias INSS e IRRF</span></button>
+  </section>
+
+  <div class="filters">
+    <input type="search" id="busca" placeholder="Buscar por nome, fantasia, CNPJ ou código" aria-label="Buscar cliente">
+    <select id="fSit" aria-label="Situação"><option value="">Todas as situações</option></select>
+    <select id="fReg" aria-label="Regime tributário"><option value="">Todos os regimes</option><option value="-">Sem regime informado</option></select>
+    <span class="count" id="cnt"></span>
+  </div>
+
+  <div class="tbox">
+    <table>
+      <thead><tr><th>Cód.</th><th>Empresa</th><th>Município</th><th>Convenção</th><th>Regime</th><th style="text-align:right">Func.</th><th>Última auditoria</th><th>Pendências</th></tr></thead>
+      <tbody id="tb"><tr><td colspan="8" class="empty">Carregando o cadastro de clientes…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="drawer" id="drawer" hidden><div class="panel" id="panel" role="dialog" aria-modal="true" aria-labelledby="fTit"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="../nucleo/flow-dados.js" charset="utf-8"></script>
+<script>
+const F=window.FlowDados;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const norm=s=>String(s??"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+const brl=v=>v==null?"—":Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,3800);}
+
+const S={filtro:"",somenteLeitura:false,aberto:null};
+let E=F.estado, IDX={porCnpj:{},porCod:{},cctPorRamo:{}}, AUD={};
+
+F.SITUACOES.forEach(s=>$("fSit").insertAdjacentHTML("beforeend",`<option>${esc(s)}</option>`));
+F.REGIMES.forEach(s=>$("fReg").insertAdjacentHTML("beforeend",`<option>${esc(s)}</option>`));
+
+const ST_AUD={ok:["Correta","p-ok"],atencao:["Atenção","p-at"],erro:["Erro","p-er"]};
+const ST_CCT={VIGENTE:"p-ok",VENCE:"p-at",VENCIDA:"p-er",SEM:"p-nt"};
+const pillCct=s=>`<span class="pill ${ST_CCT[s]}">${esc(F.ROTULO_CCT[s])}</span>`;
+const pillAud=a=>a?`<span class="pill ${ST_AUD[a.st][1]}">${ST_AUD[a.st][0]}</span>`:"";
+
+function preparar(){
+  IDX=F.indices(E.clientes,E.ccts);
+  AUD=Object.fromEntries(E.auditorias.map(a=>[a._id,a]));
+  for(const c of E.clientes){
+    c._p=F.pendencias(c,IDX);
+    c._cct=F.statusCct(IDX.cctPorRamo[c.cct]);
+    c._aud=(AUD[F.digitos(c.cnpj)]||{}).ultima||null;
+  }
+}
+
+function filtrar(){
+  const q=norm($("busca").value.trim()), qd=F.digitos($("busca").value);
+  const sit=$("fSit").value, reg=$("fReg").value;
+  return E.clientes.filter(c=>{
+    if(q && !(norm(c.nome).includes(q)||norm(c.fant).includes(q)||(qd&&F.digitos(c.cnpj).includes(qd))||String(c.cod)===q)) return false;
+    if(sit && (c.dp_situacao||"Ativo")!==sit) return false;
+    if(reg==="-" ? !!c.dp_regime : (reg && c.dp_regime!==reg)) return false;
+    if(S.filtro==="ativos" && !F.ativo(c)) return false;
+    if(S.filtro==="pend" && !c._p.some(p=>p.nivel==="alta")) return false;
+    if(S.filtro==="cct" && !(F.ativo(c)&&(c._cct==="VENCIDA"||c._cct==="VENCE"))) return false;
+    if(S.filtro==="aud" && !(c._aud&&c._aud.st==="erro")) return false;
+    return true;
+  }).sort((a,b)=>(parseInt(a.cod)||1e9)-(parseInt(b.cod)||1e9)||String(a.nome).localeCompare(b.nome,"pt-BR"));
+}
+
+function render(){
+  if(!E.pronto.clientes) return;
+  preparar();
+  const at=E.clientes.filter(F.ativo);
+  $("n-ativos").textContent=at.length;
+  $("d-ativos").textContent=`${E.clientes.length-at.length} inativo(s) · ${E.clientes.length} no total`;
+  $("n-pend").textContent=E.clientes.filter(c=>c._p.some(p=>p.nivel==="alta")).length;
+  $("n-cct").textContent=at.filter(c=>c._cct==="VENCIDA"||c._cct==="VENCE").length;
+  $("n-aud").textContent=E.clientes.filter(c=>c._aud&&c._aud.st==="erro").length;
+  document.querySelectorAll(".st").forEach(b=>b.setAttribute("aria-pressed",b.dataset.f===S.filtro));
+  const L=filtrar();
+  $("cnt").textContent=`${L.length} de ${E.clientes.length} clientes`;
+  $("tb").innerHTML=L.length?L.map(c=>{
+    const alta=c._p.filter(p=>p.nivel==="alta").length, out=c._p.length-alta;
+    return `<tr class="row ${F.ativo(c)?"":"ina"}" tabindex="0" data-id="${esc(c._id)}">
+      <td class="cod">${esc(c.cod||"—")}</td>
+      <td><b>${esc(c.nome)}</b><small>${esc(F.fmtCnpj(c.cnpj)||"sem CNPJ")}${c.fant?" · "+esc(c.fant):""}</small></td>
+      <td>${esc(c.mun||"—")}</td>
+      <td>${c.cct?esc(c.cct)+"<br>":""}${pillCct(c._cct)}</td>
+      <td>${esc(c.dp_regime||"—")}${c.dp_situacao&&c.dp_situacao!=="Ativo"?`<br><span class="pill p-nt">${esc(c.dp_situacao)}</span>`:""}</td>
+      <td class="num">${c.dp_func===""||c.dp_func==null?"—":esc(c.dp_func)}</td>
+      <td>${c._aud?`${esc(c._aud.comp)} ${pillAud(c._aud)}`:'<span class="meta">—</span>'}</td>
+      <td>${c._p.length?`<span class="pend">${alta?`<i class="alta"></i>${alta}`:""}${out?`<i class="${c._p.some(p=>p.nivel==="media")?"media":"baixa"}"></i>${out}`:""}</span>`:'<span class="pill p-ok">OK</span>'}</td>
+    </tr>`;}).join(""):`<tr><td colspan="8" class="empty">Nenhum cliente com esses filtros.</td></tr>`;
+}
+
+// ---------- ficha ----------
+const CAMPOS=[
+  ["cod","Código no Domínio",""],["nome","Razão social","full"],["fant","Nome fantasia",""],["cnpj","CNPJ",""],
+  ["mun","Município",""],["cnae","CNAE principal",""],["ativ","Atividade","full"]];
+const CAMPOS_DP=[
+  ["dp_situacao","Situação","sel",F.SITUACOES],["dp_regime","Regime tributário","sel",F.REGIMES],
+  ["dp_func","Nº de funcionários","num"],["dp_ponto","Controle de ponto","sel",F.PONTO],
+  ["dp_resp","Responsável na Exato","txt"],["dp_contato","Contato no cliente","txt"],
+  ["dp_email","E-mail do contato","txt"],["dp_fone","Telefone do contato","txt"],["dp_obs","Observações de DP","area"]];
+
+function campo([k,l,t,ops],v,ro){
+  const id="f-"+k, dis=ro?"disabled":"";
+  if(t==="sel") return `<label for="${id}">${l}<select id="${id}" ${dis}><option value="">—</option>${ops.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
+  if(t==="area") return `<label class="full" for="${id}">${l}<textarea id="${id}" ${ro?"readonly":""}>${esc(v)}</textarea></label>`;
+  return `<label class="${t==="full"?"full":""}" for="${id}">${l}<input id="${id}" value="${esc(v)}" ${t==="num"?'inputmode="numeric"':""} ${ro?"readonly":""}></label>`;
+}
+
+function ficha(id){
+  const c=id?E.clientes.find(x=>x._id===id):null;
+  if(id && !c){ fechar(); return; }
+  S.aberto=id||null;
+  const ro=S.somenteLeitura, o=c||{dp_situacao:"Ativo",mun:"Araranguá"};
+  const k=c?IDX.cctPorRamo[c.cct]:null, a=c?AUD[F.digitos(c.cnpj)]:null;
+  $("panel").innerHTML=`
+    <div class="top"><div><h2 id="fTit">${c?esc(c.nome):"Novo cliente"}</h2>
+      <p class="sub">${c?`${esc(F.fmtCnpj(c.cnpj)||"sem CNPJ")} · ${pillCct(c._cct)} ${c._aud?pillAud(c._aud):""}`:"Cadastre aqui e faça o enquadramento sindical depois, no Painel Sindical."}</p></div>
+      <button class="close" type="button" data-fechar>Fechar</button></div>
+    ${c&&c._p.length?`<div class="box"><h3>Pendências</h3><ul class="plist">${c._p.map(p=>`<li><i class="${p.nivel}"></i>${esc(p.texto)}</li>`).join("")}</ul></div>`:""}
+    <form class="box" id="fCli" novalidate>
+      <h3>Dados cadastrais</h3>
+      <div class="form">${CAMPOS.map(f=>campo(f,o[f[0]]??"",ro)).join("")}</div>
+      <h3>Departamento Pessoal</h3>
+      <div class="form">${CAMPOS_DP.map(f=>campo(f,o[f[0]]??"",ro)).join("")}</div>
+      <div class="foot"><span class="meta" id="quem">${c&&c.upd_at?`Alterado em ${new Date(c.upd_at).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}`:""}</span>
+        ${ro?'<span class="meta">Você tem acesso só para consulta.</span>':`<button class="btn" type="submit" id="btnSalvar">${c?"Salvar alterações":"Cadastrar cliente"}</button>`}</div>
+    </form>
+    ${c?`<div class="box"><h3>Enquadramento sindical</h3>
+      <dl class="kv"><dt>Convenção</dt><dd>${esc(c.cct||"—")}</dd>
+      <dt>Sindicato laboral</dt><dd>${esc(c.lab||"—")}</dd><dt>Sindicato patronal</dt><dd>${esc(c.pat||"—")}</dd>
+      <dt>Vigência</dt><dd>${k?`${F.fmtData(k.ini)} a ${F.fmtData(k.fim)}${k.db?` · data-base ${esc(k.db)}`:""}`:"—"}</dd>
+      <dt>Confirmado</dt><dd>${c.confirmado==="Sim"?"Sim":"Ainda não"}${c.conf?` · confiança ${esc(c.conf)}`:""}</dd></dl>
+      <button class="link" type="button" data-modulo="sindical">Alterar no Painel Sindical →</button></div>
+    <div class="box"><h3>Auditoria de guias</h3>${aud(a)}<button class="link" type="button" data-modulo="guias">Abrir a Auditoria de Guias →</button></div>`:""}`;
+  $("drawer").hidden=false;
+  const cn=$("f-cnpj"); if(cn) cn.addEventListener("blur",()=>{ if(F.digitos(cn.value).length===14) cn.value=F.fmtCnpj(cn.value); });
+  $("fCli").addEventListener("submit",ev=>{ev.preventDefault(); salvar(c);});
+}
+
+function aud(a){
+  if(!a||!a.ultima) return '<p class="meta" style="margin:0">Nenhuma auditoria registrada ainda. O resultado entra aqui quando a empresa aparece numa auditoria feita dentro do Flow.</p>';
+  const u=a.ultima, h=(a.hist||[]).slice().sort((x,y)=>String(y.chave).localeCompare(String(x.chave)));
+  return `<dl class="kv"><dt>Competência</dt><dd>${esc(u.comp)} ${pillAud(u)}</dd>
+    <dt>INSS folha × guia</dt><dd>R$ ${brl(u.prevFolha)} × ${u.prevDarf==null?"sem guia":"R$ "+brl(u.prevDarf)}</dd>
+    <dt>IRRF folha × guia</dt><dd>R$ ${brl(u.irFolha)} × ${u.irDarf==null?"sem guia":"R$ "+brl(u.irDarf)}</dd>
+    <dt>Total das guias</dt><dd>R$ ${brl(u.darfTotal)}${u.venc?` · vence ${esc(u.venc)}`:""}</dd></dl>
+    ${u.msgs&&u.msgs.length?`<ul class="msgs">${u.msgs.map(m=>`<li>${esc(m)}</li>`).join("")}</ul>`:""}
+    ${h.length>1?`<div style="overflow-x:auto"><table class="hist"><thead><tr><th>Competência</th><th>Resultado</th><th style="text-align:right">Dif. INSS</th><th style="text-align:right">Dif. IRRF</th></tr></thead><tbody>${h.map(x=>`<tr><td>${esc(x.comp)}</td><td>${pillAud(x)}</td><td class="num">${brl(x.difInss)}</td><td class="num">${brl(x.difIr)}</td></tr>`).join("")}</tbody></table></div>`:""}`;
+}
+
+async function salvar(c){
+  const v=k=>{const el=$("f-"+k);return el?el.value.trim():"";};
+  const d={};
+  for(const [k] of [...CAMPOS,...CAMPOS_DP]) d[k]=v(k);
+  d.nome=d.nome.toUpperCase();
+  if(d.dp_func!==""){ const n=parseInt(F.digitos(d.dp_func)); d.dp_func=Number.isFinite(n)?n:""; }
+  if(!d.nome){ toast("Informe a razão social."); $("f-nome").focus(); return; }
+  const dg=F.digitos(d.cnpj);
+  if(dg){
+    if(!F.cnpjValido(dg)){ toast("CNPJ inválido: o dígito verificador não confere. Confira os números."); $("f-cnpj").focus(); return; }
+    d.cnpj=F.fmtCnpj(dg);
+    const outro=(IDX.porCnpj[dg]||[]).find(x=>!c||x._id!==c._id);
+    if(outro){ toast(`Este CNPJ já está no cadastro: ${outro.nome} (cód. ${outro.cod||"—"}).`); return; }
+  }
+  if(d.cod){ const outro=(IDX.porCod[d.cod]||[]).find(x=>!c||x._id!==c._id); if(outro){ toast(`O código ${d.cod} já é de ${outro.nome}.`); return; } }
+  const db=E.db; if(!db){ toast("Sem conexão com a base. Abra o Flow pelo link do claude.ai."); return; }
+  const btn=$("btnSalvar"); if(btn) btn.disabled=true;
+  try{
+    Object.assign(d,await F.carimbo());
+    if(c){ await db.doc("clientes/"+c._id).update(d); toast("Cliente atualizado."); }
+    else{
+      const base={cct:"",lab:"",pat:"",conf:"",confirmado:"",temEmp:"",obs:""};
+      const ref=d.cod?db.collection("clientes").doc("c"+d.cod.replace(/[^A-Za-z0-9]/g,"")):db.collection("clientes").doc();
+      await ref.set({...base,...d}); S.aberto=ref.id; toast("Cliente cadastrado.");
+    }
+    fechar();
+  }catch(e){
+    if(e&&e.code==="invalid_argument"&&c){ S.somenteLeitura=true; $("btnNovo").hidden=true; toast("Você tem acesso só para consulta."); }
+    else if(e&&e.code==="quota_exceeded") toast("A base atingiu o limite de registros.");
+    else toast("Não foi possível salvar. Tente de novo em alguns segundos.");
+    if(btn) btn.disabled=false;
+  }
+}
+function fechar(){ $("drawer").hidden=true; S.aberto=null; }
+
+// ---------- eventos ----------
+$("btnNovo").onclick=()=>ficha(null);
+$("tb").addEventListener("click",e=>{const r=e.target.closest("tr.row"); if(r) ficha(r.dataset.id);});
+$("tb").addEventListener("keydown",e=>{ if(e.key==="Enter"){const r=e.target.closest("tr.row"); if(r) ficha(r.dataset.id);} });
+$("drawer").addEventListener("click",e=>{
+  if(e.target===$("drawer")||e.target.closest("[data-fechar]")) fechar();
+  const m=e.target.closest("[data-modulo]");
+  if(m){ try{ window.parent.postMessage({flow:"abrir",tela:m.dataset.modulo},location.origin); }catch(x){} }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("drawer").hidden) fechar(); });
+document.querySelectorAll(".st").forEach(b=>b.onclick=()=>{ S.filtro=S.filtro===b.dataset.f?"":b.dataset.f; render(); });
+["busca","fSit","fReg"].forEach(id=>$(id).addEventListener("input",render));
+
+F.assinar(est=>{
+  E=est;
+  const s=$("sync");
+  if(est.erro==="sem_base"){
+    s.className="sync err"; s.lastElementChild.textContent="Sem conexão";
+    $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base de clientes. Abra o Exato Flow pelo link do claude.ai com sua conta da organização.";
+    $("tb").innerHTML='<tr><td colspan="8" class="empty">Base indisponível nesta visualização.</td></tr>';
+    return;
+  }
+  if(est.erro){ s.className="sync err"; s.lastElementChild.textContent="Erro de conexão"; }
+  else if(est.pronto.clientes){ s.className="sync on"; s.lastElementChild.textContent="Sincronizado"; }
+  render();
+});
+F.use("user").then(async u=>{ if(!u) return; try{ const pode=await u.can("data.write"); if(pode===false){ S.somenteLeitura=true; $("btnNovo").hidden=true; } }catch(e){} });
+</script>
+<script src="../nucleo/tema-exato.js" data-mod="clientes"></script>
+</body></html>

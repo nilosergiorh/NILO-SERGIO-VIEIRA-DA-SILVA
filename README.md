@@ -2,32 +2,28 @@
 
 Repositório pessoal de Nilo Sergio Vieira da Silva.
 
-## Painel Sindical Exato — versão para computador
+## EXATO FLOW — versão para computador
 
-Programa para Windows com **as mesmas telas e funções do app "Painel Sindical Exato" do Claude**,
-com os dados guardados no próprio computador (funciona sem internet).
-Visual 3D: painéis em vidro com profundidade, cartões que inclinam com o mouse, cubo da Exato girando e fundo animado.
-O mascote E-exato é o lobo de óculos com moletom vermelho e a logo da Exato (também é o ícone do programa),
-com o anel de qualidades ao passar o mouse;
-pode ser trocado por outra imagem em *Dados e configurações*.
+Ecossistema de Departamento Pessoal da Exato, igual ao app **EXATO FLOW** do Claude, com os dados
+guardados no próprio computador (funciona sem internet). Antes se chamava *Painel Sindical Exato*.
 
-| Tela | O que faz |
+| Módulo | O que faz |
 |---|---|
-| **Visão geral** | Indicadores, atalhos, calendário de obrigações, clientes por convenção, CCTs a renovar, cobertura da carteira, resultado da última busca de convenções |
-| **Clientes** | Filtros (convenção, status, confiança, confirmado), edição do enquadramento, exportar CSV |
-| **Convenções** | Cartões com vigência, pisos, sindicatos, pontos de atenção, base territorial, links e PDFs (anexar/abrir/remover) |
-| **Pisos por função** | Piso da CCT x piso estadual SC 2026 |
-| **Prazos** | Contribuições e obrigações, marcar como feito |
-| **Alertas** | Pendências por prioridade, marcar como resolvido |
-| **Buscar por município** | Quais CCTs cobrem a cidade |
-| **Enquadrar empresa** | Pedidos de enquadramento com sugestão da IA (E-exato) e "Aplicar ao cliente" |
-| **Sindicatos e sites** | Sites e páginas de CCT de cada sindicato |
-| **Dados e configurações** | Importar dados, backup, pasta de dados, seu nome, chave da IA, imagem do mascote |
+| **Início** | Resumo do cadastro, fluxo da competência (CCT → Ponto → Folha → Guias) e atalhos para os módulos |
+| **Clientes** | Cadastro único (CNPJ, código do Domínio, dados de DP), pendências e resultado das auditorias |
+| **Painel Sindical** | Enquadramento por sindicato e CCT, pisos, prazos, alertas, PDFs das convenções, enquadramento com IA |
+| **Auditoria de Guias** | Extrato Mensal do Domínio × DARFs da DCTFWeb (INSS 1082/1099/1138, IRRF 0561), lote para impressão |
+| **Ponto** | Em construção |
+| **Dados** | Importar dados, backup, pasta de dados, seu nome, chave da IA, imagem do mascote |
+
+Visual tecnológico em todos os módulos (vidro com profundidade, luzes, cartões 3D) e o mascote **E-exato**
+— o lobo de óculos com moletom da Exato — no Início e no trilho lateral, com o anel de qualidades.
+Os PDFs são lidos só no computador: pdf.js, pdf-lib e JSZip vão embutidos em `web/vendor/`.
 
 ### Instalar
 
 1. GitHub → aba **Actions** → *Gerar instalador Windows* → execução mais recente (verde) → **Artifacts** →
-   baixe `PainelSindicalExato-Instalador`, descompacte e rode o `Setup`. Não precisa de administrador.
+   baixe `ExatoFlow-Instalador`, descompacte e rode o `ExatoFlow-Setup`. Não precisa de administrador.
 2. Se o SmartScreen avisar "editor desconhecido": *Mais informações* → *Executar assim mesmo*.
 3. Na primeira abertura, clique em **Importar dados (.zip)** e escolha o arquivo de dados exportado do app.
 
@@ -65,9 +61,11 @@ painel_sindical_exato/
   store.py                           banco SQLite, PDFs, backup e importação
   ia.py                              sugestão de enquadramento via API do Claude
   config.py                          pasta de dados e preferências
-  web/index.html                     tela do app (mesma do Claude)
-  web/local.js                       adaptador: liga a tela ao banco local
-  web/tema3d.css                     visual 3D aplicado sobre a tela do app
+  web/index.html                     tela inicial do EXATO FLOW (trilho de módulos)
+  web/modulos/                       Clientes, Painel Sindical, Auditoria de Guias
+  web/nucleo/                        dados compartilhados, tema tecnológico, mascote
+  web/vendor/                        pdf.js, pdf-lib, JSZip (offline)
+  web/local.js                       adaptador: liga os módulos ao banco local
 installer/PainelSindicalExato.iss    instalador (Inno Setup)
 .github/workflows/build-windows.yml  gera o .exe e o instalador
 tests/                               testes automatizados

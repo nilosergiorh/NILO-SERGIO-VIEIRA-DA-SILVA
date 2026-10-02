@@ -1,5 +1,7 @@
-// Adaptador da versão desktop: oferece ao app as mesmas funções que ele usa no Claude
-// (window.claude.use: db, user, assets, downloads, sample), gravando tudo no computador.
+// EXATO FLOW · adaptador da versão para computador.
+// Oferece aos módulos as mesmas funções que eles usam no Claude (window.claude.use: db, user,
+// assets, downloads, sample), gravando tudo neste computador. Os módulos abrem em iframes e
+// usam o runtime da janela principal (window.parent.claude), então este arquivo só roda na casca.
 (() => {
   const CFG = window.__PSE || {};
   const TOKEN = CFG.token || "";
@@ -7,7 +9,7 @@
   async function api(caminho, opcoes = {}) {
     const headers = { "X-Token": TOKEN, ...(opcoes.headers || {}) };
     let body = opcoes.body;
-    if (body !== undefined && !(body instanceof Blob) && !(body instanceof ArrayBuffer) && typeof body !== "string") {
+    if (body !== undefined && !(body instanceof Blob) && !(body instanceof ArrayBuffer) && !ArrayBuffer.isView(body) && typeof body !== "string") {
       body = JSON.stringify(body);
       headers["Content-Type"] = "application/json";
     }
@@ -36,7 +38,11 @@
         const r = await api(`/api/doc/${encodeURIComponent(o.col)}/${encodeURIComponent(o.id)}`);
         o.cb(docSnap(o.id, r.exists ? r.data : null));
       }
-    } catch (e) { o.err && o.err(e); }
+    } catch (e) {
+      // ouvinte de um módulo que já foi fechado: descarta
+      if (e instanceof TypeError && /dead|freed|detached/i.test(String(e.message))) ouvintes.delete(o);
+      else o.err && o.err(e);
+    }
   }
   let agendado = null;
   function avisarMudanca() {
@@ -74,13 +80,14 @@
   };
 
   // ---------- demais funções ----------
-  let INFO = { nome: "Equipe Exato", ia: false };
+  let INFO = { nome: "", ia: false };
   const pronto = api("/api/info").then(i => (INFO = i)).catch(() => INFO);
 
   const user = {
-    me: async () => { await pronto; return { id: "local", name: INFO.nome || "Equipe Exato" }; },
+    me: async () => { await pronto; return { id: "local", name: INFO.nome || "" }; },
+    id: async () => "local",
     can: async () => true,
-    profiles: async ids => { await pronto; return Object.fromEntries(ids.map(i => [i, { name: i === "local" ? (INFO.nome || "Equipe Exato") : "" }])); },
+    profiles: async ids => { await pronto; return Object.fromEntries(ids.map(i => [i, { name: i === "local" ? (INFO.nome || "") : "" }])); },
   };
   const assets = {
     upload: async file => {
@@ -90,10 +97,17 @@
     delete: id => api("/api/assets/" + encodeURIComponent(id), { method: "DELETE" }),
   };
   const downloads = {
+    // texto (CSV) ou binário (PDF do lote de guias): salva na pasta Downloads
     save: async ({ filename, data }) => {
-      const r = await api("/api/salvar", { method: "POST", body: { filename, data } });
-      setTimeout(() => window.toast && toast("Salvo em " + r.path), 600);
-      return r;
+      let r;
+      if (typeof data === "string") r = await api("/api/salvar", { method: "POST", body: { filename, data } });
+      else {
+        const bytes = data instanceof Blob ? await data.arrayBuffer() : (ArrayBuffer.isView(data) ? data : data);
+        r = await api("/api/salvar_bin", { method: "POST", body: bytes, headers: { "Content-Type": "application/octet-stream", "X-Filename": encodeURIComponent(filename || "arquivo") } });
+        if (/\.pdf$/i.test(filename || "")) api("/api/abrir_arquivo", { method: "POST", body: { path: r.path } }).catch(() => {});
+      }
+      aviso("Salvo em " + r.path);
+      return { status: "saved", path: r.path };
     },
   };
   const sample = {
@@ -104,70 +118,106 @@
     },
   };
 
-  window.claude = {
-    use: async nome => ({ db, user, assets, downloads, sample })[nome] || null,
-  };
+  window.claude = { use: async nome => ({ db, user, assets, downloads, sample })[nome] || null };
 
-  // ---------- links: PDFs e sites abrem fora da janela do app ----------
-  document.addEventListener("click", e => {
-    const a = e.target.closest && e.target.closest("a[href]");
-    if (!a) return;
-    const href = a.getAttribute("href");
-    if (href.startsWith("/_blob/") || (/^https?:\/\//.test(href) && a.target === "_blank")) {
-      e.preventDefault();
-      api("/api/abrir", { method: "POST", body: { url: href } })
-        .catch(err => window.toast && toast(err.code === "not_found" ? "Arquivo não encontrado." : "Não foi possível abrir."));
-    }
-  }, true);
+  // ---------- links: PDFs das CCTs e sites abrem fora da janela ----------
+  function interceptarLinks(doc) {
+    if (!doc || doc.__pseLinks) return;
+    doc.__pseLinks = true;
+    // Esc fecha a janela de configurações mesmo com o foco dentro de um módulo
+    doc.addEventListener("keydown", e => { if (e.key === "Escape") fechar(); });
+    doc.addEventListener("click", e => {
+      const a = e.target.closest && e.target.closest("a[href]");
+      if (!a) return;
+      const href = a.getAttribute("href");
+      if (href.startsWith("/_blob/") || (/^https?:\/\//.test(href) && a.target === "_blank")) {
+        e.preventDefault();
+        api("/api/abrir", { method: "POST", body: { url: href } })
+          .catch(err => aviso(err.code === "not_found" ? "Arquivo não encontrado." : "Não foi possível abrir."));
+      }
+    }, true);
+  }
+  interceptarLinks(document);
 
   // ---------- sinal de vida: o programa encerra quando a janela é fechada ----------
   const ping = () => api("/api/ping", { method: "POST" }).catch(() => {});
   ping(); setInterval(ping, 5000);
   window.addEventListener("pagehide", () => navigator.sendBeacon("/api/fechar?t=" + encodeURIComponent(TOKEN)));
 
-  // ---------- tela "Dados e configurações" ----------
+  // ---------- janela "Dados e configurações" (na casca do Flow) ----------
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const CSS = `
+  .pse-scrim{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);display:flex;justify-content:flex-end}
+  .pse-in{width:min(560px,100%);height:100%;overflow:auto;background:linear-gradient(170deg,rgba(32,32,36,.97),rgba(16,16,20,.98));border-left:3px solid #ff2d2d;
+    padding:22px 24px 28px;display:grid;align-content:start;gap:16px;color:#f3f3f5;font:14.5px/1.5 "Manrope","Segoe UI",system-ui,sans-serif;box-shadow:-30px 0 60px -20px rgba(0,0,0,.9)}
+  #pse-janela .pse-in h1{margin:0;font:800 1.35rem/1.2 "Sora","Segoe UI",sans-serif}
+  #pse-janela .pse-in h2{margin:0 0 8px;font:700 .74rem "Sora","Segoe UI",sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#a3a5ad}
+  .pse-sub{margin:4px 0 0;color:#a3a5ad;font-size:.88rem}
+  .pse-box{background:linear-gradient(160deg,rgba(44,44,50,.62),rgba(24,24,28,.55));border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:14px 16px;display:grid;gap:10px}
+  .pse-row{display:flex;flex-wrap:wrap;gap:8px}
+  .pse-btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:10px;padding:9px 14px;font:700 .84rem "Sora","Segoe UI",sans-serif;cursor:pointer;color:#fff;
+    background:linear-gradient(180deg,#ff2d2d,#b00000);box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 3px 0 #5a0000,0 10px 22px -10px rgba(224,21,21,.7)}
+  .pse-btn.g{background:linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.16);box-shadow:0 3px 0 rgba(0,0,0,.45)}
+  .pse-btn:active{transform:translateY(2px)}
+  .pse-x{justify-self:end;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:#f3f3f5;border-radius:8px;padding:6px 12px;cursor:pointer}
+  .pse-in label{display:grid;gap:4px;font-size:.78rem;font-weight:700;color:#a3a5ad}
+  .pse-in input[type=text],.pse-in input[type=password]{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:9px 11px;color:#f3f3f5;font:inherit;font-weight:500}
+  .pse-meta{font-size:.78rem;color:#a3a5ad;margin:0}
+  .pse-st{font-size:.84rem;color:#ffd0d0;margin:0;min-height:1em}
+  .pse-head{display:flex;gap:14px;align-items:center}
+  .pse-head img{width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:50% 35%;border:2px solid #ff2d2d;background:#18181b}
+  .pse-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:210;max-width:min(92vw,620px);background:rgba(28,28,32,.95);color:#f3f3f5;border:1px solid rgba(255,255,255,.16);
+    border-left:3px solid #ff2d2d;padding:10px 16px;border-radius:12px;font:14px "Manrope",sans-serif}`;
+  function estilos() { if (document.getElementById("pse-css")) return; const s = document.createElement("style"); s.id = "pse-css"; s.textContent = CSS; document.head.append(s); }
+  function aviso(msg) {
+    estilos();
+    let t = document.querySelector(".pse-toast");
+    if (!t) { t = document.createElement("div"); t.className = "pse-toast"; t.setAttribute("role", "status"); document.body.append(t); }
+    t.textContent = msg; t.hidden = false; clearTimeout(aviso.h); aviso.h = setTimeout(() => t.hidden = true, 4500);
+  }
+  function janela(html, depois) {
+    estilos();
+    fechar();
+    const w = document.createElement("div");
+    w.className = "pse-scrim"; w.id = "pse-janela";
+    w.innerHTML = `<div class="pse-in" role="dialog" aria-modal="true">${html}</div>`;
+    w.addEventListener("click", e => { if (e.target === w || e.target.closest("[data-pse-fechar]")) fechar(); });
+    document.body.append(w);
+    depois && depois(w);
+    const f = w.querySelector("input,button:not(.pse-x)"); f && f.focus();
+  }
+  function fechar() { const w = document.getElementById("pse-janela"); if (w) w.remove(); }
+
   async function abrirConfig(primeiraVez) {
     const i = await api("/api/info").catch(() => INFO);
     INFO = i;
     const c = i.contagem || {};
-    openDrawer(`<button class="close" data-close>Fechar</button>
-      <div><h1>${primeiraVez ? "Bem-vindo ao Painel Sindical" : "Dados e configurações"}</h1>
-      <p class="sub">${primeiraVez ? "O programa está sem dados. Importe o arquivo com os dados do app (clientes, convenções, prazos, alertas e PDFs)." : "Os dados ficam só neste computador. Faça backup com frequência."}</p></div>
-      <div class="panel help"><div class="panel-h"><h2>Dados</h2></div>
-        <p class="meta" style="margin:0 0 10px">${c.clientes || 0} clientes · ${c.ccts || 0} convenções · ${c.prazos || 0} prazos · ${c.alertas || 0} alertas · ${c.pedidos || 0} pedidos</p>
-        <div class="actions">
-          <label class="btn up">📥 Importar dados (.zip)<input type="file" id="pse-imp" accept=".zip,application/zip" hidden></label>
-          <button class="btn ghost" id="pse-bkp">💾 Fazer backup</button>
-          <button class="btn ghost" id="pse-pasta">📂 Abrir pasta de dados</button>
+    janela(`<button class="pse-x" data-pse-fechar>Fechar</button>
+      <div class="pse-head"><img src="/nucleo/mascote-rosto.png" alt=""><div><h1>${primeiraVez ? "Bem-vindo ao EXATO FLOW" : "Dados e configurações"}</h1>
+      <p class="pse-sub">${primeiraVez ? "O programa está sem dados. Importe o arquivo com os dados do Flow (clientes, convenções, prazos, alertas, auditorias e PDFs)." : "Os dados ficam só neste computador. Faça backup com frequência."}</p></div></div>
+      <div class="pse-box"><h2>Dados</h2>
+        <p class="pse-meta">${c.clientes || 0} clientes · ${c.ccts || 0} convenções · ${c.prazos || 0} prazos · ${c.alertas || 0} alertas · ${c.pedidos || 0} pedidos · ${c.auditorias || 0} auditorias</p>
+        <div class="pse-row">
+          <label class="pse-btn" style="display:inline-flex;color:#fff;font-size:.84rem">📥 Importar dados (.zip)<input type="file" id="pse-imp" accept=".zip,application/zip" hidden></label>
+          <button class="pse-btn g" id="pse-bkp">💾 Fazer backup</button>
+          <button class="pse-btn g" id="pse-pasta">📂 Abrir pasta de dados</button>
         </div>
-        <p class="meta" style="margin:10px 0 0">Importar substitui os dados atuais (uma cópia de segurança é guardada antes). Pasta: ${esc(i.pasta)}</p>
-        <p class="count" id="pse-st"></p></div>
-      <form class="form panel" id="pse-cfg"><div class="panel-h full"><h2>Usuário e IA</h2></div>
-        <label class="full">Seu nome (o E-exato chama você assim e ele aparece em "Alterado por")<input id="pse-nome" value="${esc(i.nome)}" placeholder="Ex.: Nilo"></label>
-        <label class="full">Chave da API do Claude — para a sugestão de enquadramento do E-exato
-          <input id="pse-key" type="password" autocomplete="off" placeholder="${i.ia ? "Chave configurada (digite para trocar)" : "sk-ant-..."}"></label>
-        <p class="meta full" style="margin:0">${i.ia ? "✅ IA ativa." : "IA desativada: sem a chave, o restante do programa funciona normalmente."} A chave é criada em console.anthropic.com e o uso é cobrado pela Anthropic.</p>
-        <div class="actions full"><button class="btn" type="submit">Salvar</button>${i.ia ? '<button class="btn danger" type="button" id="pse-rm">Remover chave</button>' : ""}</div>
+        <p class="pse-meta">Importar substitui os dados atuais (uma cópia de segurança é guardada antes). Pasta: ${esc(i.pasta)}</p>
+        <p class="pse-st" id="pse-st"></p></div>
+      <form class="pse-box" id="pse-cfg"><h2>Você e a IA</h2>
+        <label>Seu nome (o E-exato chama você assim e ele aparece em "Alterado por")<input type="text" id="pse-nome" value="${esc(i.nome)}" placeholder="Ex.: Nilo"></label>
+        <label>Chave da API do Claude — sugestão de enquadramento do E-exato no Painel Sindical
+          <input type="password" id="pse-key" autocomplete="off" placeholder="${i.ia ? "Chave configurada (digite para trocar)" : "sk-ant-..."}"></label>
+        <p class="pse-meta">${i.ia ? "✅ IA ativa." : "IA desativada: sem a chave, o resto do programa funciona normalmente."} A chave é criada em console.anthropic.com e o uso é cobrado pela Anthropic.</p>
+        <div class="pse-row"><button class="pse-btn" type="submit">Salvar</button>${i.ia ? '<button class="pse-btn g" type="button" id="pse-rm">Remover chave</button>' : ""}</div>
       </form>
-      <div class="panel help"><div class="panel-h"><h2>Mascote E-exato</h2></div>
-        <p class="meta" style="margin:0 0 10px">${i.mascote ? "Usando a imagem que você enviou." : "Usando o lobo padrão da Exato."} Para trocar, envie uma imagem (PNG com fundo transparente fica melhor).</p>
-        <div class="actions">
-          <label class="btn up">🐺 Escolher imagem do mascote<input type="file" id="pse-masc" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
-          ${i.mascote ? '<button class="btn ghost" id="pse-masc-rm">Voltar ao lobo padrão</button>' : ""}
-        </div><p class="count" id="pse-masc-st"></p></div>
-      <p class="meta">${esc(i.app)} ${esc(i.versao)} · versão para computador</p>`, () => {
-      document.getElementById("pse-masc").onchange = async ev => {
-        const f = ev.target.files[0]; if (!f) return;
-        try {
-          await api("/api/mascote", { method: "POST", body: await f.arrayBuffer(), headers: { "Content-Type": f.type || "image/png" } });
-          aplicarMascote(true); toast("Mascote atualizado."); closeDrawer();
-        } catch (e) { document.getElementById("pse-masc-st").textContent = e.message; }
-      };
-      const mrm = document.getElementById("pse-masc-rm");
-      if (mrm) mrm.onclick = async () => { await api("/api/mascote", { method: "DELETE" }); location.reload(); };
-      const st = document.getElementById("pse-st");
-      document.getElementById("pse-imp").onchange = async ev => {
+      <div class="pse-box"><h2>Mascote E-exato</h2>
+        <p class="pse-meta">${i.mascote ? "Usando a imagem que você enviou." : "Usando o lobo padrão da Exato."} Para trocar, envie uma imagem (PNG com fundo transparente fica melhor).</p>
+        <div class="pse-row"><label class="pse-btn g" style="display:inline-flex">🐺 Escolher imagem<input type="file" id="pse-masc" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+          ${i.mascote ? '<button class="pse-btn g" id="pse-masc-rm">Voltar ao lobo padrão</button>' : ""}</div></div>
+      <p class="pse-meta">${esc(i.app)} ${esc(i.versao)} · versão para computador</p>`, w => {
+      const st = w.querySelector("#pse-st");
+      w.querySelector("#pse-imp").onchange = async ev => {
         const f = ev.target.files[0]; if (!f) return;
         st.textContent = "Importando " + f.name + "…";
         try {
@@ -176,93 +226,85 @@
           setTimeout(() => location.reload(), 900);
         } catch (e) { st.textContent = e.message; }
       };
-      document.getElementById("pse-bkp").onclick = async () => {
+      w.querySelector("#pse-bkp").onclick = async () => {
         try { const r = await api("/api/backup", { method: "POST" }); st.textContent = "Backup salvo em " + r.path; }
         catch (e) { st.textContent = e.message; }
       };
-      document.getElementById("pse-pasta").onclick = () => api("/api/abrir_pasta", { method: "POST" });
-      const rm = document.getElementById("pse-rm");
-      if (rm) rm.onclick = async () => { await api("/api/config", { method: "POST", body: { remover_chave: true } }); INFO.ia = false; toast("Chave removida."); closeDrawer(); };
-      document.getElementById("pse-cfg").onsubmit = async ev => {
+      w.querySelector("#pse-pasta").onclick = () => api("/api/abrir_pasta", { method: "POST" });
+      const rm = w.querySelector("#pse-rm");
+      if (rm) rm.onclick = async () => { await api("/api/config", { method: "POST", body: { remover_chave: true } }); aviso("Chave removida."); fechar(); };
+      w.querySelector("#pse-cfg").onsubmit = async ev => {
         ev.preventDefault();
-        const r = await api("/api/config", { method: "POST", body: { nome: document.getElementById("pse-nome").value, api_key: document.getElementById("pse-key").value } });
+        const antes = INFO.nome;
+        const r = await api("/api/config", { method: "POST", body: { nome: w.querySelector("#pse-nome").value, api_key: w.querySelector("#pse-key").value } });
         INFO.ia = r.ia; INFO.nome = r.nome;
-        document.getElementById("mename").textContent = r.nome || "Equipe Exato";
-        toast("Configurações salvas."); closeDrawer();
+        aviso("Configurações salvas."); fechar();
+        if (r.nome !== antes) setTimeout(() => location.reload(), 600);
       };
-    });
-  }
-  // ---------- mascote: troca o lobo desenhado pela imagem escolhida ----------
-  // Sem imagem própria, usa o lobo padrão da Exato (moletom vermelho).
-  function aplicarMascote(personalizado) {
-    const src = personalizado ? "/api/mascote?t=" + encodeURIComponent(TOKEN) + "&v=" + Date.now() : "/mascote_padrao.png";
-    const rosto = personalizado ? src : "/mascote_rosto.png";
-    const fab = document.getElementById("fab"), wrap = document.getElementById("mwrap");
-    if (fab) {
-      const svg = fab.querySelector("svg.wolf");
-      if (svg) svg.style.display = "none";
-      let img = fab.querySelector(".mascote-img");
-      if (!img) { img = document.createElement("img"); img.className = "mascote-img"; img.alt = ""; fab.appendChild(img); }
-      img.src = src;
-      fab.classList.add("com-imagem"); wrap && wrap.classList.add("com-imagem");
-    }
-    document.querySelectorAll(".aihead .wolfic").forEach(ic => {
-      const svg = ic.querySelector("svg"); if (svg) svg.style.display = "none";
-      let img = ic.querySelector(".mascote-img");
-      if (!img) { img = document.createElement("img"); img.className = "mascote-img"; img.alt = ""; ic.appendChild(img); }
-      img.src = rosto;
+      w.querySelector("#pse-masc").onchange = async ev => {
+        const f = ev.target.files[0]; if (!f) return;
+        try {
+          await api("/api/mascote", { method: "POST", body: await f.arrayBuffer(), headers: { "Content-Type": f.type || "image/png" } });
+          location.reload();
+        } catch (e) { st.textContent = e.message; }
+      };
+      const mrm = w.querySelector("#pse-masc-rm");
+      if (mrm) mrm.onclick = async () => { await api("/api/mascote", { method: "DELETE" }); location.reload(); };
     });
   }
 
-  // ---------- cartões que inclinam com o mouse (efeito 3D) ----------
-  const reduzMovimento = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  document.addEventListener("pointermove", e => {
-    if (reduzMovimento) return;
-    const k = e.target.closest && e.target.closest(".kpi");
-    document.querySelectorAll(".kpi[data-tilt]").forEach(el => { if (el !== k) { el.style.transform = ""; el.removeAttribute("data-tilt"); } });
-    if (!k) return;
-    const r = k.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
-    k.setAttribute("data-tilt", "");
-    k.style.transform = `rotateX(${((0.5 - y) * 14).toFixed(2)}deg) rotateY(${((x - 0.5) * 18).toFixed(2)}deg) translateZ(6px)`;
-    k.style.setProperty("--mx", (x * 100).toFixed(1) + "%");
-    k.style.setProperty("--my", (y * 100).toFixed(1) + "%");
-  }, { passive: true });
-
-  // ---------- primeira abertura: pergunta como a pessoa quer ser chamada ----------
+  // primeira abertura: pergunta como a pessoa quer ser chamada (não usa o usuário do Windows)
   function perguntarNome() {
-    openDrawer(`<button class="close" data-close>Agora não</button>
-      <div class="aihead"><span class="ic wolfic"><img class="mascote-img" src="/mascote_rosto.png" alt=""></span>
-      <div><h1>Oi! Eu sou o E-exato.</h1><p class="sub">Como você quer que eu te chame?</p></div></div>
-      <form class="form" id="pse-quem"><label class="full">Seu nome<input id="pse-quem-nome" required placeholder="Ex.: Nilo" autocomplete="given-name"></label>
-      <div class="actions full"><button class="btn" type="submit">Pronto</button></div>
-      <p class="meta full">Dá para trocar depois em Dados e configurações.</p></form>`, () => {
-      document.getElementById("pse-quem").onsubmit = async ev => {
+    janela(`<button class="pse-x" data-pse-fechar>Agora não</button>
+      <div class="pse-head"><img src="/nucleo/mascote-rosto.png" alt=""><div><h1>Oi! Eu sou o E-exato.</h1><p class="pse-sub">Como você quer que eu te chame?</p></div></div>
+      <form class="pse-box" id="pse-quem"><label>Seu nome<input type="text" id="pse-quem-nome" required placeholder="Ex.: Nilo" autocomplete="given-name"></label>
+      <div class="pse-row"><button class="pse-btn" type="submit">Pronto</button></div>
+      <p class="pse-meta">Dá para trocar depois em Dados e configurações.</p></form>`, w => {
+      w.querySelector("#pse-quem").onsubmit = async ev => {
         ev.preventDefault();
-        const nome = document.getElementById("pse-quem-nome").value.trim();
+        const nome = w.querySelector("#pse-quem-nome").value.trim();
         if (!nome) return;
-        const r = await api("/api/config", { method: "POST", body: { nome } });
-        INFO.nome = r.nome;
-        document.getElementById("mename").textContent = r.nome;
-        const ini = document.getElementById("meini");
-        if (ini) ini.textContent = r.nome.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
-        closeDrawer();
-        if (typeof Exa !== "undefined") { Exa.mood("happy", 2500); Exa.say(`Prazer, <b>${esc(r.nome.split(" ")[0])}</b>! Pode contar comigo.`, 6000); }
+        await api("/api/config", { method: "POST", body: { nome } });
+        location.reload();
       };
     });
   }
+  window.PSE = { abrirConfig, perguntarNome };
 
-  window.PSE = { abrirConfig, aplicarMascote, perguntarNome };
+  // botão "Dados" no trilho e ajustes dos módulos para o computador
+  const ENGRENAGEM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>';
+  function ajustarModulo(ifr) {
+    let doc;
+    try { doc = ifr.contentDocument; } catch (e) { return; }
+    if (!doc) return;
+    interceptarLinks(doc);
+    // Painel Sindical: o botão "Instalar no celular" vira "Dados e configurações"
+    const b = doc.getElementById("helpbtn");
+    if (b && !b.__pse) {
+      b.__pse = true;
+      if (b.lastChild) b.lastChild.textContent = "Dados e configurações";
+      b.onclick = ev => { ev.preventDefault(); abrirConfig(false); };
+    }
+  }
+  function vigiarModulos() {
+    const ligar = ifr => { if (ifr.__pse) return; ifr.__pse = true; ifr.addEventListener("load", () => setTimeout(() => ajustarModulo(ifr), 50)); ajustarModulo(ifr); };
+    document.querySelectorAll(".stage iframe").forEach(ligar);
+    new MutationObserver(() => document.querySelectorAll(".stage iframe").forEach(ligar))
+      .observe(document.querySelector(".stage") || document.body, { childList: true, subtree: true });
+  }
 
   window.addEventListener("DOMContentLoaded", async () => {
-    const b = document.getElementById("helpbtn");
-    if (b) {
-      b.lastChild.textContent = "Dados e configurações";
-      b.onclick = () => abrirConfig(false);
+    const rail = document.querySelector(".rail");
+    if (rail && !rail.querySelector("#t-dados")) {
+      const bt = document.createElement("button");
+      bt.className = "tab"; bt.type = "button"; bt.id = "t-dados";
+      bt.innerHTML = ENGRENAGEM + "<span>Dados</span>";
+      bt.onclick = () => abrirConfig(false);
+      const ponto = rail.querySelector("#t-ponto");
+      ponto ? ponto.after(bt) : rail.append(bt);
     }
+    vigiarModulos();
     const i = await pronto;
-    aplicarMascote(!!(i && i.mascote));
-    const ini = document.getElementById("meini");
-    if (i && i.nome && ini) ini.textContent = i.nome.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
     if (i && i.vazio) abrirConfig(true);
     else if (i && !i.nome) perguntarNome();
   });

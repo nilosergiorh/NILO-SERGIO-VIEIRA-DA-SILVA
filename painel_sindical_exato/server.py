@@ -20,9 +20,11 @@ from .config import Preferencias, pasta_downloads
 from .store import ErroDados, Store
 
 LIMITE_UPLOAD = 60 * 1024 * 1024
-ESTATICOS = {"local.js": "text/javascript; charset=utf-8", "tema3d.css": "text/css; charset=utf-8",
-             "mascote_padrao.png": "image/png", "mascote_rosto.png": "image/png",
-             "favicon.ico": "image/x-icon"}
+# tipos de arquivo que a tela do EXATO FLOW pode carregar da pasta web
+TIPOS = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+         ".mjs": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+         ".png": "image/png", ".ico": "image/x-icon", ".svg": "image/svg+xml", ".json": "application/json"}
+MASCOTE = ("nucleo/mascote.png", "nucleo/mascote-rosto.png")
 IMAGENS = {b"\x89PNG": ("png", "image/png"), b"\xff\xd8\xff": ("jpg", "image/jpeg"),
            b"RIFF": ("webp", "image/webp"), b"GIF8": ("gif", "image/gif")}
 
@@ -145,10 +147,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if metodo == "GET" and url.path in ("/", "/index.html"):
                 return self._pagina()
-            if metodo == "GET" and url.path.lstrip("/") in ESTATICOS:
-                nome = url.path.lstrip("/")
-                return self._responder(200, (pasta_web() / nome).read_bytes(), ESTATICOS[nome])
             if not partes or partes[0] != "api":
+                if metodo == "GET":
+                    return self._estatico("/".join(partes))
                 return self._erro(404, "Não encontrado.")
             if not self._autorizado(url):
                 return self._erro(403, "Acesso negado.")
@@ -161,6 +162,25 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as erro:  # noqa: BLE001 - registra e devolve 500 sem derrubar o servidor
             registrar_erro(self.estado.store.pasta, erro)
             return self._erro(500, "Erro interno. Veja painel.log na pasta de dados.")
+
+    def _estatico(self, rel: str):
+        """Arquivos da tela (módulos, núcleo, bibliotecas), sem sair da pasta web."""
+        if rel in MASCOTE:
+            proprio = arquivo_mascote(self.estado.store.pasta)
+            if proprio:
+                return self._responder(200, proprio.read_bytes(), dict(IMAGENS.values())[proprio.suffix.lstrip(".")])
+        raiz = pasta_web().resolve()
+        alvo = (raiz / rel).resolve()
+        tipo = TIPOS.get(alvo.suffix.lower())
+        if raiz not in alvo.parents or not tipo or not alvo.is_file():
+            return self._erro(404, "Não encontrado.", "not_found")
+        corpo = alvo.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", tipo)
+        self.send_header("Content-Length", str(len(corpo)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(corpo)
 
     def _pagina(self):
         html = (pasta_web() / "index.html").read_text(encoding="utf-8")
@@ -217,6 +237,19 @@ class Handler(BaseHTTPRequestHandler):
             conteudo = dados.get("data", "")
             alvo.write_bytes(conteudo.encode("utf-8") if isinstance(conteudo, str) else bytes(conteudo))
             return self._responder(200, {"status": "saved", "path": str(alvo)})
+
+        if rota == ("POST", "salvar_bin"):
+            # PDFs e outros arquivos binários (ex.: lote de guias da Auditoria)
+            nome = unquote(self.headers.get("X-Filename") or "arquivo.bin")
+            alvo = nome_livre(pasta_downloads(), nome)
+            alvo.write_bytes(self._corpo())
+            return self._responder(200, {"status": "saved", "path": str(alvo)})
+        if rota == ("POST", "abrir_arquivo"):
+            alvo = Path(str(self._json().get("path", "")))
+            if alvo.parent.resolve() != pasta_downloads().resolve() or not alvo.is_file():
+                return self._erro(400, "Arquivo não permitido.", "invalid_argument")
+            abrir_no_sistema(str(alvo))
+            return self._responder(200, {"ok": True})
 
         if rota == ("POST", "backup"):
             alvo = nome_livre(pasta_downloads(), f"Painel_Sindical_backup_{datetime.now():%Y-%m-%d_%H%M}.zip")

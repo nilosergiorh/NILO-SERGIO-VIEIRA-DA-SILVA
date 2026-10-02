@@ -1,4 +1,4 @@
-"""Painel Sindical Exato — versão desktop do app de enquadramento sindical."""
+"""EXATO FLOW — ecossistema de Departamento Pessoal da Exato (versão para computador)."""
 
-NOME_APP = "Painel Sindical Exato"
-VERSAO = "2.3.1"
+NOME_APP = "EXATO FLOW"
+VERSAO = "3.0.0"

@@ -1,11 +1,11 @@
-﻿; Instalador do Painel Sindical Exato (Inno Setup 6)
-; Compilado pelo GitHub Actions: iscc /DMyAppVersion=2.0.0 installer\PainelSindicalExato.iss
+﻿; Instalador do EXATO FLOW (Inno Setup 6) — antigo Painel Sindical Exato
+; Compilado pelo GitHub Actions: iscc /DMyAppVersion=3.0.0 installer\PainelSindicalExato.iss
 
 #ifndef MyAppVersion
-  #define MyAppVersion "2.0.0"
+  #define MyAppVersion "3.0.0"
 #endif
-#define MyAppName "Painel Sindical Exato"
-#define MyAppExe "PainelSindicalExato.exe"
+#define MyAppName "EXATO FLOW"
+#define MyAppExe "ExatoFlow.exe"
 
 [Setup]
 AppId={{6E4C2B1A-3D7F-4C1E-9A55-0B8E2F7D9C41}
@@ -14,10 +14,12 @@ AppVersion={#MyAppVersion}
 AppPublisher=Exato Soluções Contábeis
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
+; o menu Iniciar passa a se chamar EXATO FLOW (não reaproveita o grupo antigo)
+UsePreviousGroup=no
 ; Instala só para o usuário atual: não precisa de senha de administrador
 PrivilegesRequired=lowest
 OutputDir=..\dist\instalador
-OutputBaseFilename=PainelSindicalExato-Setup-{#MyAppVersion}
+OutputBaseFilename=ExatoFlow-Setup-{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -31,7 +33,13 @@ Name: "ptbr"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
-Source: "..\dist\PainelSindicalExato\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\ExatoFlow\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[InstallDelete]
+; versão anterior (Painel Sindical Exato): remove o executável e os atalhos antigos
+Type: files; Name: "{app}\PainelSindicalExato.exe"
+Type: filesandordirs; Name: "{autoprograms}\Painel Sindical Exato"
+Type: files; Name: "{autodesktop}\Painel Sindical Exato.lnk"
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
