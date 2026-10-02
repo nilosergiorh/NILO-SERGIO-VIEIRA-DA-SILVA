@@ -67,6 +67,9 @@ class App(BaseHTTPRequestHandler):
     def get_inicio(self, q):
         self._send(200, open(os.path.join(PASTA, 'app.html'), encoding='utf-8').read(), 'text/html; charset=utf-8')
 
+    def get_icone(self, q):
+        self._send(200, open(os.path.join(PASTA, 'static', 'icone.png'), 'rb').read(), 'image/png')
+
     def get_logo(self, q):
         self._send(200, open(os.path.join(PASTA, 'static', 'logo_exato.png'), 'rb').read(), 'image/png')
 
