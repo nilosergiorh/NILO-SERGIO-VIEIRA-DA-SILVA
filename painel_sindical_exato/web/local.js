@@ -78,9 +78,9 @@
   const pronto = api("/api/info").then(i => (INFO = i)).catch(() => INFO);
 
   const user = {
-    me: async () => { await pronto; return { id: "local", name: INFO.nome }; },
+    me: async () => { await pronto; return { id: "local", name: INFO.nome || "Equipe Exato" }; },
     can: async () => true,
-    profiles: async ids => { await pronto; return Object.fromEntries(ids.map(i => [i, { name: i === "local" ? INFO.nome : "" }])); },
+    profiles: async ids => { await pronto; return Object.fromEntries(ids.map(i => [i, { name: i === "local" ? (INFO.nome || "Equipe Exato") : "" }])); },
   };
   const assets = {
     upload: async file => {
@@ -144,7 +144,7 @@
         <p class="meta" style="margin:10px 0 0">Importar substitui os dados atuais (uma cópia de segurança é guardada antes). Pasta: ${esc(i.pasta)}</p>
         <p class="count" id="pse-st"></p></div>
       <form class="form panel" id="pse-cfg"><div class="panel-h full"><h2>Usuário e IA</h2></div>
-        <label class="full">Seu nome (aparece em "Alterado por")<input id="pse-nome" value="${esc(i.nome)}"></label>
+        <label class="full">Seu nome (o E-exato chama você assim e ele aparece em "Alterado por")<input id="pse-nome" value="${esc(i.nome)}" placeholder="Ex.: Nilo"></label>
         <label class="full">Chave da API do Claude — para a sugestão de enquadramento do E-exato
           <input id="pse-key" type="password" autocomplete="off" placeholder="${i.ia ? "Chave configurada (digite para trocar)" : "sk-ant-..."}"></label>
         <p class="meta full" style="margin:0">${i.ia ? "✅ IA ativa." : "IA desativada: sem a chave, o restante do programa funciona normalmente."} A chave é criada em console.anthropic.com e o uso é cobrado pela Anthropic.</p>
@@ -187,7 +187,7 @@
         ev.preventDefault();
         const r = await api("/api/config", { method: "POST", body: { nome: document.getElementById("pse-nome").value, api_key: document.getElementById("pse-key").value } });
         INFO.ia = r.ia; INFO.nome = r.nome;
-        document.getElementById("mename").textContent = r.nome;
+        document.getElementById("mename").textContent = r.nome || "Equipe Exato";
         toast("Configurações salvas."); closeDrawer();
       };
     });
@@ -228,7 +228,30 @@
     k.style.setProperty("--my", (y * 100).toFixed(1) + "%");
   }, { passive: true });
 
-  window.PSE = { abrirConfig, aplicarMascote };
+  // ---------- primeira abertura: pergunta como a pessoa quer ser chamada ----------
+  function perguntarNome() {
+    openDrawer(`<button class="close" data-close>Agora não</button>
+      <div class="aihead"><span class="ic wolfic"><img class="mascote-img" src="/mascote_rosto.png" alt=""></span>
+      <div><h1>Oi! Eu sou o E-exato.</h1><p class="sub">Como você quer que eu te chame?</p></div></div>
+      <form class="form" id="pse-quem"><label class="full">Seu nome<input id="pse-quem-nome" required placeholder="Ex.: Nilo" autocomplete="given-name"></label>
+      <div class="actions full"><button class="btn" type="submit">Pronto</button></div>
+      <p class="meta full">Dá para trocar depois em Dados e configurações.</p></form>`, () => {
+      document.getElementById("pse-quem").onsubmit = async ev => {
+        ev.preventDefault();
+        const nome = document.getElementById("pse-quem-nome").value.trim();
+        if (!nome) return;
+        const r = await api("/api/config", { method: "POST", body: { nome } });
+        INFO.nome = r.nome;
+        document.getElementById("mename").textContent = r.nome;
+        const ini = document.getElementById("meini");
+        if (ini) ini.textContent = r.nome.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
+        closeDrawer();
+        if (typeof Exa !== "undefined") { Exa.mood("happy", 2500); Exa.say(`Prazer, <b>${esc(r.nome.split(" ")[0])}</b>! Pode contar comigo.`, 6000); }
+      };
+    });
+  }
+
+  window.PSE = { abrirConfig, aplicarMascote, perguntarNome };
 
   window.addEventListener("DOMContentLoaded", async () => {
     const b = document.getElementById("helpbtn");
@@ -238,6 +261,9 @@
     }
     const i = await pronto;
     aplicarMascote(!!(i && i.mascote));
+    const ini = document.getElementById("meini");
+    if (i && i.nome && ini) ini.textContent = i.nome.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
     if (i && i.vazio) abrirConfig(true);
+    else if (i && !i.nome) perguntarNome();
   });
 })();

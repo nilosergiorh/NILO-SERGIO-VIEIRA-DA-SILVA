@@ -1,6 +1,5 @@
 """Pasta de dados e preferências do programa no computador do usuário."""
 
-import getpass
 import json
 import os
 import sys
@@ -52,7 +51,11 @@ class Preferencias:
         return dados
 
     def nome(self) -> str:
-        return self.ler().get("nome") or getpass.getuser() or "Equipe Exato"
+        """Nome informado por quem usa ('' se ainda não informou).
+
+        Não usa o usuário do Windows: o computador pode estar em nome de outra pessoa.
+        """
+        return (self.ler().get("nome") or "").strip()
 
     def chave_ia(self) -> str:
         return os.environ.get("ANTHROPIC_API_KEY") or self.ler().get("api_key") or ""

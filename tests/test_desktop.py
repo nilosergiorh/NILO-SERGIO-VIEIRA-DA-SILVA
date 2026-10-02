@@ -150,6 +150,10 @@ class TestServidor(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertEqual(json.loads(corpo)["code"], "sem_chave")
 
+    def test_nome_nao_usa_usuario_do_windows(self):
+        with mock.patch("getpass.getuser", return_value="jonatha"):
+            self.assertEqual(json.loads(self.req("GET", "/api/info")[1])["nome"], "")
+
     def test_info_e_config(self):
         self.req("POST", "/api/config", {"nome": "Nilo"})
         info = json.loads(self.req("GET", "/api/info")[1])
