@@ -8,7 +8,7 @@
   --rail:#111111; --rail-ink:#f2f2f3; --rail-mute:#8d8d94; --rail-hover:#1f1f22;
   --red:#C00000; --red-hi:#e01515;
   --bg:#f3f3f5; --surf:#ffffff; --ink:#16171a; --mute:#5f626b; --line:#e2e3e8;
-  --ok:#14804f; --ok-bg:#e2f4ea; --wip:#9a5b00; --wip-bg:#fff1d6; --ext:#4a4d55; --ext-bg:#ececf0;
+  --ok:#14804f; --ok-bg:#e2f4ea; --er:#b00000; --wip:#9a5b00; --wip-bg:#fff1d6; --ext:#4a4d55; --ext-bg:#ececf0;
   --f-disp:"Sora","Segoe UI",system-ui,sans-serif;
   --f-body:"Manrope","Segoe UI",system-ui,sans-serif;
   --f-mono:"JetBrains Mono",Consolas,ui-monospace,monospace;
@@ -16,11 +16,11 @@
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#141416; --surf:#1d1d20; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34;
-  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --wip:#e8a531; --wip-bg:rgba(232,165,49,.14); --ext:#c3c5cc; --ext-bg:rgba(255,255,255,.08);
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --er:#ff6b6b; --wip:#e8a531; --wip-bg:rgba(232,165,49,.14); --ext:#c3c5cc; --ext-bg:rgba(255,255,255,.08);
   --red-hi:#ff3b3b; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#141416; --surf:#1d1d20; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34;
-  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --wip:#e8a531; --wip-bg:rgba(232,165,49,.14); --ext:#c3c5cc; --ext-bg:rgba(255,255,255,.08);
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --er:#ff6b6b; --wip:#e8a531; --wip-bg:rgba(232,165,49,.14); --ext:#c3c5cc; --ext-bg:rgba(255,255,255,.08);
   --red-hi:#ff3b3b; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -78,8 +78,19 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
 .pill.wip{background:var(--wip-bg);color:var(--wip)}
 .pill.ext{background:var(--ext-bg);color:var(--ext)}
 
+/* cadastro */
+.cad{display:grid;gap:14px}
+.cad-h{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.cad-h .lead{margin:0}
+.nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:16px;background:var(--surf);overflow:hidden}
+.num{display:grid;gap:2px;padding:16px 20px;border-left:1px solid var(--line);min-width:0}
+.num:first-child{border-left:0}
+.num b{font:800 1.9rem/1.1 var(--f-disp);font-variant-numeric:tabular-nums}
+.num span{font-size:.82rem;color:var(--mute)}
+.num.er b{color:var(--er)} .num.at b{color:var(--wip)}
+
 /* módulos */
-.mods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.mods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
 .mod{display:grid;grid-template-rows:auto auto 1fr auto;gap:10px;padding:20px;border-radius:16px;background:var(--surf);border:1px solid var(--line);min-width:0}
 .mod .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .mod .ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--rail);color:#fff}
@@ -91,7 +102,7 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
 .go:disabled{background:var(--ext-bg);color:var(--mute);cursor:not-allowed}
 .note{font-size:.8rem;color:var(--mute);max-width:90ch;margin:0}
 
-@media (max-width:980px){.flow{grid-template-columns:1fr 1fr}.step:nth-child(3){border-left:0}.step:nth-child(n+3){border-top:1px solid var(--line)}.step:nth-child(2)::after{display:none}.mods{grid-template-columns:1fr 1fr}}
+@media (max-width:980px){.flow{grid-template-columns:1fr 1fr}.step:nth-child(3){border-left:0}.step:nth-child(n+3){border-top:1px solid var(--line)}.step:nth-child(2)::after{display:none}.mods{grid-template-columns:1fr 1fr}.nums{grid-template-columns:1fr 1fr}.num:nth-child(3){border-left:0}.num:nth-child(n+3){border-top:1px solid var(--line)}}
 @media (max-width:720px){
   .app{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
   .stage{grid-row:1}
@@ -101,6 +112,8 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
   .tab[aria-current="page"]::before{left:22%;right:22%;top:-6px;bottom:auto;width:auto;height:3px;border-radius:0 0 3px 3px}
   .home{padding-inline:16px;padding-block:24px 40px;gap:28px}
   .flow,.mods{grid-template-columns:1fr}
+  .num b{font-size:1.5rem}
+  .num{padding:12px 14px}
   .step{border-left:0;border-top:1px solid var(--line)}
   .step:first-child{border-top:0}
   .step:not(:last-child)::after{display:none}
@@ -114,6 +127,10 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
     <button class="tab" type="button" data-go="inicio" id="t-inicio">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/></svg>
       <span>Início</span>
+    </button>
+    <button class="tab" type="button" data-go="clientes" id="t-clientes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6"/><path d="M17.5 14.3c1.6.6 2.7 2.2 3 4.7"/></svg>
+      <span>Clientes</span>
     </button>
     <button class="tab" type="button" data-go="sindical" id="t-sindical">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/><path d="M4 21h16"/></svg>
@@ -139,6 +156,18 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
           <p>Processos conectados.<span>Departamento Pessoal mais simples.</span></p>
         </header>
 
+        <section class="cad" aria-labelledby="h-cad">
+          <div class="cad-h"><div><h2 id="h-cad">Cadastro único de clientes</h2><p class="lead">A mesma base de clientes alimenta todos os módulos.</p></div>
+            <button class="go" type="button" data-go="clientes">Abrir Clientes</button></div>
+          <div class="nums" id="cadNums">
+            <div class="num"><b id="c-ativos">–</b><span>clientes ativos</span></div>
+            <div class="num er"><b id="c-pend">–</b><span>com pendência grave no cadastro</span></div>
+            <div class="num at"><b id="c-cct">–</b><span>com CCT vencida ou vencendo</span></div>
+            <div class="num er"><b id="c-aud">–</b><span>com erro na última auditoria</span></div>
+          </div>
+          <p class="note" id="cadNota" hidden></p>
+        </section>
+
         <section aria-labelledby="h-flow">
           <h2 id="h-flow">O fluxo de cada competência</h2>
           <p class="lead">Cada etapa usa o resultado da anterior. Um piso ou percentual de hora extra errado na convenção aparece lá na guia. Por isso os módulos ficam no mesmo programa.</p>
@@ -154,6 +183,12 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
           <h2 id="h-mods">Módulos</h2>
           <p class="lead">Abra pelo trilho lateral ou pelos botões abaixo. Cada módulo continua aberto quando você troca de tela.</p>
           <div class="mods">
+            <article class="mod">
+              <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6"/></svg></span><span class="pill ok">Ativo</span></div>
+              <h3>Clientes</h3>
+              <ul><li>Cadastro único com CNPJ e código do Domínio</li><li>Dados de DP: regime, funcionários, ponto</li><li>Pendências e resultado das auditorias</li></ul>
+              <button class="go" type="button" data-go="clientes">Abrir Clientes</button>
+            </article>
             <article class="mod">
               <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg></span><span class="pill ok">Ativo</span></div>
               <h3>Painel Sindical</h3>
@@ -175,21 +210,24 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
           </div>
         </section>
 
-        <p class="note">Os dados do Painel Sindical (clientes, CCTs, PDFs) continuam os mesmos de antes. A Auditoria de Guias lê os PDFs só neste computador e não envia nada para a internet.</p>
+        <p class="note">O cadastro de clientes é o mesmo que o Painel Sindical já usava: nada foi copiado nem duplicado. A Auditoria de Guias lê os PDFs só neste computador e não envia nada para a internet.</p>
       </div>
     </section>
 
+    <section class="view" id="v-clientes" aria-label="Clientes" hidden></section>
     <section class="view" id="v-sindical" aria-label="Painel Sindical" hidden></section>
     <section class="view" id="v-guias" aria-label="Auditoria de Guias" hidden></section>
   </main>
 </div>
 
+<script src="nucleo/flow-dados.js" charset="utf-8"></script>
 <script>
 const MODS={
+  clientes:{src:"modulos/clientes.html",title:"Clientes"},
   sindical:{src:"modulos/painel-sindical.html",title:"Painel Sindical"},
   guias:{src:"modulos/auditoria-guias.html",title:"Auditoria de Guias"}
 };
-const VIEWS=["inicio","sindical","guias"];
+const VIEWS=["inicio","clientes","sindical","guias"];
 function abrir(v){
   if(!VIEWS.includes(v)) v="inicio";
   const m=MODS[v], box=document.getElementById("v-"+v);
@@ -209,6 +247,25 @@ document.addEventListener("click",e=>{
   if(b.getAttribute("aria-disabled")==="true"||b.disabled) return;
   abrir(b.dataset.go);
 });
+// Um módulo pede para abrir outro (ex.: ficha do cliente → Painel Sindical)
+window.addEventListener("message",e=>{
+  if(e.origin!==location.origin||!e.data||e.data.flow!=="abrir") return;
+  abrir(String(e.data.tela||""));
+});
+// Resumo do cadastro na tela Início
+if(window.FlowDados){
+  const F=window.FlowDados, n=(id,v)=>{document.getElementById(id).textContent=v};
+  F.assinar(E=>{
+    if(E.erro==="sem_base"){ const p=document.getElementById("cadNota"); p.hidden=false; p.textContent="Os números do cadastro aparecem quando o Flow é aberto pelo link do claude.ai."; return; }
+    if(!E.pronto.clientes) return;
+    const I=F.indices(E.clientes,E.ccts), A=Object.fromEntries(E.auditorias.map(a=>[a._id,a]));
+    const at=E.clientes.filter(F.ativo);
+    n("c-ativos",at.length);
+    n("c-pend",E.clientes.filter(c=>F.pendencias(c,I).some(p=>p.nivel==="alta")).length);
+    n("c-cct",at.filter(c=>{const s=F.statusCct(I.cctPorRamo[c.cct]);return s==="VENCIDA"||s==="VENCE"}).length);
+    n("c-aud",E.clientes.filter(c=>{const a=A[F.digitos(c.cnpj)];return a&&a.ultima&&a.ultima.st==="erro"}).length);
+  });
+}
 let ini=(location.hash||"").slice(1);
 if(!VIEWS.includes(ini)){ try{ini=localStorage.getItem("exatoflow.tela")||""}catch(e){ini=""} }
 abrir(ini);

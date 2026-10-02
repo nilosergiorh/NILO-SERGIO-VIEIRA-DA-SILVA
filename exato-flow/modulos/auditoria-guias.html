@@ -850,7 +850,94 @@ $('btnCsv').onclick=()=>{
   baixar(`Auditoria_INSS_IRRF_${(R.comp||'').replace('/','-')}.csv`,blob);
 };
 updLists();
+
+// EXATO FLOW: liga esta auditoria ao cadastro único de clientes (ver script no fim da página)
+if(window.FlowAudHook){
+  const ctx={get STATE(){return STATE},toast};
+  const _renderTab=renderTab; renderTab=function(){ _renderTab(); window.FlowAudHook.marcar(ctx); };
+  const _runAudit=runAudit; runAudit=function(){ _runAudit(); window.FlowAudHook.gravar(ctx); };
+  window.FlowAudHook.ligar(ctx);
+}
 </script>
 
+
+<!-- EXATO FLOW: liga a auditoria ao cadastro único de clientes -->
+<style>
+.flowcad{display:block;margin-top:3px;font-family:var(--f-corpo);font-size:.74rem;color:var(--suave)}
+.flowcad .pill{font-size:.6rem;padding:2px 7px;margin-right:4px}
+#flowCad{margin-top:10px}
+#flowCad table{min-width:560px}
+</style>
+<script src="../nucleo/flow-dados.js" charset="utf-8"></script>
+<script>
+(function(){
+  const F=window.FlowDados; if(!F) return;
+  const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  let EST=null, prontoAud=null, CTX=null;
+  const esperar=new Promise(ok=>prontoAud=ok);
+  F.assinar(e=>{ EST=e; if(e.pronto.auditorias||e.erro) prontoAud(); if(CTX&&CTX.STATE.res) marcar(); });
+
+  const cadastro=e=>{
+    if(!EST||!EST.pronto.clientes) return undefined;
+    const d=F.digitos(e.cnpj); if(!d) return null;
+    return EST.clientes.find(c=>F.digitos(c.cnpj)===d)||null;
+  };
+
+  function marcar(){
+    const STATE=CTX&&CTX.STATE; if(!STATE) return;
+    if(!STATE.res||!EST||!EST.pronto.clientes) return;
+    const porCod=Object.fromEntries(STATE.res.empresas.map(e=>[e.cod,e]));
+    document.querySelectorAll('#tb tr.row').forEach(tr=>{
+      const e=porCod[tr.dataset.c]; if(!e) return;
+      const td=tr.cells[0]; td.querySelector('.flowcad')?.remove();
+      const c=cadastro(e), s=document.createElement('span'); s.className='flowcad';
+      if(!c) s.innerHTML='<span class="pill atencao">Fora do cadastro</span>inclua no módulo Clientes';
+      else s.innerHTML=`<span class="pill ok">No cadastro</span>${esc(c.cct||'sem CCT definida')}${String(c.cod||'')!==String(e.cod)?` · código no cadastro: ${esc(c.cod||'vazio')}`:''}`;
+      td.appendChild(s);
+    });
+    let box=document.getElementById('flowCad');
+    if(!box){ box=document.createElement('div'); box.id='flowCad'; document.getElementById('extras').after(box); }
+    const fora=STATE.res.empresas.filter(e=>cadastro(e)===null);
+    box.innerHTML=fora.length?`<details class="extra"><summary>${fora.length} empresa(s) do extrato fora do cadastro de clientes</summary><div class="tbox" style="margin-top:8px;box-shadow:none"><table><thead><tr><th class="l">Cód.</th><th class="l">Empresa</th><th class="l">CNPJ</th></tr></thead><tbody>${fora.map(e=>`<tr><td class="l n">${esc(e.cod)}</td><td class="l">${esc(e.emp)}</td><td class="l n">${esc(e.cnpj)}</td></tr>`).join('')}</tbody></table></div><p class="rod" style="margin:8px 0 0">Cadastre essas empresas no módulo Clientes para o resultado ficar guardado na ficha de cada uma.</p></details>`:'';
+  }
+
+  const r2=x=>Math.round((x+Number.EPSILON)*100)/100;
+  const igual=(a,b)=>a&&b&&a.chave===b.chave&&a.st===b.st&&a.prevFolha===b.prevFolha&&a.prevDarf===b.prevDarf&&a.irFolha===b.irFolha&&a.irDarf===b.irDarf&&a.darfTotal===b.darfTotal;
+  let gravando=false;
+  async function gravar(R){
+    if(gravando||!R) return;
+    await F.conectar(); await esperar;
+    if(!EST||!EST.db||EST.erro) return;
+    gravando=true;
+    const quem=await F.usuarioId(), agora=new Date().toISOString();
+    const docs=Object.fromEntries(EST.auditorias.map(a=>[a._id,a]));
+    let n=0, falhou=0;
+    for(const e of R.empresas){
+      const d=F.digitos(e.cnpj), chave=F.compChave(e.comp||R.comp);
+      if(d.length!==14||!chave) continue;
+      const u={comp:e.comp||R.comp,chave,st:e.st,cod:e.cod,emp:e.emp,prevFolha:e.prevFolha,prevDarf:e.prevDarf,irFolha:e.irFolha,irDarf:e.irDarf,darfTotal:e.darfTotal,venc:e.venc||'',
+        msgs:e.ap.filter(a=>a.n!=='info').slice(0,5).map(a=>String(a.m).slice(0,300)),em:agora,por:quem};
+      const atual=docs[d];
+      const hAtual=(atual&&atual.hist||[]).find(h=>h.chave===chave);
+      if(atual&&(igual(atual.ultima,u)||(hAtual&&hAtual.st===u.st&&hAtual.difInss===r2(u.prevFolha-(u.prevDarf??0))&&hAtual.difIr===r2(u.irFolha-(u.irDarf??0))&&(!atual.ultima||atual.ultima.chave!==chave)))) continue;
+      const hist=(atual&&atual.hist||[]).filter(h=>h.chave!==chave);
+      hist.push({comp:u.comp,chave,st:u.st,difInss:r2(u.prevFolha-(u.prevDarf??0)),difIr:r2(u.irFolha-(u.irDarf??0)),em:agora});
+      hist.sort((a,b)=>b.chave.localeCompare(a.chave));
+      const ultima=(!atual||!atual.ultima||chave>=atual.ultima.chave)?u:atual.ultima;
+      try{ await EST.db.doc('auditorias/'+d).set({cnpj:d,ultima,hist:hist.slice(0,12)}); n++; }catch(x){ falhou++; }
+    }
+    gravando=false;
+    const toast=CTX.toast;
+    if(falhou) toast(`Não consegui guardar o resultado de ${falhou} empresa(s) no cadastro. Tente auditar de novo.`);
+    else if(n) toast(`Resultado guardado na ficha de ${n} empresa(s) no cadastro de clientes.`);
+  }
+
+  window.FlowAudHook={
+    ligar(ctx){ CTX=ctx; },
+    marcar(ctx){ CTX=ctx; marcar(); },
+    gravar(ctx){ CTX=ctx; gravar(ctx.STATE.res); }
+  };
+})();
+</script>
 
 </body></html>
