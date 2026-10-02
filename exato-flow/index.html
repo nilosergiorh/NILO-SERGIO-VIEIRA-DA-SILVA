@@ -1,0 +1,215 @@
+<title>EXATO FLOW</title>
+<meta name="apple-mobile-web-app-title" content="Exato Flow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: trilho escuro de módulos à esquerda (barra inferior no celular) + área do módulo; a tela Início mostra o fluxo da competência CCT → Ponto → Folha → Guias */
+:root{
+  --rail:#111111; --rail-ink:#f2f2f3; --rail-mute:#8d8d94; --rail-hover:#1f1f22;
+  --red:#C00000; --red-hi:#e01515;
+  --bg:#f3f3f5; --surf:#ffffff; --ink:#16171a; --mute:#5f626b; --line:#e2e3e8;
+  --ok:#14804f; --ok-bg:#e2f4ea; --wip:#9a5b00; --wip-bg:#fff1d6; --ext:#4a4d55; --ext-bg:#ececf0;
+  --f-disp:"Sora","Segoe UI",system-ui,sans-serif;
+  --f-body:"Manrope","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",Consolas,ui-monospace,monospace;
+  --railw:92px; --tabh:64px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141416; --surf:#1d1d20; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --wip:#e8a531; --wip-bg:rgba(232,165,49,.14); --ext:#c3c5cc; --ext-bg:rgba(255,255,255,.08);
+  --red-hi:#ff3b3b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141416; --surf:#1d1d20; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --wip:#e8a531; --wip-bg:rgba(232,165,49,.14); --ext:#c3c5cc; --ext-bg:rgba(255,255,255,.08);
+  --red-hi:#ff3b3b; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);overflow:hidden}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--red-hi);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:var(--railw) minmax(0,1fr);height:100%}
+/* trilho */
+.rail{background:var(--rail);color:var(--rail-ink);display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:14px 8px;border-right:1px solid #000}
+.mark{display:grid;place-items:center;gap:2px;padding:6px 0 14px;margin-bottom:6px;border-bottom:1px solid #26262a;background:none;border-left:0;border-right:0;border-top:0;cursor:pointer}
+.mark b{font:800 15px/1 var(--f-disp);letter-spacing:.04em;color:#fff}
+.mark i{font:700 10px/1 var(--f-disp);letter-spacing:.32em;color:var(--red-hi);font-style:normal;padding-left:.32em}
+.tab{display:grid;justify-items:center;gap:5px;padding:10px 4px;border:0;border-radius:12px;background:none;color:var(--rail-mute);cursor:pointer;position:relative;text-align:center}
+.tab svg{width:22px;height:22px}
+.tab span{font:600 10.5px/1.15 var(--f-disp);letter-spacing:.02em}
+.tab:hover{background:var(--rail-hover);color:var(--rail-ink)}
+.tab[aria-current="page"]{color:#fff;background:var(--rail-hover)}
+.tab[aria-current="page"]::before{content:"";position:absolute;left:-8px;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--red-hi)}
+.tab[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+.tab[aria-disabled="true"]:hover{background:none;color:var(--rail-mute)}
+.tab small{font:500 8.5px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--rail-mute)}
+.rail .by{margin-top:auto;text-align:center;font:600 8.5px/1.35 var(--f-disp);letter-spacing:.12em;text-transform:uppercase;color:#5c5c63}
+
+/* área */
+.stage{position:relative;min-width:0;height:100%}
+.view{position:absolute;inset:0}
+.view[hidden]{display:none!important}
+.view iframe{width:100%;height:100%;border:0;display:block;background:var(--bg)}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--mute);font-size:13px;pointer-events:none}
+
+/* início */
+#v-inicio{overflow:auto}
+.home{max-width:1080px;margin:0 auto;padding-block:36px 56px;padding-inline:28px;display:grid;gap:34px}
+.brand{display:grid;gap:10px}
+.brand .eyebrow{font:600 11px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.brand h1{margin:0;font:800 clamp(2.2rem,6vw,3.6rem)/1 var(--f-disp);letter-spacing:-.03em}
+.brand h1 em{font-style:normal;color:var(--red-hi)}
+.brand p{margin:0;font:600 clamp(1.02rem,2.2vw,1.25rem)/1.4 var(--f-disp);color:var(--ink);max-width:40ch;text-wrap:balance}
+.brand p span{display:block;color:var(--mute);font-weight:500}
+
+h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
+.lead{margin:0 0 16px;color:var(--mute);font-size:.92rem;max-width:68ch}
+
+/* fluxo da competência */
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:16px;background:var(--surf);overflow:hidden}
+.step{position:relative;padding:18px 20px 18px;display:grid;gap:6px;align-content:start;min-width:0;border-left:1px solid var(--line)}
+.step:first-child{border-left:0}
+.step:not(:last-child)::after{content:"";position:absolute;right:-7px;top:26px;width:12px;height:12px;background:var(--surf);border-top:1px solid var(--line);border-right:1px solid var(--line);transform:rotate(45deg);z-index:1}
+.step .n{font:500 11px var(--f-mono);color:var(--mute);letter-spacing:.06em}
+.step b{font:700 15px/1.25 var(--f-disp)}
+.step p{margin:0;font-size:.84rem;color:var(--mute)}
+.pill{justify-self:start;font:500 10px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.wip{background:var(--wip-bg);color:var(--wip)}
+.pill.ext{background:var(--ext-bg);color:var(--ext)}
+
+/* módulos */
+.mods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.mod{display:grid;grid-template-rows:auto auto 1fr auto;gap:10px;padding:20px;border-radius:16px;background:var(--surf);border:1px solid var(--line);min-width:0}
+.mod .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mod .ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--rail);color:#fff}
+.mod .ic svg{width:21px;height:21px}
+.mod h3{margin:0;font:700 1.05rem/1.25 var(--f-disp)}
+.mod ul{margin:0;padding-left:18px;font-size:.88rem;color:var(--mute);display:grid;gap:3px}
+.go{justify-self:start;display:inline-flex;align-items:center;gap:8px;border:0;border-radius:10px;padding:9px 16px;font:700 .86rem var(--f-disp);cursor:pointer;background:var(--red);color:#fff}
+.go:hover{background:var(--red-hi)}
+.go:disabled{background:var(--ext-bg);color:var(--mute);cursor:not-allowed}
+.note{font-size:.8rem;color:var(--mute);max-width:90ch;margin:0}
+
+@media (max-width:980px){.flow{grid-template-columns:1fr 1fr}.step:nth-child(3){border-left:0}.step:nth-child(n+3){border-top:1px solid var(--line)}.step:nth-child(2)::after{display:none}.mods{grid-template-columns:1fr 1fr}}
+@media (max-width:720px){
+  .app{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
+  .stage{grid-row:1}
+  .rail{grid-row:2;flex-direction:row;justify-content:space-around;gap:2px;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));border-right:0;border-top:1px solid #000}
+  .mark,.rail .by{display:none}
+  .tab{flex:1;padding:6px 2px;border-radius:10px}
+  .tab[aria-current="page"]::before{left:22%;right:22%;top:-6px;bottom:auto;width:auto;height:3px;border-radius:0 0 3px 3px}
+  .home{padding-inline:16px;padding-block:24px 40px;gap:28px}
+  .flow,.mods{grid-template-columns:1fr}
+  .step{border-left:0;border-top:1px solid var(--line)}
+  .step:first-child{border-top:0}
+  .step:not(:last-child)::after{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="app">
+  <nav class="rail" aria-label="Módulos do Exato Flow">
+    <button class="mark" type="button" data-go="inicio" aria-label="Início do Exato Flow"><b>EXATO</b><i>FLOW</i></button>
+    <button class="tab" type="button" data-go="inicio" id="t-inicio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/></svg>
+      <span>Início</span>
+    </button>
+    <button class="tab" type="button" data-go="sindical" id="t-sindical">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/><path d="M4 21h16"/></svg>
+      <span>Sindical</span>
+    </button>
+    <button class="tab" type="button" data-go="guias" id="t-guias">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="m10 14 2 2 4-4"/></svg>
+      <span>Guias</span>
+    </button>
+    <button class="tab" type="button" data-go="ponto" id="t-ponto" aria-disabled="true" title="Módulo em construção">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+      <span>Ponto</span><small>em breve</small>
+    </button>
+    <div class="by">por Exato<br>Soluções<br>Contábeis</div>
+  </nav>
+
+  <main class="stage">
+    <section class="view" id="v-inicio" aria-label="Início">
+      <div class="home">
+        <header class="brand">
+          <span class="eyebrow">Departamento Pessoal · Exato Soluções Contábeis</span>
+          <h1>EXATO <em>FLOW</em></h1>
+          <p>Processos conectados.<span>Departamento Pessoal mais simples.</span></p>
+        </header>
+
+        <section aria-labelledby="h-flow">
+          <h2 id="h-flow">O fluxo de cada competência</h2>
+          <p class="lead">Cada etapa usa o resultado da anterior. Um piso ou percentual de hora extra errado na convenção aparece lá na guia. Por isso os módulos ficam no mesmo programa.</p>
+          <div class="flow">
+            <div class="step"><span class="n">1 · CCT</span><b>Regras do sindicato</b><p>Piso, reajuste, adicionais e jornada de cada cliente.</p><span class="pill ok">Painel Sindical</span></div>
+            <div class="step"><span class="n">2 · Ponto</span><b>Apuração da jornada</b><p>Horas extras, faltas e adicionais pela regra da CCT.</p><span class="pill wip">Em construção</span></div>
+            <div class="step"><span class="n">3 · Folha</span><b>Cálculo no Domínio</b><p>Lançamentos importados e folha calculada.</p><span class="pill ext">Sistema Domínio</span></div>
+            <div class="step"><span class="n">4 · Guias</span><b>Conferência antes de pagar</b><p>Extrato da folha contra as DARFs da DCTFWeb.</p><span class="pill ok">Auditoria de Guias</span></div>
+          </div>
+        </section>
+
+        <section aria-labelledby="h-mods">
+          <h2 id="h-mods">Módulos</h2>
+          <p class="lead">Abra pelo trilho lateral ou pelos botões abaixo. Cada módulo continua aberto quando você troca de tela.</p>
+          <div class="mods">
+            <article class="mod">
+              <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg></span><span class="pill ok">Ativo</span></div>
+              <h3>Painel Sindical</h3>
+              <ul><li>Clientes enquadrados por sindicato e CCT</li><li>Pisos, prazos e alertas de vencimento</li><li>PDFs das convenções e pedidos de análise</li></ul>
+              <button class="go" type="button" data-go="sindical">Abrir Painel Sindical</button>
+            </article>
+            <article class="mod">
+              <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="m10 14 2 2 4-4"/></svg></span><span class="pill ok">Ativo</span></div>
+              <h3>Auditoria de Guias</h3>
+              <ul><li>INSS 1082 · 1099 · 1138 e IRRF 0561</li><li>Recálculo por funcionário</li><li>Lote das guias prontas para impressão</li></ul>
+              <button class="go" type="button" data-go="guias">Abrir Auditoria de Guias</button>
+            </article>
+            <article class="mod">
+              <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><span class="pill wip">Em construção</span></div>
+              <h3>Ponto</h3>
+              <ul><li>Leitura da folha ponto dos clientes</li><li>Horas extras e adicionais pela CCT</li><li>Exportação para o Domínio</li></ul>
+              <button class="go" type="button" disabled>Em breve</button>
+            </article>
+          </div>
+        </section>
+
+        <p class="note">Os dados do Painel Sindical (clientes, CCTs, PDFs) continuam os mesmos de antes. A Auditoria de Guias lê os PDFs só neste computador e não envia nada para a internet.</p>
+      </div>
+    </section>
+
+    <section class="view" id="v-sindical" aria-label="Painel Sindical" hidden></section>
+    <section class="view" id="v-guias" aria-label="Auditoria de Guias" hidden></section>
+  </main>
+</div>
+
+<script>
+const MODS={
+  sindical:{src:"modulos/painel-sindical.html",title:"Painel Sindical"},
+  guias:{src:"modulos/auditoria-guias.html",title:"Auditoria de Guias"}
+};
+const VIEWS=["inicio","sindical","guias"];
+function abrir(v){
+  if(!VIEWS.includes(v)) v="inicio";
+  const m=MODS[v], box=document.getElementById("v-"+v);
+  if(m && !box.querySelector("iframe")){
+    const ld=document.createElement("div"); ld.className="loading"; ld.textContent="Abrindo "+m.title+"…";
+    const f=document.createElement("iframe"); f.src=m.src; f.title=m.title;
+    f.addEventListener("load",()=>ld.remove(),{once:true});
+    box.append(ld,f);
+  }
+  VIEWS.forEach(x=>{document.getElementById("v-"+x).hidden = x!==v});
+  document.querySelectorAll(".tab[data-go]").forEach(t=>t.setAttribute("aria-current", t.dataset.go===v?"page":"false"));
+  try{history.replaceState(null,"","#"+v)}catch(e){}
+  try{localStorage.setItem("exatoflow.tela",v)}catch(e){}
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-go]"); if(!b) return;
+  if(b.getAttribute("aria-disabled")==="true"||b.disabled) return;
+  abrir(b.dataset.go);
+});
+let ini=(location.hash||"").slice(1);
+if(!VIEWS.includes(ini)){ try{ini=localStorage.getItem("exatoflow.tela")||""}catch(e){ini=""} }
+abrir(ini);
+</script>

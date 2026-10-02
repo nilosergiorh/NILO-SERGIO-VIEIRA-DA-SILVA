@@ -4,7 +4,7 @@ Repositório pessoal de Nilo Sergio Vieira da Silva.
 
 ## Estrutura
 
-> Em construção. Os diretórios e arquivos do projeto serão descritos aqui conforme forem adicionados.
+- [`exato-flow/`](exato-flow/README.md): **EXATO FLOW**, o ecossistema de Departamento Pessoal da Exato Soluções Contábeis, com os módulos Painel Sindical e Auditoria de Guias (Ponto em construção).
 
 ## Como usar
 
