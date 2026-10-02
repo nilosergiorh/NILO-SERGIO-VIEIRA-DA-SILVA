@@ -184,7 +184,8 @@ def main():
     print(f'  Endereço: {url}')
     print('  NÃO feche esta janela enquanto estiver usando o aplicativo.')
     print('=' * 60)
-    threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+    if not os.environ.get('PONTO_SEM_NAVEGADOR'):  # aberto pelo painel do Claude: não abre o navegador comum
+        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
