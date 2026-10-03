@@ -79,6 +79,11 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
   - Ficam no cadastro do funcionário (`funcionarios/{cnpj}`, campo `ausencias`) e valem para todos os meses que o período alcança. Também aparecem na ficha do cliente.
   - Na apuração, viram a ocorrência dos dias. O informado à mão vale antes do que veio da ficha; a ocorrência lançada no próprio dia vale antes dos dois.
   - Marcação de ponto em dia de férias, afastamento ou atestado gera alerta para conferir.
+  - **Importar relatório de afastamentos do Domínio** (PDF, planilha ou imagem):
+    - O Claude lê código, nome, motivo, início, fim ou retorno (retorno − 1 dia = último dia afastado) e o número de CAT ou benefício. CID e diagnóstico não são guardados.
+    - O motivo vira o tipo do Flow: doença, INSS e acidente → afastamento; maternidade, paternidade e outras licenças → licença; férias → férias; atestado até 15 dias → atestado. O tipo pode ser trocado na conferência.
+    - Proposta para conferir, com selo novo, já informado (não reimporta) ou fora do cadastro (inclui o funcionário só com nome e código).
+    - Os registros ficam com origem "do relatório" e podem ser excluídos.
 - O **E-exato** (canto inferior direito) conduz o processo e mostra o próximo passo conforme a situação: escolher o cliente, configurar, enviar o ponto, corrigir pendências (vai direto ao funcionário e ao dia), marcar como conferido e baixar o TXT. No celular ele começa recolhido, com um aviso de mensagem nova.
 
 1. **Relatórios do Domínio** (uma vez por cliente; repita quando houver admissão ou mudança de rubrica):

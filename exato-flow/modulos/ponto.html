@@ -91,6 +91,7 @@ label.btn.disabled{pointer-events:none}
 .passos .link{background:none;border:0;padding:0;color:var(--red-hi);font-weight:700;cursor:pointer}
 .rev table{min-width:640px}
 .rev details p{margin:6px 0 0;font-size:.74rem}
+.rev select{background:var(--surf2);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:.82rem;color:var(--ink);max-width:100%}
 .aus{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.2fr) auto auto minmax(0,1.2fr) auto;gap:10px;align-items:end}
 .aus .fld select,.aus .fld input{width:100%}
 @media (max-width:1000px){.aus{grid-template-columns:1fr 1fr}.aus .aobs{grid-column:1/-1}}
@@ -251,7 +252,9 @@ dialog::backdrop{background:var(--scrim)}
         </div>
       </div>
       <div class="card" id="ausCard">
-        <div class="row" style="justify-content:space-between"><h2>Férias e afastamentos</h2><span class="meta">Ficam no cadastro do funcionário e valem para todos os meses do período.</span></div>
+        <div class="row" style="justify-content:space-between"><h2>Férias e afastamentos</h2><div class="row"><label class="btn ghost sm" for="inAf">Importar relatório de afastamentos do Domínio</label><span class="meta" id="ausSt"></span></div></div>
+        <input id="inAf" type="file" accept=".pdf,.xlsx,.xls,.csv,image/jpeg,image/png,image/webp" multiple hidden>
+        <p class="meta" style="margin:0">Informe à mão ou importe o relatório de afastados gerado no Domínio. Os registros ficam no cadastro do funcionário e valem para todos os meses do período.</p>
         <div class="aus">
           <label class="fld">Funcionário<select id="ausFunc"></select></label>
           <label class="fld">Tipo<select id="ausTipo"></select></label>
@@ -260,6 +263,7 @@ dialog::backdrop{background:var(--scrim)}
           <label class="fld aobs">Observação<input id="ausObs" placeholder="ex.: férias 1º período, CAT nº…"></label>
           <button class="btn" type="button" id="ausAdd">Incluir</button>
         </div>
+        <div id="ausRev"></div>
         <div id="ausLista"></div>
       </div>
       <div class="files" id="files"></div>
@@ -400,7 +404,7 @@ async function abrir2(){
   if(!F.digitos(c.cnpj)){ toast("Este cliente está sem CNPJ no cadastro. Corrija no módulo Clientes."); return; }
   if(S.cli&&S.cli._id===c._id&&S.comp===comp) return;
   await salvarAgora();
-  S.cli=c; S.comp=comp; S.sel=null; S.fotos={}; S.arquivos=[]; S.prop=null;
+  S.cli=c; S.comp=comp; S.sel=null; S.fotos={}; S.arquivos=[]; S.prop=null; S.afast=null; if($("ausRev")) $("ausRev").innerHTML="";
   if(S.pararReg) S.pararReg(); S.reg=[];
   S.pararReg=F.assinarFuncionarios(c.cnpj,L=>{ S.reg=L||[]; if(S.doc&&S.cli===c){ const y=window.scrollY; render(); window.scrollTo(0,y); } });
   try{ localStorage.setItem("flow.ponto.ult",JSON.stringify({cli:$("cli").value,comp})); }catch(e){}
@@ -760,8 +764,9 @@ const rotAus=t=>(TIPOS_AUS.find(x=>x[0]===t)||[t,t])[1];
 function ausDe(r){
   if(!r) return [];
   const L=(r.ausencias||[]).map((a,i)=>({...a,i,origem:a.origem||"manual"}));
-  if(r.ferias_ini) L.push({tipo:"FERIAS",ini:r.ferias_ini,fim:r.ferias_fim||r.ferias_ini,origem:"ficha"});
-  if(r.afast_ini) L.push({tipo:"AFASTAMENTO",ini:r.afast_ini,fim:r.afast_fim||"",obs:r.afast_tipo||"",origem:"ficha"});
+  const ja=(t,i)=>L.some(a=>a.tipo===t&&a.ini===i);  // o que veio da ficha e já foi informado/importado não aparece duas vezes
+  if(r.ferias_ini&&!ja("FERIAS",r.ferias_ini)) L.push({tipo:"FERIAS",ini:r.ferias_ini,fim:r.ferias_fim||r.ferias_ini,origem:"ficha"});
+  if(r.afast_ini&&!L.some(a=>a.ini===r.afast_ini)) L.push({tipo:"AFASTAMENTO",ini:r.afast_ini,fim:r.afast_fim||"",obs:r.afast_tipo||"",origem:"ficha"});
   return L;
 }
 function renderAus(){
@@ -778,7 +783,7 @@ function renderAus(){
   const linhas=[];
   (S.reg||[]).forEach(r=>ausDe(r).forEach(a=>{ if(a.ini<=fim&&(!a.fim||a.fim>=ini)) linhas.push({r,a}); }));
   linhas.sort((x,y)=>x.a.ini.localeCompare(y.a.ini));
-  $("ausLista").innerHTML=linhas.length?`<div class="tbox"><table><thead><tr><th>Funcionário</th><th>Tipo</th><th>Período</th><th>Observação</th><th></th></tr></thead><tbody>${linhas.map(({r,a})=>`<tr><td>${esc(r.nome)}</td><td>${esc(rotAus(a.tipo))}</td><td class="mono">${br(a.ini)} a ${a.fim?br(a.fim):"sem data de retorno"}</td><td>${esc(a.obs||"")}${a.origem==="ficha"?' <span class="pill p-nt">da ficha</span>':""}</td><td>${a.origem==="manual"&&!S.ro?`<button class="btn ghost sm" type="button" data-ausdel="${esc(chave(r.nome))}:${a.i}">Excluir</button>`:""}</td></tr>`).join("")}</tbody></table></div>`
+  $("ausLista").innerHTML=linhas.length?`<div class="tbox"><table><thead><tr><th>Funcionário</th><th>Tipo</th><th>Período</th><th>Observação</th><th></th></tr></thead><tbody>${linhas.map(({r,a})=>`<tr><td>${esc(r.nome)}</td><td>${esc(rotAus(a.tipo))}</td><td class="mono">${br(a.ini)} a ${a.fim?br(a.fim):"sem data de retorno"}</td><td>${esc(a.obs||"")}${a.origem==="ficha"?' <span class="pill p-nt">da ficha</span>':a.origem==="dominio"?' <span class="pill p-nt">do relatório</span>':""}</td><td>${a.origem!=="ficha"&&!S.ro?`<button class="btn ghost sm" type="button" data-ausdel="${esc(chave(r.nome))}:${a.i}">Excluir</button>`:""}</td></tr>`).join("")}</tbody></table></div>`
     :`<p class="meta" style="margin:0">Nenhuma férias ou afastamento em ${esc(rotuloPeriodo())}.</p>`;
 }
 async function salvarAus(alterar){
@@ -805,6 +810,54 @@ async function incluirAus(){
   if(ok){ toast(`${rotAus(tipo)} de ${info.nome} incluído (${br(de)}${ate?" a "+br(ate):""}).`); $("ausDe").value=""; $("ausAte").value=""; $("ausObs").value=""; }
 }
 
+// ---------- importar o relatório de afastamentos do Domínio ----------
+function regPorAfast(a,lista){ return (a.codigo&&lista.find(f=>String(f.codigo)===String(a.codigo)))||lista.find(f=>chave(f.nome)===chave(a.nome))||null; }
+async function lerAfastDominio(files){
+  if(!S.cli) return;
+  const st=t=>{ $("ausSt").textContent=t; if(t) falar("📄 "+esc(t)); };
+  try{
+    const sample=await F.use("sample");
+    const r=await D.lerAfastamentos(files,{sample,XLSX:window.XLSX,progresso:st});
+    falar(""); st("");
+    if(!r.afastamentos.length){ toast("Não encontrei afastamentos nesse relatório."); return; }
+    S.afast={...r,arquivos:files.map(f=>f.name)}; renderAfast(); guia();
+  }catch(e){ console.error(e); falar(""); st(""); toast(e&&e.code==="sem_claude"?e.message:msgErro(e,"Não consegui ler o relatório de afastamentos.")); }
+}
+function renderAfast(){
+  const r=S.afast, el=$("ausRev"); if(!r){ el.innerHTML=""; return; }
+  const L=S.reg||[];
+  el.innerHTML=`<div class="rev">
+    <h3>Relatório de afastamentos: conferir (${r.afastamentos.length})</h3>
+    <p class="meta">Arquivo: ${r.arquivos.map(esc).join(", ")}. CID e diagnóstico não são guardados.</p>
+    ${r.alertas.length?`<ul class="check">${r.alertas.map(a=>`<li class="at"><i></i>${esc(a)}</li>`).join("")}</ul>`:""}
+    <div class="tbox"><table><thead><tr><th><input type="checkbox" id="afTodos" checked aria-label="Todos"></th><th>Funcionário</th><th>Motivo no Domínio</th><th>Entra como</th><th>De</th><th>Até</th><th></th></tr></thead><tbody>
+    ${r.afastamentos.map((a,i)=>{ const f=regPorAfast(a,L), ja=f&&ausDe(f).some(x=>x.ini===a.ini&&x.tipo===a.tipo&&x.origem!=="ficha");
+      return `<tr><td><input type="checkbox" data-af="${i}" ${ja?"":"checked"} aria-label="Usar ${esc(a.nome)}"></td><td>${esc(a.nome)}${a.codigo?` <span class="mono meta">${esc(a.codigo)}</span>`:""}</td><td>${esc(a.motivo)}${a.obs?` <span class="meta">· ${esc(a.obs)}</span>`:""}</td>
+        <td><select data-aft="${i}" aria-label="Tipo">${TIPOS_AUS.map(([k,rt])=>`<option value="${k}" ${k===a.tipo?"selected":""}>${esc(rt)}</option>`).join("")}</select></td>
+        <td class="mono">${br(a.ini)}</td><td class="mono">${a.fim?br(a.fim):"sem retorno"}</td>
+        <td>${ja?'<span class="pill p-nt">já informado</span>':f?'<span class="pill p-ok">novo</span>':'<span class="pill p-at">fora do cadastro</span>'}</td></tr>`; }).join("")}
+    </tbody></table></div>
+    <p class="meta">"Fora do cadastro": o funcionário será incluído no cadastro só com nome e código. Envie a ficha dele depois para completar.</p>
+    <div class="row"><button class="btn" type="button" id="afAplicar">Incluir afastamentos marcados</button><button class="btn ghost" type="button" id="afDesc">Descartar</button></div></div>`;
+}
+async function aplicarAfast(){
+  const r=S.afast; if(!r) return;
+  const sel=r.afastamentos.map((a,i)=>({...a,tipo:(document.querySelector(`[data-aft="${i}"]`)||{}).value||a.tipo,ok:(document.querySelector(`[data-af="${i}"]`)||{}).checked})).filter(a=>a.ok);
+  if(!sel.length){ toast("Nenhum afastamento marcado."); return; }
+  let n=0;
+  const ok=await salvarAus(lista=>{
+    for(const a of sel){
+      let f=regPorAfast(a,lista);
+      if(!f){ f={nome:a.nome,codigo:a.codigo,ausencias:[]}; lista.push(f); }
+      f.ausencias=f.ausencias||[];
+      if(f.ausencias.some(x=>x.ini===a.ini&&x.tipo===a.tipo)) continue;
+      f.ausencias.push({tipo:a.tipo,ini:a.ini,fim:a.fim||"",obs:[a.motivo,a.obs].filter(Boolean).join(" · "),origem:"dominio",em:new Date().toISOString()}); n++;
+    }
+    return lista;
+  });
+  if(ok){ S.afast=null; renderAfast(); toast(`${n} afastamento(s) incluído(s) a partir do relatório do Domínio.`); }
+}
+
 // ---------- E-exato conduz o processo ----------
 const G={nome:"",min:false,ocupado:""};
 G.min=matchMedia("(max-width:640px)").matches;  // no celular começa recolhido
@@ -816,6 +869,7 @@ function passoAtual(){
   if(G.ocupado) return {txt:G.ocupado,acoes:[]};
   if(!S.cli) return {txt:`Olá${G.nome?", "+esc(G.nome):""}! Eu sou o <b>E-exato</b> e vou conduzir a conferência do ponto. Escolha o <b>cliente</b> e a <b>competência</b> lá em cima.`,acoes:[["Escolher cliente","cli"]]};
   if(!S.doc||!S.regras) return {txt:"Abrindo o cliente…",acoes:[]};
+  if(S.afast) return {txt:`Li <b>${S.afast.afastamentos.length} afastamento(s)</b> no relatório do Domínio. Confira o tipo e as datas e clique em <b>Incluir afastamentos marcados</b>.`,acoes:[["Ir para a conferência","ausrev"]]};
   if(S.prop) return {txt:`Li os relatórios do Domínio. Confira as <b>rubricas</b> e os <b>funcionários</b> abaixo e clique em <b>Aplicar ao cliente</b>. Nada é gravado antes disso.`,acoes:[["Ir para a conferência dos relatórios","rev"]]};
   if(!configurado()){
     const falta=[]; if(!(S.reg||[]).length) falta.push("as <b>Fichas de Empregado</b>"); if(!S.regras.dominio) falta.push("o <b>Extrato Mensal</b>");
@@ -850,6 +904,7 @@ function acaoGuia(a){
   if(a==="inD"){ aba("arq"); S.cfgAberto=true; renderCfg(); $("inD").click(); return; }
   if(a==="inX"||a==="inF"){ aba("arq"); $(a).click(); return; }
   if(a==="modelo"){ baixarModelo(); return; }
+  if(a==="ausrev"){ aba("arq"); $("ausRev").scrollIntoView({behavior:"smooth",block:"start"}); return; }
   if(a==="aus"){ aba("arq"); $("ausCard").scrollIntoView({behavior:"smooth",block:"center"}); setTimeout(()=>$("ausFunc").focus(),400); return; }
   if(a==="pular"){ S.cfgPulou=true; aba("arq"); $("mesTit").scrollIntoView({behavior:"smooth"}); return; }
   if(a.startsWith("emp:")){ S.sel=a.slice(4); aba("conf"); renderLista(); renderDet(); const al=document.querySelector(".al .alta"); if(al) al.closest("tr").scrollIntoView({behavior:"smooth",block:"center"}); return; }
@@ -1023,6 +1078,9 @@ const minGuia=v=>{ G.min=v; try{ localStorage.setItem("flow.ponto.guiaMin",v?"1"
 $("guiaMin").onclick=()=>minGuia(true); $("guiaFace").onclick=()=>minGuia(!G.min);
 TIPOS_AUS.forEach(([k,r])=>$("ausTipo").insertAdjacentHTML("beforeend",`<option value="${k}">${esc(r)}</option>`));
 $("ausAdd").onclick=incluirAus;
+$("inAf").onchange=e=>{ if(S.cli&&e.target.files.length) lerAfastDominio([...e.target.files]); e.target.value=""; };
+$("ausRev").addEventListener("click",e=>{ if(e.target.id==="afAplicar") aplicarAfast(); if(e.target.id==="afDesc"){ S.afast=null; renderAfast(); guia(); } });
+$("ausRev").addEventListener("change",e=>{ if(e.target.id==="afTodos") document.querySelectorAll("[data-af]").forEach(c=>c.checked=e.target.checked); });
 $("ausDe").addEventListener("change",()=>{ if(!$("ausAte").value) $("ausAte").min=$("ausDe").value; });
 $("ausLista").addEventListener("click",async e=>{ const b=e.target.closest("[data-ausdel]"); if(!b) return;
   if(!b.dataset.arm){ b.dataset.arm=1; b.textContent="Confirmar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.arm; b.textContent="Excluir"; } },3500); return; }
