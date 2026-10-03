@@ -74,6 +74,11 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 **Uma vez por cliente:** ficha da empresa, fichas dos funcionários e Extrato Mensal (rubricas). **Todo mês:** só o ponto (Excel ou foto) → conferência → TXT.
 
 - Com o cliente configurado, a aba Arquivos abre direto no "Ponto do mês", e a configuração vira uma linha "✓ Cliente configurado", com o botão "Atualizar configuração" para admissões ou mudança de rubrica.
+- **Férias e afastamentos** (quadro na aba Arquivos):
+  - Informados à mão por funcionário: tipo (férias, afastamento INSS/acidente, atestado, licença, folga/compensação, falta abonada), de/até e observação.
+  - Ficam no cadastro do funcionário (`funcionarios/{cnpj}`, campo `ausencias`) e valem para todos os meses que o período alcança. Também aparecem na ficha do cliente.
+  - Na apuração, viram a ocorrência dos dias. O informado à mão vale antes do que veio da ficha; a ocorrência lançada no próprio dia vale antes dos dois.
+  - Marcação de ponto em dia de férias, afastamento ou atestado gera alerta para conferir.
 - O **E-exato** (canto inferior direito) conduz o processo e mostra o próximo passo conforme a situação: escolher o cliente, configurar, enviar o ponto, corrigir pendências (vai direto ao funcionário e ao dia), marcar como conferido e baixar o TXT. No celular ele começa recolhido, com um aviso de mensagem nova.
 
 1. **Relatórios do Domínio** (uma vez por cliente; repita quando houver admissão ou mudança de rubrica):

@@ -91,6 +91,10 @@ label.btn.disabled{pointer-events:none}
 .passos .link{background:none;border:0;padding:0;color:var(--red-hi);font-weight:700;cursor:pointer}
 .rev table{min-width:640px}
 .rev details p{margin:6px 0 0;font-size:.74rem}
+.aus{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.2fr) auto auto minmax(0,1.2fr) auto;gap:10px;align-items:end}
+.aus .fld select,.aus .fld input{width:100%}
+@media (max-width:1000px){.aus{grid-template-columns:1fr 1fr}.aus .aobs{grid-column:1/-1}}
+@media (max-width:520px){.aus{grid-template-columns:1fr}}
 /* E-exato */
 .guia{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;display:flex;align-items:flex-end;gap:10px;max-width:min(440px,calc(100vw - 32px))}
 .gface{flex:none;width:64px;height:64px;border-radius:50%;padding:0;border:2px solid var(--red-hi);background:var(--surf);overflow:hidden;cursor:pointer;box-shadow:0 10px 24px -8px rgba(0,0,0,.5);order:2}
@@ -245,6 +249,18 @@ dialog::backdrop{background:var(--scrim)}
           <input id="inF" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
           <p class="meta" id="fotoAviso" hidden></p>
         </div>
+      </div>
+      <div class="card" id="ausCard">
+        <div class="row" style="justify-content:space-between"><h2>Férias e afastamentos</h2><span class="meta">Ficam no cadastro do funcionário e valem para todos os meses do período.</span></div>
+        <div class="aus">
+          <label class="fld">Funcionário<select id="ausFunc"></select></label>
+          <label class="fld">Tipo<select id="ausTipo"></select></label>
+          <label class="fld">De<input id="ausDe" type="date"></label>
+          <label class="fld">Até<input id="ausAte" type="date"></label>
+          <label class="fld aobs">Observação<input id="ausObs" placeholder="ex.: férias 1º período, CAT nº…"></label>
+          <button class="btn" type="button" id="ausAdd">Incluir</button>
+        </div>
+        <div id="ausLista"></div>
       </div>
       <div class="files" id="files"></div>
       <div class="row"><button class="btn ghost" type="button" id="btnAddFunc">Adicionar funcionário manualmente</button><span class="meta">Use para lançar um cartão à mão ou quem não veio no arquivo.</span></div>
@@ -644,13 +660,15 @@ function infoFunc(e){
 function comDominio(e){
   const x=infoFunc(e); if(!x||!x._reg) return e.dias;
   const out={...e.dias}; const em=(d,i,f)=>i&&d>=i&&(!f||d<=f);
+  const aus=ausDe(x._reg).sort((a,b)=>(a.origem==="manual"?0:1)-(b.origem==="manual"?0:1)); // informado à mão vale antes da ficha
   for(const d of periodo()){
-    const v=out[d.data]; if(v&&(v.m||v.oc)) continue;
-    let oc="";
+    const v=out[d.data]; if(v&&v.oc) continue;  // ocorrência lançada no próprio dia prevalece
+    let oc="", o="dominio";
     if((x.admissao&&d.data<x.admissao)||(x.rescisao&&d.data>x.rescisao)) oc="NAOADM";
-    else if(em(d.data,x.ferias_ini,x.ferias_fim)) oc="FERIAS";
-    else if(em(d.data,x.afast_ini,x.afast_fim||"9999")) oc="AFASTAMENTO";
-    if(oc) out[d.data]={m:"",oc,o:"dominio"};
+    else { const a=aus.find(a=>em(d.data,a.ini,a.fim||"9999")); if(a){ oc=a.tipo; o=a.origem==="manual"?"ausencia":"dominio"; } }
+    if(!oc) continue;
+    if(v&&v.m){ if(oc!=="NAOADM") out[d.data]={...v,oc,o}; continue; }  // marcação em dia de férias/afastamento: o cálculo avisa
+    out[d.data]={m:"",oc,o};
   }
   return out;
 }
@@ -735,6 +753,58 @@ async function aplicarDominio(){
   }catch(e){ console.error(e); toast("Não foi possível gravar o cadastro de funcionários."); }
 }
 
+// ---------- férias e afastamentos informados à mão (ficam no cadastro do funcionário e valem para qualquer mês) ----------
+const TIPOS_AUS=[["FERIAS","Férias"],["AFASTAMENTO","Afastamento (INSS / acidente)"],["ATESTADO","Atestado médico"],["LICENCA","Licença (maternidade, paternidade, outras)"],["FOLGA","Folga / compensação"],["ABONO","Falta abonada"]];
+const rotAus=t=>(TIPOS_AUS.find(x=>x[0]===t)||[t,t])[1];
+// ausências de um funcionário do cadastro: as informadas aqui e as que vieram da ficha
+function ausDe(r){
+  if(!r) return [];
+  const L=(r.ausencias||[]).map((a,i)=>({...a,i,origem:a.origem||"manual"}));
+  if(r.ferias_ini) L.push({tipo:"FERIAS",ini:r.ferias_ini,fim:r.ferias_fim||r.ferias_ini,origem:"ficha"});
+  if(r.afast_ini) L.push({tipo:"AFASTAMENTO",ini:r.afast_ini,fim:r.afast_fim||"",obs:r.afast_tipo||"",origem:"ficha"});
+  return L;
+}
+function renderAus(){
+  if(!S.cli||!$("ausLista")) return;
+  const ini=periodo()[0].data, fim=periodo()[periodo().length-1].data;
+  // funcionários para escolher: cadastro ativo + quem está no ponto do mês
+  const nomes=new Map();
+  (S.reg||[]).filter(f=>F.funcAtivo(f,ini)).forEach(f=>nomes.set(chave(f.nome),{nome:f.nome,cod:f.codigo||""}));
+  S.doc.emps.forEach(e=>{ const r=regDe(e); const k=chave(r?r.nome:e.nome); if(!nomes.has(k)) nomes.set(k,{nome:r?r.nome:e.nome,cod:e.cod||""}); });
+  const sel=$("ausFunc"), atual=sel.value;
+  sel.innerHTML=`<option value="">Escolha o funcionário</option>`+[...nomes.entries()].sort((a,b)=>a[1].nome.localeCompare(b[1].nome,"pt-BR")).map(([k,v])=>`<option value="${esc(k)}" ${k===atual?"selected":""}>${esc(v.nome)}${v.cod?" · "+esc(v.cod):""}</option>`).join("");
+  S._ausNomes=nomes;
+  // lista: ausências que tocam o período
+  const linhas=[];
+  (S.reg||[]).forEach(r=>ausDe(r).forEach(a=>{ if(a.ini<=fim&&(!a.fim||a.fim>=ini)) linhas.push({r,a}); }));
+  linhas.sort((x,y)=>x.a.ini.localeCompare(y.a.ini));
+  $("ausLista").innerHTML=linhas.length?`<div class="tbox"><table><thead><tr><th>Funcionário</th><th>Tipo</th><th>Período</th><th>Observação</th><th></th></tr></thead><tbody>${linhas.map(({r,a})=>`<tr><td>${esc(r.nome)}</td><td>${esc(rotAus(a.tipo))}</td><td class="mono">${br(a.ini)} a ${a.fim?br(a.fim):"sem data de retorno"}</td><td>${esc(a.obs||"")}${a.origem==="ficha"?' <span class="pill p-nt">da ficha</span>':""}</td><td>${a.origem==="manual"&&!S.ro?`<button class="btn ghost sm" type="button" data-ausdel="${esc(chave(r.nome))}:${a.i}">Excluir</button>`:""}</td></tr>`).join("")}</tbody></table></div>`
+    :`<p class="meta" style="margin:0">Nenhuma férias ou afastamento em ${esc(rotuloPeriodo())}.</p>`;
+}
+async function salvarAus(alterar){
+  const lista=(S.reg||[]).map(f=>({...f,ausencias:[...(f.ausencias||[])]}));
+  const r=alterar(lista); if(r===false) return false;
+  try{ await F.salvarFuncionarios(S.cli.cnpj,F.mesclarFuncionarios([],r||lista)); S.reg=r||lista; if(S.doc.emps.length) sujo(); render(); return true; }
+  catch(e){ toast(e&&e.code==="invalid_argument"?"Você tem acesso só para consulta.":"Não foi possível gravar. Tente de novo."); return false; }
+}
+async function incluirAus(){
+  const k=$("ausFunc").value, tipo=$("ausTipo").value, de=$("ausDe").value, ate=$("ausAte").value, obs=$("ausObs").value.trim();
+  if(!k){ toast("Escolha o funcionário."); $("ausFunc").focus(); return; }
+  if(!de){ toast("Informe a data de início."); $("ausDe").focus(); return; }
+  if(ate&&ate<de){ toast("A data final é antes da inicial."); $("ausAte").focus(); return; }
+  if(tipo==="FERIAS"&&!ate){ toast("Informe também o último dia das férias."); $("ausAte").focus(); return; }
+  const info=S._ausNomes.get(k);
+  const ok=await salvarAus(lista=>{
+    let f=lista.find(x=>chave(x.nome)===k)||(info.cod&&lista.find(x=>String(x.codigo)===String(info.cod)));
+    if(!f){ f={nome:info.nome,codigo:info.cod,ausencias:[]}; lista.push(f); }
+    const novo={tipo,ini:de,fim:ate||"",obs,origem:"manual",em:new Date().toISOString()};
+    if((f.ausencias||[]).some(a=>a.ini<= (ate||"9999") && (!a.fim||a.fim>=de))) toast("Atenção: já existe outro registro nesse período para este funcionário.");
+    f.ausencias=[...(f.ausencias||[]),novo];
+    return lista;
+  });
+  if(ok){ toast(`${rotAus(tipo)} de ${info.nome} incluído (${br(de)}${ate?" a "+br(ate):""}).`); $("ausDe").value=""; $("ausAte").value=""; $("ausObs").value=""; }
+}
+
 // ---------- E-exato conduz o processo ----------
 const G={nome:"",min:false,ocupado:""};
 G.min=matchMedia("(max-width:640px)").matches;  // no celular começa recolhido
@@ -752,7 +822,7 @@ function passoAtual(){
     return {txt:`${ola}este cliente ainda não está configurado. É só <b>uma vez</b>: me envie ${falta.join(" e ")} do Domínio e eu aprendo as rubricas, os códigos e a jornada de cada funcionário.`,acoes:[["Enviar extrato e fichas","inD"],["Pular por agora","pular"]]};
   }
   const E=S.doc.emps;
-  if(!E.length) return {txt:`${ola}tudo pronto para <b>${esc(rotuloPeriodo())}</b>. Agora é só me enviar o <b>ponto do mês</b>: a planilha ou as fotos do cartão.`,acoes:[["Enviar planilha","inX"],["Enviar fotos","inF"],["Baixar modelo Excel","modelo"]]};
+  if(!E.length) return {txt:`${ola}tudo pronto para <b>${esc(rotuloPeriodo())}</b>. Agora é só me enviar o <b>ponto do mês</b>: a planilha ou as fotos do cartão. Se alguém estiver de <b>férias ou afastado</b>, informe no quadro "Férias e afastamentos".`,acoes:[["Enviar planilha","inX"],["Enviar fotos","inF"],["Informar férias","aus"],["Baixar modelo Excel","modelo"]]};
   const pend=E.filter(e=>e._ap&&e._ap.tot.alertasAltos), semCod=E.filter(e=>!e.cod);
   if(pend.length){ const e=pend[0], d=e._ap.dias.find(x=>x.alertas.some(a=>a.nivel==="alta"));
     return {txt:`Calculei o ponto de <b>${E.length}</b> funcionário(s). Há <b>${pend.reduce((t,x)=>t+x._ap.tot.alertasAltos,0)} dia(s)</b> para corrigir em ${pend.length} funcionário(s). Começando por <b>${esc(e.nome)}</b>${d?`, dia ${br(d.data).slice(0,5)}: ${esc(d.alertas.find(a=>a.nivel==="alta").t.toLowerCase())}`:""}.`,acoes:[["Mostrar","emp:"+e.id]]}; }
@@ -780,6 +850,7 @@ function acaoGuia(a){
   if(a==="inD"){ aba("arq"); S.cfgAberto=true; renderCfg(); $("inD").click(); return; }
   if(a==="inX"||a==="inF"){ aba("arq"); $(a).click(); return; }
   if(a==="modelo"){ baixarModelo(); return; }
+  if(a==="aus"){ aba("arq"); $("ausCard").scrollIntoView({behavior:"smooth",block:"center"}); setTimeout(()=>$("ausFunc").focus(),400); return; }
   if(a==="pular"){ S.cfgPulou=true; aba("arq"); $("mesTit").scrollIntoView({behavior:"smooth"}); return; }
   if(a.startsWith("emp:")){ S.sel=a.slice(4); aba("conf"); renderLista(); renderDet(); const al=document.querySelector(".al .alta"); if(al) al.closest("tr").scrollIntoView({behavior:"smooth",block:"center"}); return; }
   if(a==="txt"){ aba("txt"); return; }
@@ -792,7 +863,7 @@ function apurarTodos(){ for(const e of S.doc.emps){
   e._dv=comDominio(e); e._ap=P.apurar({...e,dias:e._dv},S.comp,S.regras); } }
 function render(){
   if(!S.doc) return;
-  apurarTodos(); renderArquivos(); renderLista(); renderDet(); renderTxt(); if(!S.prop) renderStatusDom(); else renderCfg(); guia();
+  apurarTodos(); renderArquivos(); renderAus(); renderLista(); renderDet(); renderTxt(); if(!S.prop) renderStatusDom(); else renderCfg(); guia();
   const st=S.doc.status, map={rascunho:["Em conferência","p-at"],conferido:["Conferido","p-ok"],exportado:["TXT gerado","p-ok"]};
   $("stPill").innerHTML=S.doc.emps.length?`<span class="pill ${map[st][1]}">${map[st][0]}</span>`:"";
   const alt=S.doc.emps.reduce((t,e)=>t+e._ap.tot.alertasAltos,0);
@@ -840,7 +911,7 @@ function renderDet(){
     <thead><tr><th>Dia</th><th>Marcações</th><th>Ocorrência</th><th class="n">Trab.</th><th class="n">Prev.</th><th class="n">HE útil</th><th class="n">HE 100%</th><th class="n">H. falta</th><th class="n">Not.</th><th>Alertas</th></tr></thead>
     <tbody>${a.dias.map(d=>{const k=d.data, dd=br(k).slice(0,5), x=(e._dv||e.dias)[k]||{};
       return `<tr class="${d.feriado?"fer":(d.dow===0||d.dow===6)?"we":""}" data-k="${k}">
-        <td class="d">${dd} ${DOW[d.dow]}<small>${esc(d.feriado||(x.o?({foto:"foto",excel:"planilha",dominio:"Domínio"}[x.o]||"manual"):""))}</small></td>
+        <td class="d">${dd} ${DOW[d.dow]}<small>${esc(d.feriado||(x.o?({foto:"foto",excel:"planilha",dominio:"Domínio",ausencia:"férias/afast."}[x.o]||"manual"):""))}</small></td>
         <td><input class="m" data-k="${k}" value="${esc(x.m||"")}" placeholder="${d.esperado?"sem marcação":""}" aria-label="Marcações do dia ${dd}"></td>
         <td><select data-oc="${k}" aria-label="Ocorrência do dia ${dd}">${ocOpts(x.oc||"")}</select></td>
         <td class="n ${d.trab?"":"z"}">${N(d.trab)||"–"}</td><td class="n ${d.esperado?"":"z"}">${N(d.esperado)||"–"}</td>
@@ -950,6 +1021,12 @@ $("btnModelo").onclick=baixarModelo;
 $("guiaAcoes").addEventListener("click",e=>{ const b=e.target.closest("[data-g]"); if(b) acaoGuia(b.dataset.g); });
 const minGuia=v=>{ G.min=v; try{ localStorage.setItem("flow.ponto.guiaMin",v?"1":"0"); }catch(e){} guia(); };
 $("guiaMin").onclick=()=>minGuia(true); $("guiaFace").onclick=()=>minGuia(!G.min);
+TIPOS_AUS.forEach(([k,r])=>$("ausTipo").insertAdjacentHTML("beforeend",`<option value="${k}">${esc(r)}</option>`));
+$("ausAdd").onclick=incluirAus;
+$("ausDe").addEventListener("change",()=>{ if(!$("ausAte").value) $("ausAte").min=$("ausDe").value; });
+$("ausLista").addEventListener("click",async e=>{ const b=e.target.closest("[data-ausdel]"); if(!b) return;
+  if(!b.dataset.arm){ b.dataset.arm=1; b.textContent="Confirmar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.arm; b.textContent="Excluir"; } },3500); return; }
+  const [k,i]=b.dataset.ausdel.split(":"); await salvarAus(lista=>{ const f=lista.find(x=>chave(x.nome)===k); if(!f) return false; f.ausencias.splice(+i,1); return lista; }); toast("Registro excluído."); });
 $("btnCfg").onclick=()=>{ S.cfgAberto=!S.cfgAberto; renderCfg(); };
 $("cfgPassos").addEventListener("click",e=>{ const b=e.target.closest("[data-abrir]"); if(b){ try{ window.parent.postMessage({flow:"abrir",tela:b.dataset.abrir},location.origin); }catch(x){} } });
 $("inD").onchange=e=>{ if(S.cli) lerDominio([...e.target.files]); e.target.value=""; };
