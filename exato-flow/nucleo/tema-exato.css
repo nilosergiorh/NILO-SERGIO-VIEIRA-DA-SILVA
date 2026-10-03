@@ -167,6 +167,8 @@ html[data-mod="ponto"] .btn.ghost{background:linear-gradient(160deg,rgba(255,255
 html[data-mod="ponto"] .btn:active{transform:translateY(3px)}
 html[data-mod="ponto"] pre.txt{background:rgba(0,0,0,.35);border-color:var(--fx-edge)}
 html[data-mod="ponto"] dialog{background:#141418;color:#f3f3f5}
+html[data-mod="ponto"] .gbal{background:linear-gradient(160deg,rgba(40,40,46,.97),rgba(20,20,24,.97));backdrop-filter:blur(14px);border-color:var(--fx-edge2);box-shadow:var(--fx-depth),0 0 30px -12px var(--fx-glow)}
+html[data-mod="ponto"] .gface{background:radial-gradient(circle at 40% 35%,#2b2e34,#141414);box-shadow:0 10px 24px -8px rgba(0,0,0,.7),0 0 22px -6px var(--fx-glow)}
 html[data-mod="ponto"] .toast{background:rgba(28,28,32,.94);color:#f3f3f5;border:1px solid var(--fx-edge2);border-left:3px solid #ff2d2d}
 
 /* ---------- movimento reduzido ---------- */

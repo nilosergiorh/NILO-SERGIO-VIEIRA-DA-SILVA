@@ -117,7 +117,7 @@
 
     // o Painel Sindical tem o próprio E-exato: o do trilho se recolhe lá
     const sincronizar = () => {
-      const sind = document.querySelector('.tab[data-go="sindical"][aria-current="page"]');
+      const sind = document.querySelector('.tab[data-go="sindical"][aria-current="page"], .tab[data-go="ponto"][aria-current="page"]'); // Sindical e Ponto têm o próprio E-exato
       box.style.visibility = sind ? "hidden" : "";
       if (sind) balao.hidden = true;
     };
@@ -127,7 +127,7 @@
     primeiroNome().then(nome => {
       if (fala) fala.innerHTML = `Olá${nome ? ", " + esc(nome) : ""}! Eu sou o <b>E-exato</b>. Vamos deixar o DP em dia?`;
       setTimeout(() => {
-        if (document.querySelector('.tab[data-go="sindical"][aria-current="page"]')) return;
+        if (document.querySelector('.tab[data-go="sindical"][aria-current="page"], .tab[data-go="ponto"][aria-current="page"]')) return;
         const d = dicas();
         dizer(`Olá${nome ? ", " + esc(nome) : ""}! ` + d[0], 9000);
       }, 1800);

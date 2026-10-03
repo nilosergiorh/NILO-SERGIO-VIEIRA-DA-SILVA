@@ -71,6 +71,11 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 
 ## Conferência de ponto
 
+**Uma vez por cliente:** ficha da empresa, fichas dos funcionários e Extrato Mensal (rubricas). **Todo mês:** só o ponto (Excel ou foto) → conferência → TXT.
+
+- Com o cliente configurado, a aba Arquivos abre direto no "Ponto do mês", e a configuração vira uma linha "✓ Cliente configurado", com o botão "Atualizar configuração" para admissões ou mudança de rubrica.
+- O **E-exato** (canto inferior direito) conduz o processo e mostra o próximo passo conforme a situação: escolher o cliente, configurar, enviar o ponto, corrigir pendências (vai direto ao funcionário e ao dia), marcar como conferido e baixar o TXT. No celular ele começa recolhido, com um aviso de mensagem nova.
+
 1. **Relatórios do Domínio** (uma vez por cliente; repita quando houver admissão ou mudança de rubrica):
    - **Extrato Mensal** (PDF): lido direto, sem custo, com o mesmo leitor da Auditoria de Guias. Traz os empregados com o código e todos os eventos lançados. O Flow escolhe, pela descrição, as rubricas de HE (com o percentual), HE 100%, adicional noturno, redução noturna, horas faltas, falta de dia inteiro e DSR. Reflexos e médias ficam de fora.
    - **Fichas de Empregado** e outros relatórios (PDF, planilha ou imagem): lidos pelo Claude. Trazem cargo, admissão, nascimento, horário de trabalho (vira jornada do funcionário), férias, afastamento e rescisão.

@@ -82,8 +82,36 @@ label.btn.disabled{pointer-events:none}
 .file .meta{white-space:normal}
 
 .rev{display:grid;gap:12px;border-top:1px solid var(--line);padding-top:12px}
+.passos{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:.88rem}
+.passos li{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.passos i{flex:none;width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font:700 11px var(--f-mono);font-style:normal;background:var(--nt-bg);color:var(--nt);transform:translateY(3px)}
+.passos .ok i{background:var(--ok-bg);color:var(--ok)}
+.passos .pend i{background:var(--at-bg);color:var(--at)}
+.passos b{font-weight:700}
+.passos .link{background:none;border:0;padding:0;color:var(--red-hi);font-weight:700;cursor:pointer}
 .rev table{min-width:640px}
 .rev details p{margin:6px 0 0;font-size:.74rem}
+/* E-exato */
+.guia{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;display:flex;align-items:flex-end;gap:10px;max-width:min(440px,calc(100vw - 32px))}
+.gface{flex:none;width:64px;height:64px;border-radius:50%;padding:0;border:2px solid var(--red-hi);background:var(--surf);overflow:hidden;cursor:pointer;box-shadow:0 10px 24px -8px rgba(0,0,0,.5);order:2}
+.gface img{width:100%;height:100%;object-fit:cover;display:block;animation:gBob 3.4s ease-in-out infinite}
+.guia[data-humor="pensando"] .gface img{animation:gBob .9s ease-in-out infinite}
+.guia[data-humor="feliz"] .gface img{animation:gHop .5s ease-in-out 2}
+@keyframes gBob{50%{transform:translateY(-3px)}} @keyframes gHop{50%{transform:translateY(-8px)}}
+.gbal{background:var(--surf);border:1px solid var(--line);border-left:3px solid var(--red-hi);border-radius:16px 16px 4px 16px;padding:10px 12px 12px;box-shadow:0 14px 34px -12px rgba(0,0,0,.45);display:grid;gap:8px;min-width:0}
+.gtop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.gtop b{font:700 .82rem var(--f-disp);color:var(--red-hi)}
+.gtop button{border:0;background:none;color:var(--mute);cursor:pointer;font-size:1.1rem;line-height:1;padding:0 4px}
+.gbal p{margin:0;font-size:.88rem;line-height:1.45}
+.gacoes{display:flex;flex-wrap:wrap;gap:6px}
+.gacoes:empty{display:none}
+.guia.min .gbal{display:none}
+.gface{position:relative;overflow:visible}
+.gface img{border-radius:50%}
+.guia.min.novo .gface::after{content:"";position:absolute;right:0;top:0;width:14px;height:14px;border-radius:50%;background:var(--red-hi);border:2px solid var(--surf)}
+.wrap{padding-bottom:180px}
+@media (max-width:640px){.gface{width:52px;height:52px}.gbal p{font-size:.84rem}.gbal{max-height:45vh;overflow:auto}}
+@media (prefers-reduced-motion:reduce){.gface img{animation:none!important}}
 /* conferencia */
 .conf{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:start}
 .emps{background:var(--surf);border:1px solid var(--line);border-radius:14px;overflow:hidden;position:sticky;top:8px;max-height:calc(100vh - 16px);display:flex;flex-direction:column}
@@ -168,7 +196,7 @@ dialog::backdrop{background:var(--scrim)}
 <div class="wrap">
   <header>
     <h1>Conferência de ponto</h1>
-    <p class="lead">Envie o extrato e as fichas do Domínio e o ponto do cliente em Excel ou foto. O Flow aprende as rubricas e os funcionários do Domínio, calcula horas extras, horas faltas, faltas, DSR e adicional noturno, cruza tudo e gera o TXT para o Domínio Folha depois da conferência.</p>
+    <p class="lead"><b>Todo mês:</b> envie o ponto do cliente em Excel ou foto. O Flow calcula horas extras, horas faltas, faltas, DSR e adicional noturno com as rubricas e jornadas do Domínio e deixa o TXT pronto para importar. A configuração de cada cliente (fichas e extrato do Domínio) é feita uma vez só.</p>
   </header>
 
   <div class="bar">
@@ -193,13 +221,17 @@ dialog::backdrop{background:var(--scrim)}
     <!-- ARQUIVOS -->
     <section id="t-arq" style="display:grid;gap:14px;margin-top:14px">
       <div class="card drop" id="dropD">
-        <div class="row" style="justify-content:space-between"><h2>Relatórios do Domínio</h2><span class="meta" id="domStatus"></span></div>
-        <p>Envie o <b>Extrato Mensal</b> (ou Movimentos) para o Flow descobrir as rubricas que o cliente usa para hora extra, noturno, faltas e DSR, e as <b>Fichas de Empregado</b> para o cadastro de funcionários (código, jornada, admissão, férias, afastamentos). O cadastro de funcionários é o mesmo da ficha do cliente no módulo Clientes. Faça uma vez por cliente e repita quando houver admissão ou mudança de rubrica.</p>
-        <div class="row"><label class="btn" for="inD">Selecionar relatórios</label></div>
-        <input id="inD" type="file" accept=".pdf,.xlsx,.xls,.csv,image/jpeg,image/png,image/webp" multiple hidden>
+        <div class="row" style="justify-content:space-between"><h2 id="cfgTit">Configuração do cliente</h2><button class="btn ghost sm" type="button" id="btnCfg" hidden>Atualizar configuração</button></div>
+        <ol class="passos" id="cfgPassos"></ol>
+        <div id="cfgCorpo">
+          <p>Feita <b>uma vez por cliente</b>. Envie o <b>Extrato Mensal</b> do Domínio (de onde o Flow aprende as rubricas de hora extra, noturno, faltas e DSR) e as <b>Fichas de Empregado</b> (código, jornada, admissão, férias, afastamentos). Repita só quando houver admissão ou mudança de rubrica.</p>
+          <div class="row"><label class="btn" for="inD">Enviar extrato e fichas</label><span class="meta" id="domStatus"></span></div>
+          <input id="inD" type="file" accept=".pdf,.xlsx,.xls,.csv,image/jpeg,image/png,image/webp" multiple hidden>
+        </div>
         <div id="domRev"></div>
       </div>
-      <div class="drops">
+      <h2 id="mesTit" style="margin:4px 0 -4px">Ponto do mês</h2>
+      <div class="drops" id="mesDrops">
         <div class="drop" id="dropX">
           <h2>Ponto em planilha (Excel ou CSV)</h2>
           <p>Uma linha por funcionário e dia, com as marcações em colunas. Funciona com o modelo da Exato e com a maioria das planilhas de relógio de ponto. Se o formato for diferente, o Claude organiza a leitura.</p>
@@ -293,6 +325,10 @@ dialog::backdrop{background:var(--scrim)}
 </div>
 
 <dialog id="dlgZoom"><div class="zoom"><div class="row" style="justify-content:space-between"><b id="zTit"></b><button class="btn ghost sm" type="button" id="zFechar">Fechar</button></div><div class="img"><img id="zImg" alt="Foto do cartão ponto"></div></div></dialog>
+<aside class="guia" id="guia" aria-live="polite">
+  <button class="gface" type="button" id="guiaFace" aria-label="E-exato: mostrar ou recolher"><img src="../nucleo/mascote-rosto.png" alt=""></button>
+  <div class="gbal"><div class="gtop"><b>E-exato</b><button type="button" id="guiaMin" aria-label="Recolher">–</button></div><p id="guiaTxt"></p><div class="gacoes" id="guiaAcoes"></div></div>
+</aside>
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -344,7 +380,7 @@ async function abrir(){
 }
 async function abrir2(){
   const c=acharCliente($("cli").value), comp=$("comp").value;
-  if(!c||!comp){ $("area").hidden=true; $("semCli").hidden=false; return; }
+  if(!c||!comp){ $("area").hidden=true; $("semCli").hidden=false; S.cli=null; guia(); return; }
   if(!F.digitos(c.cnpj)){ toast("Este cliente está sem CNPJ no cadastro. Corrija no módulo Clientes."); return; }
   if(S.cli&&S.cli._id===c._id&&S.comp===comp) return;
   await salvarAgora();
@@ -532,9 +568,12 @@ function msgErro(e,padrao){
   return ({not_granted:"Você não autorizou o uso do Claude nesta página.",rate_limited:"Muitas leituras seguidas. Aguarde um pouco e envie de novo.",image_rejected:"Foto não aceita: use JPG ou PNG com menos de 20 MB.",invalid_json:"O Claude não devolveu uma leitura válida. Envie de novo.",images_unavailable:"Leitura de fotos indisponível nesta visualização.",refused:"O Claude não conseguiu ler este arquivo."})[c]||padrao;
 }
 function registrar(nome,tipo,txt,url){
+  if(/lendo|organizando/i.test(txt)) falar(`Estou lendo <b>${esc(nome)}</b>… ${/foto/i.test(tipo)?"fotos podem levar até 1 minuto.":"já volto."}`);
   S.arquivos.push({nome,tipo,txt,st:"at",url}); renderArquivos(); return S.arquivos.length-1;
 }
-function atualizar(i,st,txt){ S.arquivos[i].st=st; S.arquivos[i].txt=txt; renderArquivos(); }
+function atualizar(i,st,txt){ S.arquivos[i].st=st; S.arquivos[i].txt=txt; renderArquivos();
+  if(st==="at"&&/organizando/.test(txt)) falar("Formato diferente do modelo: estou organizando a leitura com cuidado…");
+  else if(st==="er"){ falar(""); toast(txt); } else if(st==="ok"||st==="at") falar(""); }
 function renderArquivos(){
   const ant=(S.doc.arquivos||[]).filter(a=>!S.arquivos.some(x=>x.nome===a.nome));
   $("files").innerHTML=S.arquivos.map(a=>`<div class="file"><span class="pill ${a.st==="ok"?"p-ok":a.st==="er"?"p-er":"p-at"}">${esc(a.tipo)}</span><div><b>${esc(a.nome)}</b><span class="meta">${esc(a.txt)}</span></div>${a.url?`<button class="btn ghost sm" type="button" data-zoom="${esc(a.url)}" data-nome="${esc(a.nome)}">Ver foto</button>`:"<span></span>"}</div>`).join("")
@@ -615,7 +654,7 @@ function comDominio(e){
   }
   return out;
 }
-function setDom(t){ $("domStatus").textContent=t; }
+function setDom(t){ $("domStatus").textContent=t; if(t&&/lendo|Lendo/.test(t)) falar("📄 "+esc(t)); }
 async function lerDominio(files){
   if(!S.cli) return;
   try{
@@ -623,12 +662,33 @@ async function lerDominio(files){
     const prop=await D.lerRelatorios(files,{cnpj:F.digitos(S.cli.cnpj),sample,XLSX:window.XLSX,progresso:setDom,refData:periodo()[0].data});
     if(prop.empresa.codigo&&S.cli.cod&&String(prop.empresa.codigo)!==String(S.cli.cod)) prop.alertas.unshift(`O código da empresa nos relatórios (${prop.empresa.codigo}) é diferente do cadastro de clientes (${S.cli.cod}). O TXT usa o do cadastro: corrija no módulo Clientes se for o caso.`);
     if(!prop.catalogo.length&&!prop.funcionarios.length){ setDom("Não encontrei extrato, fichas nem rubricas nesses arquivos."); toast("Envie o Extrato Mensal do Domínio em PDF e as Fichas de Empregado."); return; }
-    S.prop=prop; setDom("Leitura concluída: confira abaixo e aplique."); renderRevisao();
-  }catch(e){ console.error(e); setDom(msgErro(e,e&&e.message||"Não consegui ler os relatórios.")); }
+    S.prop=prop; setDom("Leitura concluída: confira abaixo e aplique."); falar(""); renderRevisao(); renderCfg();
+  }catch(e){ console.error(e); falar(""); setDom(msgErro(e,e&&e.message||"Não consegui ler os relatórios.")); }
+}
+// configuração do cliente (uma vez) x ponto do mês (todo mês)
+function configurado(){ return !!(S.regras&&S.regras.dominio&&(S.reg||[]).length); }
+function renderCfg(){
+  if(!S.cli||!S.regras) return;
+  const reg=S.reg||[], d=S.regras.dominio, c=S.cli, ok=configurado();
+  const emp=!!((c.emp_docs&&c.emp_docs.length)||c.emp_fpas);
+  const rubs=PAPEIS.map(([p])=>rubAtual(p)).filter(Boolean).join(", ");
+  const passo=(okp,n,txt,extra)=>`<li class="${okp?"ok":"pend"}"><i>${okp?"✓":n}</i><span>${txt}</span>${extra||""}</li>`;
+  $("cfgPassos").innerHTML=
+    passo(emp,1,emp?"<b>Ficha da empresa</b> anexada":"<b>Ficha da empresa</b>: anexe na ficha do cliente, no módulo Clientes (opcional para o ponto)",emp?"":`<button class="link" type="button" data-abrir="clientes">Abrir Clientes →</button>`)+
+    passo(reg.length,2,reg.length?`<b>${reg.length} funcionário(s)</b> no cadastro`:"<b>Fichas dos funcionários</b>: envie abaixo (ou na ficha do cliente, em Clientes)")+
+    passo(!!d,3,d?`<b>Rubricas do Domínio</b> conferidas em ${new Date(d.lido_em).toLocaleDateString("pt-BR")}: ${esc(rubs)}`:"<b>Rubricas do Domínio</b>: envie abaixo o Extrato Mensal de um mês com horas extras e faltas");
+  $("cfgTit").textContent=ok?"✓ Cliente configurado":"Configuração inicial do cliente (uma vez)";
+  $("btnCfg").hidden=!ok||!!S.prop;
+  $("cfgCorpo").hidden=ok&&!S.cfgAberto&&!S.prop;
+  $("btnCfg").textContent=S.cfgAberto?"Fechar":"Atualizar configuração";
+  // cliente configurado: o ponto do mês vem primeiro
+  $("dropD").style.order=ok?"5":""; 
+  $("mesTit").textContent=ok?"Ponto do mês: envie a planilha ou as fotos do cartão":"Ponto do mês";
 }
 function renderStatusDom(){
+  renderCfg();
   const d=S.regras.dominio, n=(S.reg||[]).length;
-  if(!S.prop) setDom(`${n?n+" funcionário(s) no cadastro":"Nenhum funcionário no cadastro"}${d?` · rubricas conferidas em ${new Date(d.lido_em).toLocaleDateString("pt-BR")}: ${PAPEIS.map(([p])=>rubAtual(p)).filter(Boolean).join(", ")}`:" · rubricas ainda não conferidas com o Domínio"}`);
+  if(!S.prop) setDom("");  // a situação aparece nos passos da configuração
 }
 function renderRevisao(){
   const p=S.prop; if(!p){ $("domRev").innerHTML=""; renderStatusDom(); return; }
@@ -671,8 +731,59 @@ async function aplicarDominio(){
     if(PAPEIS.some(([k])=>lida[k])) R.dominio={lido_em:new Date().toISOString(),arquivos:p.arquivos.map(a=>a.nome),catalogo:p.catalogo.map(x=>({cod:x.cod,desc:x.desc}))};
     S.doc.emps.forEach(e=>infoFunc(e)); // cria as jornadas das fichas
     for(const e of S.doc.emps){ const x=infoFunc(e); if(x){ if(!e.cod&&x.cod) e.cod=String(x.cod); if(x.jornada&&(!e.jornada||e.jornada===R.jornadas[0].id)) e.jornada=x.jornada; } }
-    if(await salvarRegras(true)){ S.prop=null; preencherRegras(); if(S.doc.emps.length) sujo(); render(); toast(`Aplicado: ${sel.length} funcionário(s) no cadastro${R.dominio?" e rubricas do Domínio":""}.${avisos.length?" "+avisos.join(" "):""}`,7000); }
+    if(await salvarRegras(true)){ S.prop=null; S.cfgAberto=false; renderRevisao(); preencherRegras(); if(S.doc.emps.length) sujo(); render(); toast(`Aplicado: ${sel.length} funcionário(s) no cadastro${R.dominio?" e rubricas do Domínio":""}.${avisos.length?" "+avisos.join(" "):""}`,7000); }
   }catch(e){ console.error(e); toast("Não foi possível gravar o cadastro de funcionários."); }
+}
+
+// ---------- E-exato conduz o processo ----------
+const G={nome:"",min:false,ocupado:""};
+G.min=matchMedia("(max-width:640px)").matches;  // no celular começa recolhido
+try{ const v=localStorage.getItem("flow.ponto.guiaMin"); if(v!=null) G.min=v==="1"; }catch(e){}
+F.use("user").then(async u=>{ if(!u) return; try{ const me=await u.me(); G.nome=String((me&&me.name)||"").trim().split(/\s+/)[0]||""; guia(); }catch(e){} });
+// passo atual do processo: {txt, acoes:[[rotulo, acao]]}
+function passoAtual(){
+  const ola=G.nome?`${esc(G.nome)}, `:"";
+  if(G.ocupado) return {txt:G.ocupado,acoes:[]};
+  if(!S.cli) return {txt:`Olá${G.nome?", "+esc(G.nome):""}! Eu sou o <b>E-exato</b> e vou conduzir a conferência do ponto. Escolha o <b>cliente</b> e a <b>competência</b> lá em cima.`,acoes:[["Escolher cliente","cli"]]};
+  if(!S.doc||!S.regras) return {txt:"Abrindo o cliente…",acoes:[]};
+  if(S.prop) return {txt:`Li os relatórios do Domínio. Confira as <b>rubricas</b> e os <b>funcionários</b> abaixo e clique em <b>Aplicar ao cliente</b>. Nada é gravado antes disso.`,acoes:[["Ir para a conferência dos relatórios","rev"]]};
+  if(!configurado()){
+    const falta=[]; if(!(S.reg||[]).length) falta.push("as <b>Fichas de Empregado</b>"); if(!S.regras.dominio) falta.push("o <b>Extrato Mensal</b>");
+    return {txt:`${ola}este cliente ainda não está configurado. É só <b>uma vez</b>: me envie ${falta.join(" e ")} do Domínio e eu aprendo as rubricas, os códigos e a jornada de cada funcionário.`,acoes:[["Enviar extrato e fichas","inD"],["Pular por agora","pular"]]};
+  }
+  const E=S.doc.emps;
+  if(!E.length) return {txt:`${ola}tudo pronto para <b>${esc(rotuloPeriodo())}</b>. Agora é só me enviar o <b>ponto do mês</b>: a planilha ou as fotos do cartão.`,acoes:[["Enviar planilha","inX"],["Enviar fotos","inF"],["Baixar modelo Excel","modelo"]]};
+  const pend=E.filter(e=>e._ap&&e._ap.tot.alertasAltos), semCod=E.filter(e=>!e.cod);
+  if(pend.length){ const e=pend[0], d=e._ap.dias.find(x=>x.alertas.some(a=>a.nivel==="alta"));
+    return {txt:`Calculei o ponto de <b>${E.length}</b> funcionário(s). Há <b>${pend.reduce((t,x)=>t+x._ap.tot.alertasAltos,0)} dia(s)</b> para corrigir em ${pend.length} funcionário(s). Começando por <b>${esc(e.nome)}</b>${d?`, dia ${br(d.data).slice(0,5)}: ${esc(d.alertas.find(a=>a.nivel==="alta").t.toLowerCase())}`:""}.`,acoes:[["Mostrar","emp:"+e.id]]}; }
+  if(semCod.length) return {txt:`Falta o <b>código do Domínio</b> de ${semCod.length} funcionário(s), começando por <b>${esc(semCod[0].nome)}</b>. Sem ele não consigo montar o TXT.`,acoes:[["Mostrar","emp:"+semCod[0].id]]};
+  if(S.doc.status==="rascunho"){
+    const bloq=!S.podeExportar;
+    return {txt:bloq?`Quase lá. Veja na aba <b>TXT do Domínio</b> o que ainda está em vermelho.`:`As marcações estão sem pendências. Dê uma olhada nos totais por funcionário e, se estiver tudo certo, <b>marque como conferido</b>.`,acoes:[[bloq?"Ver o que falta":"Conferir e liberar o TXT","txt"]]};
+  }
+  if(S.doc.status==="conferido") return {txt:`Conferência concluída. Agora <b>baixe o TXT</b> e importe no Domínio em Folha › Importar Lançamentos, com horas em <b>${esc(S.regras.formato)}</b>.`,acoes:[["Baixar TXT","baixar"]]};
+  return {txt:`Pronto! O TXT de <b>${esc(rotuloPeriodo())}</b> foi gerado. No Domínio: Folha › Importar Lançamentos. Se o cliente mandar correção, é só editar aqui: eu volto a conferência para revisão.`,acoes:[["Próximo cliente","cli"]]};
+}
+function guia(){
+  const el=$("guia"); if(!el) return;
+  const p=passoAtual();
+  el.classList.toggle("min",G.min);
+  if($("guiaTxt").innerHTML!==p.txt){ $("guiaTxt").innerHTML=p.txt; if(G.min) el.classList.add("novo"); }
+  if(!G.min) el.classList.remove("novo");
+  $("guiaAcoes").innerHTML=p.acoes.map(([r,a])=>`<button class="btn sm${a==="pular"?" ghost":""}" type="button" data-g="${esc(a)}">${esc(r)}</button>`).join("");
+  el.dataset.humor=G.ocupado?"pensando":(S.doc&&S.doc.status==="exportado")?"feliz":"";
+}
+function falar(t){ G.ocupado=t||""; guia(); }
+function acaoGuia(a){
+  if(a==="cli"){ window.scrollTo({top:0,behavior:"smooth"}); $("cli").focus(); $("cli").select(); return; }
+  if(a==="rev"){ aba("arq"); $("domRev").scrollIntoView({behavior:"smooth",block:"start"}); return; }
+  if(a==="inD"){ aba("arq"); S.cfgAberto=true; renderCfg(); $("inD").click(); return; }
+  if(a==="inX"||a==="inF"){ aba("arq"); $(a).click(); return; }
+  if(a==="modelo"){ baixarModelo(); return; }
+  if(a==="pular"){ S.cfgPulou=true; aba("arq"); $("mesTit").scrollIntoView({behavior:"smooth"}); return; }
+  if(a.startsWith("emp:")){ S.sel=a.slice(4); aba("conf"); renderLista(); renderDet(); const al=document.querySelector(".al .alta"); if(al) al.closest("tr").scrollIntoView({behavior:"smooth",block:"center"}); return; }
+  if(a==="txt"){ aba("txt"); return; }
+  if(a==="baixar"){ aba("txt"); $("btnBaixar").click(); return; }
 }
 
 // ---------- apuração e render ----------
@@ -681,7 +792,7 @@ function apurarTodos(){ for(const e of S.doc.emps){
   e._dv=comDominio(e); e._ap=P.apurar({...e,dias:e._dv},S.comp,S.regras); } }
 function render(){
   if(!S.doc) return;
-  apurarTodos(); renderArquivos(); renderLista(); renderDet(); renderTxt(); if(!S.prop) renderStatusDom();
+  apurarTodos(); renderArquivos(); renderLista(); renderDet(); renderTxt(); if(!S.prop) renderStatusDom(); else renderCfg(); guia();
   const st=S.doc.status, map={rascunho:["Em conferência","p-at"],conferido:["Conferido","p-ok"],exportado:["TXT gerado","p-ok"]};
   $("stPill").innerHTML=S.doc.emps.length?`<span class="pill ${map[st][1]}">${map[st][0]}</span>`:"";
   const alt=S.doc.emps.reduce((t,e)=>t+e._ap.tot.alertasAltos,0);
@@ -836,8 +947,13 @@ for(const [id,fn,re] of [["dropD",lerDominio,/\.(pdf|xlsx|xls|csv|jpe?g|png|webp
   el.addEventListener("drop",e=>{e.preventDefault();el.classList.remove("over"); if(!S.cli) return; const fs=[...e.dataTransfer.files].filter(f=>re.test(f.name)); if(fs.length) fn(fs); else toast("Tipo de arquivo não aceito aqui.");});
 }
 $("btnModelo").onclick=baixarModelo;
+$("guiaAcoes").addEventListener("click",e=>{ const b=e.target.closest("[data-g]"); if(b) acaoGuia(b.dataset.g); });
+const minGuia=v=>{ G.min=v; try{ localStorage.setItem("flow.ponto.guiaMin",v?"1":"0"); }catch(e){} guia(); };
+$("guiaMin").onclick=()=>minGuia(true); $("guiaFace").onclick=()=>minGuia(!G.min);
+$("btnCfg").onclick=()=>{ S.cfgAberto=!S.cfgAberto; renderCfg(); };
+$("cfgPassos").addEventListener("click",e=>{ const b=e.target.closest("[data-abrir]"); if(b){ try{ window.parent.postMessage({flow:"abrir",tela:b.dataset.abrir},location.origin); }catch(x){} } });
 $("inD").onchange=e=>{ if(S.cli) lerDominio([...e.target.files]); e.target.value=""; };
-$("domRev").addEventListener("click",e=>{ if(e.target.id==="btnAplicarDom") aplicarDominio(); if(e.target.id==="btnDescartarDom"){ S.prop=null; renderRevisao(); } });
+$("domRev").addEventListener("click",e=>{ if(e.target.id==="btnAplicarDom") aplicarDominio(); if(e.target.id==="btnDescartarDom"){ S.prop=null; renderRevisao(); guia(); } });
 $("domRev").addEventListener("change",e=>{ if(e.target.id==="pfAll") document.querySelectorAll("[data-pf]").forEach(c=>c.checked=e.target.checked); });
 $("btnAddFunc").onclick=()=>{ const e=novoEmp("NOVO FUNCIONÁRIO",""); S.doc.emps.push(e); S.sel=e.id; sujo(); render(); aba("conf"); setTimeout(()=>{$("eNome").select();},50); };
 $("bEmp").oninput=renderLista;
@@ -903,11 +1019,13 @@ window.addEventListener("pagehide",()=>{ if(tSalvar) salvarAgora(); });
 // ---------- início ----------
 (function(){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); $("comp").value=d.toISOString().slice(0,7);
   try{ const u=JSON.parse(localStorage.getItem("flow.ponto.ult")||"null"); if(u){ $("cli").value=u.cli||""; if(u.comp) $("comp").value=u.comp; } }catch(e){} })();
+guia();
 F.use("sample").then(async s=>{ const lim=s&&s.limits?await s.limits().catch(()=>null):null; if(!lim||!lim.images){ $("lblF").classList.add("disabled"); $("inF").disabled=true; $("fotoAviso").hidden=false; $("fotoAviso").textContent="Leitura de fotos disponível só com o Flow aberto pelo link do claude.ai."; } });
 F.assinar(est=>{
   S.E=est;
   if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }
-  if(est.pronto.clientes){ if(!tSalvar&&!S.salvando) setSync("on","Sincronizado"); listaClientes(); if(!S.cli&&$("cli").value) abrir(); }
+  if(est.pronto.clientes){ if(!tSalvar&&!S.salvando) setSync("on","Sincronizado"); listaClientes(); if(!S.cli&&$("cli").value) abrir();
+    if(S.cli){ const n=est.clientes.find(c=>c._id===S.cli._id); if(n&&n!==S.cli){ S.cli=n; renderCfg(); } } }
 });
 </script>
 <script src="../nucleo/tema-exato.js" data-mod="ponto"></script>
