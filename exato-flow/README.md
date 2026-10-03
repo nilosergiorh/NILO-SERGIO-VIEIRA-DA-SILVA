@@ -25,6 +25,7 @@ exato-flow/
 ├── nucleo/
 │   ├── flow-dados.js             # núcleo compartilhado: CNPJ, status da CCT, pendências, conexão com a base
 │   ├── ponto-calculo.js          # motor de apuração do ponto e do TXT do Domínio (sem tela; roda no Node)
+│   ├── dominio-relatorios.js     # leitura de PDF, do Extrato Mensal e classificação das rubricas do Domínio
 │   ├── tema-exato.css / .js      # tema escuro e mascote E-exato (todos os módulos)
 │   ├── tema-sindical.css         # tema do Painel Sindical
 │   └── mascote*.png
@@ -61,11 +62,21 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 
 ## Conferência de ponto
 
-1. **Arquivos:** o cliente envia o ponto em Excel/CSV ou em foto do cartão.
+1. **Relatórios do Domínio** (uma vez por cliente; repita quando houver admissão ou mudança de rubrica):
+   - **Extrato Mensal** (PDF): lido direto, sem custo, com o mesmo leitor da Auditoria de Guias. Traz os empregados com o código e todos os eventos lançados. O Flow escolhe, pela descrição, as rubricas de HE (com o percentual), HE 100%, adicional noturno, redução noturna, horas faltas, falta de dia inteiro e DSR. Reflexos e médias ficam de fora.
+   - **Fichas de Empregado** e outros relatórios (PDF, planilha ou imagem): lidos pelo Claude. Trazem cargo, admissão, nascimento, horário de trabalho (vira jornada do funcionário), férias, afastamento e rescisão.
+   - Tudo aparece numa **proposta para conferir**. Só é gravado depois de "Aplicar ao cliente" (`ponto_regras/{cnpj}`: rubricas, `funcs` e `dominio`).
+   - Na apuração, férias, afastamento, dias antes da admissão e dias depois da rescisão entram sozinhos como ocorrência.
+   - Na aba TXT aparecem os cruzamentos:
+     - funcionário do Domínio sem ponto no mês;
+     - funcionário do ponto que não está nas fichas;
+     - menor de 18 anos com hora extra ou noturno;
+     - rubricas ainda não conferidas com o Domínio.
+2. **Ponto:** o cliente envia o ponto em Excel/CSV ou em foto do cartão.
    - A planilha no modelo da Exato (botão "Baixar modelo Excel") é lida direto, sem custo.
    - Planilhas em outro formato e fotos são organizadas pelo Claude. Isso consome o uso do Claude de quem está operando.
    - Nas fotos, os dias com leitura incerta ficam marcados para conferência.
-2. **Conferência:** grade do período por funcionário, com as marcações editáveis, a ocorrência do dia e os alertas:
+3. **Conferência:** grade do período por funcionário, com as marcações editáveis, a ocorrência do dia e os alertas:
    - marcação ímpar ou ilegível;
    - intervalo menor que 1h;
    - mais de 2h extras no dia;
@@ -73,7 +84,7 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
    - semana acima de 44h.
 
    Férias e afastamentos podem ser aplicados a um intervalo de datas de uma vez.
-3. **Regras do cliente** (guardadas em `ponto_regras/{cnpj}`):
+4. **Regras do cliente** (guardadas em `ponto_regras/{cnpj}`):
    - jornadas e tolerância;
    - faixas de hora extra, com limite por mês (ex.: 70% até 30h) ou por dia;
    - sábado a 100% e tratamento do dia com um só par de marcações;
@@ -81,7 +92,7 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
    - adicional noturno, com hora reduzida, prorrogação e rubrica de redução opcional;
    - feriados locais e período do ponto (ex.: 21 a 20);
    - rubricas, formato das horas e registro 11.
-4. **TXT do Domínio:** leiaute "Importar Lançamentos". Registro 10 com 43 posições; registro 11 opcional, com a data de cada falta. Rubricas padrão da Exato: 150, 200, 8069, 40 e 42; a do adicional noturno é por cliente. O TXT só é liberado depois de "Marcar como conferido", sem pendências em vermelho.
+5. **TXT do Domínio:** leiaute "Importar Lançamentos". Registro 10 com 43 posições; registro 11 opcional, com a data de cada falta. Rubricas padrão da Exato: 150, 200, 8069, 40 e 42; a do adicional noturno é por cliente. O TXT só é liberado depois de "Marcar como conferido", sem pendências em vermelho.
 
 A apuração de cada mês fica em `ponto/{cnpj}_{AAAAMM}`. O código do Domínio e a jornada de cada funcionário ficam lembrados para os meses seguintes.
 
@@ -102,6 +113,7 @@ O programa é publicado como Artifact no claude.ai, no mesmo endereço do antigo
 | `nucleo/flow-dados.js` | `nucleo/flow-dados.js` |
 | `modulos/ponto.html` | `modulos/ponto.html` |
 | `nucleo/ponto-calculo.js` | `nucleo/ponto-calculo.js` |
+| `nucleo/dominio-relatorios.js` | `nucleo/dominio-relatorios.js` |
 | `nucleo/tema-*.css`, `tema-exato.js`, `mascote*.png` | mesmo caminho |
 
 ## Como adicionar um módulo novo (ex.: Ponto)
