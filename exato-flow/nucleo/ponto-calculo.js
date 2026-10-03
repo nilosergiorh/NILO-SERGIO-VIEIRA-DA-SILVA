@@ -126,7 +126,8 @@
     const IV=R.interv||{modo:2};
     if(IV.modo===1 && pares.length===1 && trab>(IV.lim||360)){ deduzido=IV.padrao||60; trab-=deduzido; }
     const prev=intervalosJornada(jor&&jor.dias?jor.dias[info.dow]:"");
-    const esperado=soma(prev);
+    // carga prevista do dia: a informada pelo relogio (CHPrev do espelho), se houver; senao a da jornada
+    const esperado=info.prev!=null&&info.prev!==""?+info.prev:soma(prev);
     const nomeFeriado=ctx.feriados[info.data];
     const r={data:info.data,dia:info.dia,dow:info.dow,oc,trab,esperado,heUtil:0,he100:0,hfalta:0,falta:false,noturno:0,alertas:[],pares,feriado:nomeFeriado||"",deduzido};
     const alerta=(nivel,t)=>r.alertas.push({nivel,t});
@@ -183,7 +184,7 @@
     const diaIni=(R.periodo&&R.periodo.diaIni)||1;
     const dias=diasDoMes(comp,diaIni).map(d=>{
       const x=(func.dias||{})[d.data]||{};
-      return dia({...d,m:x.m||"",oc:x.oc||"",ilegivel:!!x.il},ctx);
+      return dia({...d,m:x.m||"",oc:x.oc||"",ilegivel:!!x.il,prev:x.p},ctx);
     });
     // semana acima de 44h (segunda a domingo)
     const porSem={}; dias.forEach(d=>{ const k=fimSemana(d.data); (porSem[k]=porSem[k]||[]).push(d); });

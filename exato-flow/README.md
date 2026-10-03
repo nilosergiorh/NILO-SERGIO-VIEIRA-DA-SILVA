@@ -98,6 +98,11 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
      - menor de 18 anos com hora extra ou noturno;
      - rubricas ainda não conferidas com o Domínio.
 2. **Ponto:** o cliente envia o ponto em Excel/CSV ou em foto do cartão.
+   - **Espelho do relógio** (Excel com uma aba por funcionário, colunas Ent./Saí., "Tipo de Cálculo" e CHPrev): mesmo formato lido pelo `ponto-dominio`.
+     - É lido direto, sem custo.
+     - A carga prevista de cada dia vem do próprio relógio (CHPrev) e vale antes da jornada.
+     - As ocorrências escritas ou em células mescladas (FÉRIAS, ATESTADO, FERIADO) são reconhecidas. Atestado com marcações vira "atestado parcial": as horas não trabalhadas do dia ficam abonadas.
+     - Os totais do software do relógio (extras, faltas, atrasos, noturno) aparecem na ficha do funcionário para comparar com o cálculo do Flow.
    - A planilha no modelo da Exato (botão "Baixar modelo Excel") é lida direto, sem custo.
    - Planilhas em outro formato e fotos são organizadas pelo Claude. Isso consome o uso do Claude de quem está operando.
    - Nas fotos, os dias com leitura incerta ficam marcados para conferência.

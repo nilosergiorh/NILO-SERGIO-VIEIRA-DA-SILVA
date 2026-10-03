@@ -470,8 +470,8 @@ function mesclar(lista,origem){ // [{nome,codigo,dias:[{dia,marcacoes[],ocorrenc
       const data=d.data||P.dataDoDia(S.comp,diaIni(),parseInt(d.dia)); if(!data) continue;
       const m=(d.marcacoes||[]).map(x=>{const v=P.hm(x);return v==null?String(x):P.fmt2(v);}).join(" ");
       const oc=P.OCORRENCIAS[d.ocorrencia]?d.ocorrencia:"";
-      if(!m&&!oc&&!d.incerto) continue;
-      e.dias[data]={m,oc,il:d.incerto?1:0,o:origem}; nd++;
+      if(!m&&!oc&&!d.incerto&&d.prev==null) continue;
+      e.dias[data]={m,oc,il:d.incerto?1:0,o:origem,...(d.prev!=null?{p:d.prev}:{}),...(d.nota?{n:d.nota}:{})}; nd++;
     }
   }
   ordenar(); return {nf,nd,novos};
@@ -530,6 +530,50 @@ function lerPlanilha(wb){
   }
   return {funcionarios:Object.values(out),fora:fora.n};
 }
+// ---------- espelho do relógio (uma aba por funcionário, colunas Ent./Saí., CHPrev, Tipo de Cálculo) ----------
+// Mesmo formato lido pelo sistema ponto-dominio (leitores.ler_espelho).
+const minCel=v=>{ if(v==null||v==="") return null; if(typeof v==="number") return v>-1&&v<2?Math.round(v*1440):null; const m=String(v).trim().match(/^(\d{1,3}):(\d{2})(?::\d{2})?$/); return m?+m[1]*60+ +m[2]:null; };
+function ehEspelho(wb){ return wb.SheetNames.some(n=>{ const ws=wb.Sheets[n]; const L=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""})[0]||[]; return L.some(x=>/Tipo de C[aá]lculo|CHPrev/.test(String(x))); }); }
+function lerEspelho(wb){
+  const per=new Set(periodo().map(d=>d.data)), out=[]; let fora=0, minD=null, maxD=null;
+  for(const nome of wb.SheetNames){
+    const ws=wb.Sheets[nome], L=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""});
+    const H=(L[0]||[]).map(x=>String(x).trim());
+    if(!H.some(x=>/Tipo de C[aá]lculo|CHPrev/.test(x))) continue;
+    const col=k=>H.findIndex(x=>x===k);
+    const shifted=H[3]==="Ent.2";
+    let tc=H.findIndex(x=>/Tipo de C[aá]lculo/.test(x)); if(tc<0) tc=col("CHPrev"); if(tc<0) tc=13;
+    const pcols=shifted?[1,2,3,4,5,6,7,8,9,10,11,12]:[1,2,4,5];   // colunas de marcação (base 0)
+    const merges={}; (ws["!merges"]||[]).forEach(m=>{ const v=(L[m.s.r]||[])[m.s.c]; for(let r=m.s.r;r<=m.e.r;r++) merges[r]=v; });
+    const sw={extras:0,faltas:0,atraso:0,adnot:0,exsab:0,exdom:0};
+    const f={nome:nome.trim().toUpperCase(),codigo:"",dias:[],sw};
+    for(let r=2;r<L.length;r++){
+      const row=L[r], dd=diaCel(row[0]); if(!dd||!dd.data) continue;
+      if(!dd.ok){ fora++; continue; }
+      if(!minD||dd.data<minD) minD=dd.data; if(!maxD||dd.data>maxD) maxD=dd.data;
+      const marc=[]; let nota="";
+      for(let c=1;c<tc;c++){
+        const v=row[c]; if(v===""||v==null||(typeof v==="string"&&v.startsWith("="))) continue;
+        const m=minCel(v);
+        if(m!=null){ if(pcols.includes(c)) marc.push(m); }           // horário fora das colunas de marcação = auxiliar (ex.: 08:45)
+        else if(typeof v==="string") nota=v.trim();
+      }
+      if(merges[r]!=null&&minCel(merges[r])==null&&String(merges[r]).trim()) nota=String(merges[r]).trim();
+      const g=k=>{ const i=col(k); return i<0?null:minCel(row[i]); };
+      const prev=g("CHPrev");
+      for(const [k,h] of [["extras","Extras"],["faltas","Faltas"],["atraso","Atraso"],["adnot","Ad Not"],["exsab","ExSab"],["exdom","ExDom"]]) sw[k]+=g(h)||0;
+      let oc=ocDe(nota), p=prev;
+      if(oc==="ATESTADO"&&marc.length){ // atestado parcial: as horas não trabalhadas do dia ficam abonadas
+        let t=0; for(let i=0;i+1<marc.length;i+=2) t+=(marc[i+1]>=marc[i]?marc[i+1]-marc[i]:marc[i+1]+1440-marc[i]);
+        oc=""; p=prev!=null?Math.min(prev,t):t; nota="Atestado parcial";
+      }
+      f.dias.push({data:dd.data,marcacoes:marc.map(P.fmt2),ocorrencia:oc,prev:p,nota});
+    }
+    if(f.dias.length) out.push(f);
+  }
+  return {funcionarios:out,fora,faixa:[minD,maxD]};
+}
+
 const PROMPT_BASE=`Você vai ler o controle de ponto de funcionários de uma empresa brasileira para a conferência da folha de pagamento.
 Regras:
 - Cada funcionário tem as marcações de cada dia do mês (entradas e saídas), em ordem cronológica, no formato HH:MM de 24 horas.
@@ -545,7 +589,10 @@ async function arquivosX(files){
     const item=registrar(f.name,"Planilha","Lendo…");
     try{
       const wb=XLSX.read(await f.arrayBuffer(),{type:"array",cellDates:false});
-      let r=lerPlanilha(wb), via="leitura direta";
+      let r, via="leitura direta";
+      if(ehEspelho(wb)){ r=lerEspelho(wb); via="espelho do relógio";
+        if(!r.funcionarios.length&&r.fora){ const L=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:""}); r.dica=`As datas do espelho não caem em ${rotuloPeriodo()}. Confira a competência escolhida ou o período do ponto em Regras (ex.: 21 a 20).`; } }
+      else r=lerPlanilha(wb);
       if(!r.funcionarios.length){
         const sample=await F.use("sample");
         if(!sample){ atualizar(item,"er","Não reconheci as colunas desta planilha. Use o modelo da Exato ou peça ao cliente as colunas Funcionário, Data e Entrada/Saída."); continue; }
@@ -556,7 +603,9 @@ async function arquivosX(files){
         r={funcionarios:(j&&j.funcionarios)||[],fora:0,obs:j&&j.observacoes}; via="organizada pelo Claude";
       }
       const m=mesclar(r.funcionarios,"excel");
-      atualizar(item,"ok",`${m.nf} funcionário(s), ${m.nd} dia(s) com marcação ou ocorrência · ${via}${r.fora?` · ${r.fora} linha(s) de outra competência ignoradas`:""}${r.obs?" · "+r.obs:""}`);
+      for(const fx of r.funcionarios) if(fx.sw){ const e=acharEmp(fx.nome,fx.codigo); if(e) e.sw=fx.sw; }
+      if(r.dica&&!m.nf){ atualizar(item,"er",r.dica); continue; }
+      atualizar(item,r.fora?"at":"ok",`${m.nf} funcionário(s), ${m.nd} dia(s) com marcação ou ocorrência · ${via}${r.fora?` · ${r.fora} dia(s) fora de ${rotuloPeriodo()} ignorados: se o espelho fecha em outro dia (ex.: 21 a 20), ajuste o período em Regras`:""}${r.obs?" · "+r.obs:""}`);
       S.doc.arquivos=[...(S.doc.arquivos||[]),{nome:f.name,tipo:"planilha",em:new Date().toISOString()}];
       sujo(); render();
     }catch(e){ console.error(e); atualizar(item,"er",msgErro(e,"Não consegui ler a planilha.")); }
@@ -947,6 +996,7 @@ function renderDet(){
         <label class="fld">Jornada<select id="eJor">${S.regras.jornadas.map(x=>`<option value="${esc(x.id)}" ${x.id===j.id?"selected":""}>${esc(x.nome)}</option>`).join("")}</select></label>
         <label class="fld">Nome<input id="eNome" value="${esc(e.nome)}" style="width:260px"></label>
       </div>
+      ${e.sw?`<p class="meta" style="margin:8px 0 0">Software do relógio no mês: extras ${N(e.sw.extras)||"0:00"} (sáb. ${N(e.sw.exsab)||"0:00"}, dom./fer. ${N(e.sw.exdom)||"0:00"}) · faltas ${N(e.sw.faltas)||"0:00"} · atrasos ${N(e.sw.atraso)||"0:00"} · noturno ${N(e.sw.adnot)||"0:00"}. Compare com os totais do Flow abaixo.</p>`:""}
       <div class="f"><label class="fld">Ocorrência no período<select id="pOc">${Object.entries(P.OCORRENCIAS).filter(([k])=>k).map(([k,o])=>`<option value="${k}">${esc(o.rot)}</option>`).join("")}</select></label>
         <label class="fld">De<input id="pDe" type="date" min="${a.dias[0].data}" max="${a.dias[a.dias.length-1].data}"></label>
         <label class="fld">Até<input id="pAte" type="date" min="${a.dias[0].data}" max="${a.dias[a.dias.length-1].data}"></label>
@@ -966,7 +1016,7 @@ function renderDet(){
     <thead><tr><th>Dia</th><th>Marcações</th><th>Ocorrência</th><th class="n">Trab.</th><th class="n">Prev.</th><th class="n">HE útil</th><th class="n">HE 100%</th><th class="n">H. falta</th><th class="n">Not.</th><th>Alertas</th></tr></thead>
     <tbody>${a.dias.map(d=>{const k=d.data, dd=br(k).slice(0,5), x=(e._dv||e.dias)[k]||{};
       return `<tr class="${d.feriado?"fer":(d.dow===0||d.dow===6)?"we":""}" data-k="${k}">
-        <td class="d">${dd} ${DOW[d.dow]}<small>${esc(d.feriado||(x.o?({foto:"foto",excel:"planilha",dominio:"Domínio",ausencia:"férias/afast."}[x.o]||"manual"):""))}</small></td>
+        <td class="d">${dd} ${DOW[d.dow]}<small>${esc(x.n||d.feriado||(x.o?({foto:"foto",excel:"planilha",dominio:"Domínio",ausencia:"férias/afast."}[x.o]||"manual"):""))}</small></td>
         <td><input class="m" data-k="${k}" value="${esc(x.m||"")}" placeholder="${d.esperado?"sem marcação":""}" aria-label="Marcações do dia ${dd}"></td>
         <td><select data-oc="${k}" aria-label="Ocorrência do dia ${dd}">${ocOpts(x.oc||"")}</select></td>
         <td class="n ${d.trab?"":"z"}">${N(d.trab)||"–"}</td><td class="n ${d.esperado?"":"z"}">${N(d.esperado)||"–"}</td>
@@ -1095,7 +1145,7 @@ $("bEmp").oninput=renderLista;
 $("lEmp").addEventListener("click",e=>{const b=e.target.closest("[data-e]"); if(!b) return; S.sel=b.dataset.e; renderLista(); renderDet();});
 $("det").addEventListener("change",ev=>{
   const e=S.doc.emps.find(x=>x.id===S.sel); if(!e) return; const t=ev.target;
-  if(t.matches("input.m")){ const k=t.dataset.k, x=e.dias[k]||{}; const v=t.value.trim(); e.dias[k]={...x,m:v,il:0,o:x.o&&x.m===v?x.o:"manual"}; if(!v&&!x.oc) delete e.dias[k]; }
+  if(t.matches("input.m")){ const k=t.dataset.k, x=e.dias[k]||{}; const v=t.value.trim(); e.dias[k]={...x,m:v,il:0,o:x.o&&x.m===v?x.o:"manual"}; if(!v&&!x.oc&&x.p==null) delete e.dias[k]; }
   else if(t.matches("select[data-oc]")){ const k=t.dataset.oc, x=e.dias[k]||{}; e.dias[k]={...x,oc:t.value,il:0,o:x.o||"manual"}; }
   else if(t.id==="eCod"){ e.cod=F.digitos(t.value); lembrar(e); }
   else if(t.id==="eJor"){ e.jornada=t.value; e.jorManual=1; lembrar(e); }

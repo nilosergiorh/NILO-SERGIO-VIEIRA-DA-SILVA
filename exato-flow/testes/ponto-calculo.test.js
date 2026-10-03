@@ -76,4 +76,8 @@ eq('sem registro 11',tx2.linhas.some(l=>l.startsWith('11')),false);
 const R3=JSON.parse(JSON.stringify(R)); R3.not.rubRed=27;
 const tx3=P.linhasTxt({empresa:206,comp:'2026-09',formato:'SEXAGESIMAL',regras:R3,funcionarios:[{cod:5,nome:'A',apur:P.apurar(f,'2026-09',R3)}]});
 eq('noturno real 7:00 + reducao 1:00',[tx3.linhas.find(l=>l.slice(18,22)==='0025').slice(24,33),tx3.linhas.find(l=>l.slice(18,22)==='0027').slice(24,33)],['000000700','000000100']);
+// carga prevista vinda do relógio (CHPrev) prevalece sobre a jornada
+const apPrev=P.apurar({jornada:'padrao',dias:{[D(1)]:{m:'08:00 12:00 13:00 17:45',p:525},[D(5)]:{m:'',p:0}}},'2026-09',{});
+eq('CHPrev 8:45 sem extra nem falta',[apPrev.dias[0].heUtil,apPrev.dias[0].hfalta,apPrev.dias[0].esperado],[0,0,525]);
+eq('CHPrev zero no dia sem jornada',apPrev.dias[4].falta,false);
 console.log(`${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);
