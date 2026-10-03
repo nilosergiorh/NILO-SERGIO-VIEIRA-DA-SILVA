@@ -40,6 +40,32 @@ def livre(caminho):
     return caminho
 
 
+def _do_mes(f):
+    """Arquivos que pertencem à planilha atual do mês (planilha, cache do painel e TXT gerado dela)."""
+    return (f.startswith('Folha_Ponto_') and (f.endswith('.xlsx') or f.endswith('.painel.json'))) or \
+           (f.startswith('lancamentos_dominio_') and f.endswith('.txt'))
+
+
+def substituir_planilha(pasta, nome_final, nova_temp, motivo):
+    """Coloca `nova_temp` como a ÚNICA planilha do mês (`nome_final`). A planilha, o cache e o TXT anteriores
+    vão para <mês>/_anteriores/<data hora>_<motivo>/ (nada é apagado). Devolve o caminho final."""
+    antigos = [f for f in os.listdir(pasta) if _do_mes(f) and os.path.join(pasta, f) != nova_temp]
+    for f in antigos:  # confere antes de mexer: planilha aberta no Excel não pode ser movida
+        if f.endswith('.xlsx'):
+            try:
+                with open(os.path.join(pasta, f), 'r+b'): pass
+            except PermissionError:
+                os.remove(nova_temp)
+                raise RuntimeError(f'A planilha "{f}" está aberta no Excel. Feche o Excel e importe de novo.')
+    if antigos:
+        dst = os.path.join(pasta, '_anteriores', datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S') + '_' + motivo)
+        os.makedirs(dst, exist_ok=True)
+        for f in antigos: shutil.move(os.path.join(pasta, f), os.path.join(dst, f))
+    final = os.path.join(pasta, nome_final)
+    os.replace(nova_temp, final)
+    return final
+
+
 # ------------------------------------------------------------------ gerar a planilha do mês
 def gerar_mes(cliente, arqs, log=print):
     """Lê os arquivos, gera a planilha do mês na pasta do cliente e devolve (caminho, mes, saida_texto)."""
@@ -58,14 +84,17 @@ def gerar_mes(cliente, arqs, log=print):
         dst = livre(os.path.join(pasta, 'recebidos', os.path.basename(a)))
         shutil.copy2(a, dst)
         if os.path.exists(a + '.leitura.json'): shutil.copy2(a + '.leitura.json', dst + '.leitura.json')
-    saida = livre(os.path.join(pasta, f'Folha_Ponto_{cliente.title()}_{comp[4:]}-{comp[:4]}.xlsx'))
+    nome = f'Folha_Ponto_{cliente.title()}_{comp[4:]}-{comp[:4]}.xlsx'
+    temp = os.path.join(pasta, '_gerando_' + nome)  # só vira a planilha do mês se a geração der certo
     log('Montando a planilha...')
     r = subprocess.run([sys.executable, '-W', 'ignore', os.path.join(PASTA, 'gerar_folha.py'), ';'.join(arqs),
-                        os.path.join(CLIENTES, cliente, 'config.json'), saida], capture_output=True, text=True, encoding='utf-8',
+                        os.path.join(CLIENTES, cliente, 'config.json'), temp], capture_output=True, text=True, encoding='utf-8',
                        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-    if r.returncode != 0 or not os.path.exists(saida):
+    if r.returncode != 0 or not os.path.exists(temp):
+        if os.path.exists(temp): os.remove(temp)
         raise RuntimeError('Erro ao gerar a planilha:\n' + (r.stderr or r.stdout)[-1500:])
-    return saida, mes, r.stdout
+    saida = substituir_planilha(pasta, nome, temp, 'reimportacao')
+    return saida, mes, r.stdout.replace(temp, saida)
 
 
 # ------------------------------------------------------------------ dados do painel

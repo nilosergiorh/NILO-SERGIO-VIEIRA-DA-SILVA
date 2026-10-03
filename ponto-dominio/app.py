@@ -174,14 +174,43 @@ def _sem_congelar_janela():
         pass
 
 
+def _vigiar_atualizacoes(srv):
+    """Quando o programa (.py) for atualizado, reinicia o aplicativo sozinho (espera terminar o que estiver
+    processando). Assim uma correção vale na hora, sem precisar fechar nada - ele roda sem janela."""
+    import glob, subprocess, time
+    def assinatura():
+        return {f: os.path.getmtime(f) for f in glob.glob(os.path.join(PASTA, '*.py'))}
+    inicial = assinatura()
+    while True:
+        time.sleep(5)
+        try:
+            if assinatura() == inicial: continue
+            time.sleep(2)  # deixa terminar de gravar os arquivos
+            with TRAVA:    # não interrompe importação/cálculo em andamento
+                env = dict(os.environ, PONTO_REINICIO='1', PONTO_SEM_NAVEGADOR='1')
+                subprocess.Popen([sys.executable] + sys.argv, cwd=PASTA, env=env,
+                                 stdout=sys.stdout if sys.stdout else subprocess.DEVNULL,
+                                 stderr=sys.stderr if sys.stderr else subprocess.DEVNULL)
+                srv.server_close()
+                os._exit(0)
+        except Exception:
+            traceback.print_exc()
+
+
 def main():
     _sem_congelar_janela()
     url = f'http://127.0.0.1:{PORTA}/'
-    try:
-        srv = ThreadingHTTPServer(('127.0.0.1', PORTA), App)
-    except OSError:
+    srv = None
+    for _ in range(40 if os.environ.get('PONTO_REINICIO') else 1):  # num reinício, espera a porta liberar
+        try:
+            srv = ThreadingHTTPServer(('127.0.0.1', PORTA), App); break
+        except OSError:
+            import time; time.sleep(0.5)
+    if srv is None:
+        if os.environ.get('PONTO_REINICIO'): return
         print('O aplicativo já está aberto. Abrindo o navegador...')
         webbrowser.open(url); return
+    threading.Thread(target=_vigiar_atualizacoes, args=(srv,), daemon=True).start()
     print('=' * 60)
     print('  Aplicativo Ponto -> Domínio')
     print(f'  Endereço: {url}')
