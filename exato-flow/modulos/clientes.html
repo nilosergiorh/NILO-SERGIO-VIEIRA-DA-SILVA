@@ -120,6 +120,7 @@ td small{display:block;color:var(--mute);font-family:var(--f-mono);font-size:.72
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
+<link rel="stylesheet" href="../nucleo/tema-exato.css">
 </head><body>
 <div class="wrap">
   <header class="head">
@@ -353,4 +354,5 @@ F.assinar(est=>{
 });
 F.use("user").then(async u=>{ if(!u) return; try{ const pode=await u.can("data.write"); if(pode===false){ S.somenteLeitura=true; $("btnNovo").hidden=true; } }catch(e){} });
 </script>
+<script src="../nucleo/tema-exato.js" data-mod="clientes"></script>
 </body></html>

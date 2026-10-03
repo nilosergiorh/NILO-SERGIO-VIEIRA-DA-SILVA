@@ -1,0 +1,771 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ponto · Exato Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: barra de cliente e competência; abas Arquivos → Conferência → Regras → TXT. Conferência = lista de funcionários + grade do mês. */
+:root{
+  --red:#C00000; --red-hi:#e01515; --red-soft:rgba(192,0,0,.07);
+  --bg:#f3f3f5; --surf:#ffffff; --surf2:#f7f7f9; --ink:#16171a; --mute:#5f626b; --line:#e2e3e8; --hover:#fbf4f4; --sel:#fdeeee;
+  --ok:#14804f; --ok-bg:#e2f4ea; --at:#9a5b00; --at-bg:#fff1d6; --er:#b00000; --er-bg:#fde6e6; --nt:#4a4d55; --nt-bg:#ececf0;
+  --we:#f1f1f4; --scrim:rgba(17,17,17,.5);
+  --f-disp:"Sora","Segoe UI",system-ui,sans-serif;
+  --f-body:"Manrope","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",Consolas,ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09);
+  --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b; --sel:#2c1a1a;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#c3c5cc; --nt-bg:rgba(255,255,255,.08);
+  --we:#19191c; --scrim:rgba(0,0,0,.65); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09);
+  --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b; --sel:#2c1a1a;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#c3c5cc; --nt-bg:rgba(255,255,255,.08);
+  --we:#19191c; --scrim:rgba(0,0,0,.65); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.5 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--red-hi);outline-offset:2px}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:24px;padding-block:22px 48px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+#area{min-width:0}
+#area>section{grid-template-columns:minmax(0,1fr)}
+h1{margin:0;font:800 1.6rem/1.15 var(--f-disp);letter-spacing:-.02em}
+h2{margin:0;font:700 1.05rem/1.3 var(--f-disp)}
+h3{margin:0;font:700 .76rem var(--f-disp);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.lead{margin:4px 0 0;color:var(--mute);font-size:.9rem;max-width:72ch}
+.meta{font-size:.78rem;color:var(--mute)}
+.mono{font-family:var(--f-mono)}
+
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.fld{display:grid;gap:4px;font-size:.74rem;font-weight:700;color:var(--mute);min-width:0}
+.fld input,.fld select{background:var(--surf2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:.92rem;font-weight:500;color:var(--ink);min-width:0}
+.fld.cli{flex:1 1 320px}
+.fld.cli input{width:100%}
+.bar .st{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{display:inline-block;font:500 10px var(--f-mono);letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--ok-bg);color:var(--ok)} .p-at{background:var(--at-bg);color:var(--at)} .p-er{background:var(--er-bg);color:var(--er)} .p-nt{background:var(--nt-bg);color:var(--nt)}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mute)}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--mute)} .sync.on i{background:var(--ok)} .sync.err i{background:var(--er)} .sync.wait i{background:var(--at)}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{border:0;background:none;padding:10px 14px;font:700 .86rem var(--f-disp);color:var(--mute);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;display:flex;gap:8px;align-items:center}
+.tab b{font:500 11px var(--f-mono);color:var(--mute)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--red-hi)}
+.tab:hover{color:var(--ink)}
+
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:10px;padding:9px 16px;font:700 .86rem var(--f-disp);cursor:pointer;background:var(--red);color:#fff;white-space:nowrap}
+.btn:hover{background:var(--red-hi)}
+.btn.ghost{background:var(--surf);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--red-hi);color:var(--red-hi)}
+.btn.sm{padding:6px 11px;font-size:.78rem}
+.btn:disabled,.btn.disabled{opacity:.45;cursor:not-allowed}
+label.btn.disabled{pointer-events:none}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+.card{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:12px;min-width:0}
+.empty{padding:36px 20px;text-align:center;color:var(--mute)}
+.banner{border-radius:10px;padding:10px 14px;font-size:.88rem;background:var(--at-bg);color:var(--at)}
+.banner.er{background:var(--er-bg);color:var(--er)}
+
+/* arquivos */
+.drops{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.drop{border:1.5px dashed var(--line);border-radius:14px;background:var(--surf);padding:18px;display:grid;gap:8px;align-content:start}
+.drop.over{border-color:var(--red-hi);background:var(--red-soft)}
+.drop p{margin:0;color:var(--mute);font-size:.88rem}
+.files{display:grid;gap:6px}
+.file{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surf);font-size:.86rem}
+.file b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file .meta{white-space:normal}
+
+/* conferencia */
+.conf{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:start}
+.emps{background:var(--surf);border:1px solid var(--line);border-radius:14px;overflow:hidden;position:sticky;top:8px;max-height:calc(100vh - 16px);display:flex;flex-direction:column}
+.emps .hd{padding:10px 12px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.emps .hd input{background:var(--surf2);border:1px solid var(--line);border-radius:999px;padding:7px 12px;width:100%}
+.emps ul{list-style:none;margin:0;padding:0;overflow:auto}
+.emps li button{width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:10px 12px;cursor:pointer;display:grid;gap:3px}
+.emps li button:hover{background:var(--hover)}
+.emps li button[aria-current="true"]{background:var(--sel);box-shadow:inset 3px 0 0 var(--red-hi)}
+.emps .nm{font-weight:700;font-size:.86rem;line-height:1.3}
+.emps .sm{display:flex;flex-wrap:wrap;gap:4px 10px;font:500 11px var(--f-mono);color:var(--mute)}
+.emps .sm .er{color:var(--er)}
+.det{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-width:0}
+.eh{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start}
+.eh .f{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:8px}
+.eh .f .fld input{width:120px}
+.tots{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surf)}
+.tot{padding:10px 12px;border-left:1px solid var(--line);display:grid;gap:1px;min-width:0}
+.tot:first-child{border-left:0}
+.tot b{font:700 1.15rem/1.2 var(--f-mono);font-variant-numeric:tabular-nums}
+.tot span{font-size:.72rem;color:var(--mute)}
+.tot.er b{color:var(--er)}
+.fotos{display:flex;gap:8px;flex-wrap:wrap}
+.fotos button{border:1px solid var(--line);border-radius:8px;padding:0;background:none;cursor:zoom-in;width:72px;height:72px;overflow:hidden}
+.fotos img{width:100%;height:100%;object-fit:cover;display:block}
+.tbox{overflow-x:auto;background:var(--surf);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th{font:700 10px var(--f-disp);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:left;padding:9px 8px;background:var(--surf2);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.n.z{color:var(--line)}
+tr.we td{background:var(--we)}
+tr.fer td{background:var(--red-soft)}
+.grid{min-width:1060px}
+.grid td.d{white-space:nowrap;font-family:var(--f-mono);font-size:.8rem}
+.grid td.d small{display:block;font-family:var(--f-body);color:var(--mute);font-size:.7rem}
+.grid input.m{width:100%;min-width:220px;font-family:var(--f-mono);font-size:.82rem;background:transparent;border:1px solid transparent;border-radius:6px;padding:5px 7px}
+.grid input.m:hover{border-color:var(--line)} .grid input.m:focus{border-color:var(--red-hi);background:var(--surf);outline:none}
+.grid select{font-size:.8rem;background:transparent;border:1px solid transparent;border-radius:6px;padding:4px}
+.grid select:hover{border-color:var(--line)}
+.al{display:grid;gap:2px;font-size:.74rem;min-width:180px}
+.al span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;background:var(--mute)}
+.al .alta::before{background:var(--er)} .al .media::before{background:var(--at)}
+.al .alta{color:var(--er)}
+.orig{font:500 9.5px var(--f-mono);text-transform:uppercase;color:var(--mute)}
+.orig.foto{color:var(--at)}
+tfoot td{font-weight:700;background:var(--surf2);border-top:1px solid var(--line)}
+
+/* regras */
+.rgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 12px}
+.form label,.jr label{display:grid;gap:4px;font-size:.74rem;font-weight:700;color:var(--mute)}
+.form input,.form select,.jr input{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:.88rem;font-weight:500;width:100%;min-width:0;color:var(--ink)}
+.chk{display:flex!important;grid-template-columns:none!important;gap:8px!important;align-items:center;font-size:.84rem!important;color:var(--ink)!important;font-weight:600!important}
+.chk input{width:auto!important}
+.jr{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px}
+.jr .dias{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.jr .dias input{font-family:var(--f-mono);font-size:.76rem;padding:6px}
+.note{font-size:.8rem;color:var(--mute);margin:0;max-width:90ch}
+
+/* txt */
+.check{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.9rem}
+.check li{display:flex;gap:8px;align-items:baseline}
+.check i{flex:none;width:9px;height:9px;border-radius:50%}
+.check .ok i{background:var(--ok)} .check .er i{background:var(--er)} .check .at i{background:var(--at)}
+pre.txt{margin:0;max-height:340px;overflow:auto;background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:12px;font:12px/1.55 var(--f-mono)}
+
+dialog{border:0;border-radius:14px;padding:0;max-width:min(96vw,1100px);max-height:94vh;background:var(--surf);color:var(--ink)}
+dialog::backdrop{background:var(--scrim)}
+.zoom{display:grid;gap:8px;padding:12px}
+.zoom .img{overflow:auto;max-height:82vh}
+.zoom img{display:block;max-width:none;width:160%}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,620px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.88rem;z-index:40}
+
+@media (max-width:1000px){.conf{grid-template-columns:minmax(0,1fr)}.emps{position:static;max-height:300px}.tots{grid-template-columns:repeat(3,minmax(0,1fr))}.tot:nth-child(4){border-left:0}.tot:nth-child(n+4){border-top:1px solid var(--line)}.rgrid{grid-template-columns:1fr}}
+@media (max-width:640px){.wrap{padding-inline:16px}.drops{grid-template-columns:1fr}.jr .dias{grid-template-columns:repeat(2,minmax(0,1fr))}.eh{grid-template-columns:1fr}.bar .st{margin-left:0}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<link rel="stylesheet" href="../nucleo/tema-exato.css">
+</head><body>
+<div class="wrap">
+  <header>
+    <h1>Conferência de ponto</h1>
+    <p class="lead">O cliente envia o ponto em Excel ou foto do cartão. O Flow lê as marcações, calcula horas extras, horas faltas, faltas, DSR e adicional noturno, e gera o TXT para o Domínio Folha depois da conferência.</p>
+  </header>
+
+  <div class="bar">
+    <label class="fld cli">Cliente<input id="cli" list="dl-cli" placeholder="Digite o nome, código ou CNPJ" autocomplete="off"></label>
+    <datalist id="dl-cli"></datalist>
+    <label class="fld">Competência<input id="comp" type="month"></label>
+    <div class="st"><span id="stPill"></span><span class="sync" id="sync"><i></i><span>Conectando…</span></span></div>
+  </div>
+
+  <div class="banner" id="aviso" hidden></div>
+
+  <div id="semCli" class="card empty">Escolha o cliente e a competência para começar. Os funcionários e as regras de jornada ficam guardados para os meses seguintes.</div>
+
+  <div id="area" hidden>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-t="arq" aria-selected="true">1 · Arquivos <b id="nArq"></b></button>
+      <button class="tab" role="tab" data-t="conf">2 · Conferência <b id="nConf"></b></button>
+      <button class="tab" role="tab" data-t="reg">3 · Regras do cliente</button>
+      <button class="tab" role="tab" data-t="txt">4 · TXT do Domínio</button>
+    </nav>
+
+    <!-- ARQUIVOS -->
+    <section id="t-arq" style="display:grid;gap:14px;margin-top:14px">
+      <div class="drops">
+        <div class="drop" id="dropX">
+          <h2>Planilha do ponto (Excel ou CSV)</h2>
+          <p>Uma linha por funcionário e dia, com as marcações em colunas. Funciona com o modelo da Exato e com a maioria das planilhas de relógio de ponto. Se o formato for diferente, o Claude organiza a leitura.</p>
+          <div class="row"><label class="btn ghost" for="inX">Selecionar planilha</label><button class="btn ghost" type="button" id="btnModelo">Baixar modelo Excel</button></div>
+          <input id="inX" type="file" accept=".xlsx,.xls,.csv,.ods" multiple hidden>
+        </div>
+        <div class="drop" id="dropF">
+          <h2>Fotos do cartão ponto</h2>
+          <p>Uma foto por lado do cartão, bem enquadrada e com luz. O Claude lê as marcações e marca os dias com leitura incerta para você conferir olhando a foto.</p>
+          <div class="row"><label class="btn ghost" for="inF" id="lblF">Selecionar fotos</label></div>
+          <input id="inF" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+          <p class="meta" id="fotoAviso" hidden></p>
+        </div>
+      </div>
+      <div class="files" id="files"></div>
+      <div class="row"><button class="btn ghost" type="button" id="btnAddFunc">Adicionar funcionário manualmente</button><span class="meta">Use para lançar um cartão à mão ou quem não veio no arquivo.</span></div>
+    </section>
+
+    <!-- CONFERENCIA -->
+    <section id="t-conf" hidden style="margin-top:14px">
+      <div class="conf">
+        <aside class="emps">
+          <div class="hd"><input type="search" id="bEmp" placeholder="Buscar funcionário" aria-label="Buscar funcionário"><span class="meta" id="resEmp"></span></div>
+          <ul id="lEmp"></ul>
+        </aside>
+        <div class="det" id="det"><div class="card empty">Envie os arquivos do ponto na aba Arquivos.</div></div>
+      </div>
+    </section>
+
+    <!-- REGRAS -->
+    <section id="t-reg" hidden style="display:grid;gap:14px;margin-top:14px">
+      <p class="note">Estas regras valem para todos os meses deste cliente. Confira na convenção coletiva os percentuais de hora extra, o adicional noturno e a tolerância: a CCT pode prever condições diferentes da CLT. <span id="cctInfo"></span></p>
+      <div class="card"><div class="row" style="justify-content:space-between"><h3>Jornadas de trabalho</h3><button class="btn ghost sm" type="button" id="btnAddJor">Nova jornada</button></div>
+        <p class="note">Escreva os períodos de cada dia como 07:30-12:00 13:30-17:48. Deixe em branco o dia de folga. A falta de um dia vale as horas mensais da jornada ÷ 30 (44h semanais → 7:20).</p>
+        <div id="jors" style="display:grid;gap:10px"></div></div>
+      <div class="rgrid">
+        <div class="card"><h3>Horas extras e faltas</h3>
+          <div class="form">
+            <label>Tolerância diária (min)<input id="r-tol" inputmode="numeric"></label>
+            <label>HE dia útil: % faixa 1<input id="r-p1" inputmode="numeric"></label>
+            <label>Faixa 1 até (h:mm, vazio = sem limite)<input id="r-a1" placeholder="sem limite"></label>
+            <label>Limite da faixa 1 conta<select id="r-lim"><option value="mes">no mês (ex.: 30h a 70%)</option><option value="dia">em cada dia (ex.: 2h a 50%)</option></select></label>
+            <label>Rubrica faixa 1<input id="r-r1" inputmode="numeric"></label>
+            <label>HE dia útil: % faixa 2<input id="r-p2" inputmode="numeric" placeholder="não usa"></label>
+            <label>Rubrica faixa 2<input id="r-r2" inputmode="numeric"></label>
+            <label>HE domingo/feriado/folga %<input id="r-p100" inputmode="numeric"></label>
+            <label>Rubrica domingo/feriado<input id="r-r100" inputmode="numeric"></label>
+            <label>Rubrica horas faltas (atrasos)<input id="r-rhf" inputmode="numeric"></label>
+            <label>Rubrica falta dia inteiro<input id="r-rf" inputmode="numeric"></label>
+            <label>Rubrica DSR sobre faltas<input id="r-rd" inputmode="numeric"></label>
+            <label class="chk"><input type="checkbox" id="r-gd"> Descontar DSR da semana com falta</label>
+            <label>Falta parcial que também tira o DSR (h:mm)<input id="r-meio" placeholder="só falta inteira"></label>
+            <label class="chk"><input type="checkbox" id="r-sab"> Sábado trabalhado a 100%</label>
+            <label>Dia com só 1 par de marcações<select id="r-iv"><option value="2">Paga como extra (almoço não feito)</option><option value="1">Deduz 1h de almoço</option></select></label>
+          </div></div>
+        <div class="card"><h3>Adicional noturno</h3>
+          <div class="form">
+            <label>Início<input id="r-ni" placeholder="22:00"></label>
+            <label>Fim<input id="r-nf" placeholder="05:00"></label>
+            <label>Percentual (%)<input id="r-np" inputmode="numeric"></label>
+            <label>Rubrica no Domínio<input id="r-nr" inputmode="numeric" placeholder="informe"></label>
+            <label>Rubrica da redução (opcional)<input id="r-nrr" inputmode="numeric" placeholder="não usa"></label>
+            <label class="chk"><input type="checkbox" id="r-nred"> Lançar em hora reduzida (52'30")</label>
+            <label class="chk"><input type="checkbox" id="r-npr"> Prorrogar após o fim (Súmula 60 TST)</label>
+          </div>
+          <p class="note">A rubrica do adicional noturno não está no padrão da Exato. Confira o código no Domínio do cliente antes do primeiro TXT. Com rubrica de redução, o noturno vai em horas reais e a redução (52'30") em rubrica própria.</p>
+          <h3>TXT</h3>
+          <div class="form">
+            <label>Formato das horas<select id="r-fmt"><option>SEXAGESIMAL</option><option>CENTESIMAL</option></select></label>
+            <label>Tipo de processo<select id="r-proc"><option value="11">11 · mensal</option><option value="42">42 · complementar</option></select></label>
+            <label>Período do ponto começa no dia<input id="r-ini" inputmode="numeric" placeholder="1 = mês civil"></label>
+            <label class="chk"><input type="checkbox" id="r-r11"> Incluir datas das faltas (registro 11)</label>
+          </div></div>
+      </div>
+      <div class="card"><div class="row" style="justify-content:space-between"><h3>Feriados municipais e estaduais</h3><span class="meta">Os nacionais já estão incluídos.</span></div>
+        <div class="row"><input id="ferData" type="date" class="fld" style="padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surf2)"><input id="ferNome" placeholder="Nome do feriado" style="padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surf2);flex:1 1 200px;min-width:0"><button class="btn ghost sm" type="button" id="btnFer">Incluir feriado</button></div>
+        <div id="fers" class="meta"></div></div>
+      <div class="row"><button class="btn" type="button" id="btnRegras">Salvar regras do cliente</button><span class="meta" id="regMeta"></span></div>
+    </section>
+
+    <!-- TXT -->
+    <section id="t-txt" hidden style="display:grid;gap:14px;margin-top:14px">
+      <div class="card"><h3>Antes de gerar</h3><ul class="check" id="chk"></ul>
+        <div class="row"><button class="btn ghost" type="button" id="btnConferido">Marcar como conferido</button><span class="meta" id="confMeta"></span></div></div>
+      <div class="card"><h3>Lançamentos por funcionário</h3><div class="tbox" style="border:0"><table id="tRes"></table></div></div>
+      <div class="card"><div class="row" style="justify-content:space-between"><h3>Arquivo TXT</h3><div class="row"><button class="btn ghost" type="button" id="btnCopiar">Copiar TXT</button><button class="btn" type="button" id="btnBaixar">Baixar TXT</button></div></div>
+        <pre class="txt" id="txt"></pre>
+        <p class="note">No Domínio: Folha › Importar Lançamentos, com "Lançamento de horas" em <b id="fmtNota">SEXAGESIMAL</b>. Em "Lançamentos existentes", escolha Sobrescrever ou Não importar.</p></div>
+    </section>
+  </div>
+</div>
+
+<dialog id="dlgZoom"><div class="zoom"><div class="row" style="justify-content:space-between"><b id="zTit"></b><button class="btn ghost sm" type="button" id="zFechar">Fechar</button></div><div class="img"><img id="zImg" alt="Foto do cartão ponto"></div></div></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="../nucleo/flow-dados.js" charset="utf-8"></script>
+<script src="../nucleo/ponto-calculo.js" charset="utf-8"></script>
+<script>
+const F=window.FlowDados, P=window.PontoCalculo;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const chave=s=>String(s??"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
+const N=m=>m?P.fmt(m):"";
+const DOW=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+function toast(m,ms){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,ms||4200);}
+const clone=o=>JSON.parse(JSON.stringify(o));
+
+const S={E:F.estado,cli:null,comp:"",regras:null,regVer:null,doc:null,sel:null,tab:"arq",fotos:{},arquivos:[],salvando:null,ro:false};
+
+// ---------- regras ----------
+function regrasCom(r){
+  const d=clone(P.REGRAS_PADRAO), x=r||{};
+  return {...d,...x,he:{...d.he,...(x.he||{}),domFer:{...d.he.domFer,...((x.he||{}).domFer||{})}},hfalta:{...d.hfalta,...(x.hfalta||{})},
+    falta:{...d.falta,...(x.falta||{})},dsr:{...d.dsr,...(x.dsr||{})},not:{...d.not,...(x.not||{})},
+    interv:{...d.interv,...(x.interv||{})},periodo:{...d.periodo,...(x.periodo||{})},txt:{...d.txt,...(x.txt||{})},
+    jornadas:(x.jornadas&&x.jornadas.length)?x.jornadas:d.jornadas,feriados:x.feriados||[],funcs:x.funcs||{},formato:x.formato||"SEXAGESIMAL",processo:x.processo||11};
+}
+const semanal=j=>[0,1,2,3,4,5,6].reduce((t,d)=>t+P.intervalosJornada(j.dias[d]).reduce((a,[b,c])=>a+c-b,0),0);
+const minDia=j=>j?Math.round(semanal(j)*5/30):440;   // horas mensais / 30 (44h → 7:20)
+const jornadaDe=e=>S.regras.jornadas.find(j=>j.id===e.jornada)||S.regras.jornadas[0];
+const diaIni=()=>(S.regras&&S.regras.periodo&&S.regras.periodo.diaIni)||1;
+const periodo=()=>P.diasDoMes(S.comp,diaIni());
+const br=iso=>iso.split("-").reverse().join("/");
+const rotuloPeriodo=()=>{ const L=periodo(); return diaIni()>1?`${br(L[0].data)} a ${br(L[L.length-1].data)}`:S.comp.split("-").reverse().join("/"); };
+
+// ---------- cliente e competência ----------
+function listaClientes(){
+  const L=S.E.clientes.filter(F.ativo).sort((a,b)=>(parseInt(a.cod)||1e9)-(parseInt(b.cod)||1e9));
+  $("dl-cli").innerHTML=L.map(c=>`<option value="${esc((c.cod?c.cod+" · ":"")+c.nome)}">${esc(F.fmtCnpj(c.cnpj))}</option>`).join("");
+}
+function acharCliente(v){
+  const t=String(v||"").trim(); if(!t) return null;
+  const cod=t.split(" · ")[0].trim(), d=F.digitos(t);
+  return S.E.clientes.find(c=>(c.cod&&String(c.cod)===cod)||(d.length===14&&F.digitos(c.cnpj)===d)||((c.cod?c.cod+" · ":"")+c.nome)===t)||null;
+}
+const docId=()=>F.digitos(S.cli.cnpj)+"_"+S.comp.replace("-","");
+async function abrir(){
+  if(S.abrindo) return; S.abrindo=true;
+  try{ await abrir2(); } finally { S.abrindo=false; }
+}
+async function abrir2(){
+  const c=acharCliente($("cli").value), comp=$("comp").value;
+  if(!c||!comp){ $("area").hidden=true; $("semCli").hidden=false; return; }
+  if(!F.digitos(c.cnpj)){ toast("Este cliente está sem CNPJ no cadastro. Corrija no módulo Clientes."); return; }
+  if(S.cli&&S.cli._id===c._id&&S.comp===comp) return;
+  await salvarAgora();
+  S.cli=c; S.comp=comp; S.sel=null; S.fotos={}; S.arquivos=[];
+  try{ localStorage.setItem("flow.ponto.ult",JSON.stringify({cli:$("cli").value,comp})); }catch(e){}
+  const db=S.E.db;
+  S.regras=regrasCom(null); S.doc={cnpj:F.digitos(c.cnpj),comp,status:"rascunho",emps:[],arquivos:[]};
+  if(db){
+    try{ const r=await db.doc("ponto_regras/"+F.digitos(c.cnpj)).get(); if(r.exists) S.regras=regrasCom(r.data()); }catch(e){}
+    try{ const d=await db.doc("ponto/"+docId()).get(); if(d.exists) S.doc={...S.doc,...d.data()}; }catch(e){}
+  }
+  S.doc.emps=(S.doc.emps||[]).map(e=>({...e,dias:e.dias||{}}));
+  $("semCli").hidden=true; $("area").hidden=false;
+  $("cctInfo").textContent=c.cct?`CCT deste cliente: ${c.cct}.`:"Este cliente ainda não tem CCT definida no Painel Sindical.";
+  preencherRegras(); render();
+  if(!S.doc.emps.length) aba("arq"); else aba(S.tab==="arq"?"conf":S.tab);
+}
+
+// ---------- persistência ----------
+let tSalvar=null;
+function sujo(){ if(S.doc.status!=="rascunho"){ S.doc.status="rascunho"; } setSync("wait","Alterações não salvas"); clearTimeout(tSalvar); tSalvar=setTimeout(salvarAgora,1500); }
+async function salvarAgora(){
+  clearTimeout(tSalvar); tSalvar=null;
+  if(!S.doc||!S.cli||S.ro) return;
+  const db=S.E.db; if(!db){ setSync("err","Sem conexão: nada foi salvo"); return; }
+  if(S.salvando){ try{ await S.salvando; }catch(e){} }
+  const corpo={...S.doc,emps:S.doc.emps.map(({_ap,...e})=>e),...(await F.carimbo())};
+  const tam=new Blob([JSON.stringify(corpo)]).size;
+  if(tam>240000){ setSync("err","Apuração grande demais para salvar"); toast("A apuração passou do limite de tamanho da base. Divida o envio em duas competências ou fale com o suporte."); return; }
+  S.salvando=db.doc("ponto/"+docId()).set(corpo).then(()=>setSync("on","Salvo")).catch(e=>{ setSync("err","Não salvou"); if(e&&e.code==="invalid_argument"){ S.ro=true; toast("Você tem acesso só para consulta."); } }).finally(()=>{S.salvando=null;});
+  return S.salvando;
+}
+async function salvarRegras(silencioso){
+  const db=S.E.db; if(!db){ toast("Sem conexão com a base."); return false; }
+  try{ await db.doc("ponto_regras/"+F.digitos(S.cli.cnpj)).set({...S.regras,...(await F.carimbo())}); if(!silencioso) toast("Regras do cliente salvas."); $("regMeta").textContent="Salvas em "+new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}); return true; }
+  catch(e){ toast("Não foi possível salvar as regras."); return false; }
+}
+function setSync(c,t){ const s=$("sync"); s.className="sync "+c; s.lastElementChild.textContent=t; }
+
+// ---------- funcionários ----------
+function novoEmp(nome,cod){
+  const k=chave(nome), mem=S.regras.funcs[k]||{};
+  return {id:"e"+Math.random().toString(36).slice(2,9),nome:String(nome||"").trim().toUpperCase(),cod:String(cod||mem.cod||""),jornada:mem.jornada||S.regras.jornadas[0].id,dias:{},origem:""};
+}
+function acharEmp(nome,cod){
+  const k=chave(nome);
+  return S.doc.emps.find(e=>cod&&e.cod&&String(e.cod)===String(cod))||S.doc.emps.find(e=>chave(e.nome)===k)
+    ||S.doc.emps.find(e=>{const a=chave(e.nome).split(" "),b=k.split(" ");return a.length>1&&b.length>1&&a[0]===b[0]&&a[a.length-1]===b[b.length-1];})||null;
+}
+function lembrar(e){ // guarda código e jornada do funcionário para os próximos meses
+  const k=chave(e.nome), atual=S.regras.funcs[k]||{};
+  if(atual.cod===e.cod&&atual.jornada===e.jornada) return;
+  S.regras.funcs[k]={cod:e.cod,jornada:e.jornada,nome:e.nome};
+  clearTimeout(lembrar.t); lembrar.t=setTimeout(()=>salvarRegras(true),1200);
+}
+function mesclar(lista,origem){ // [{nome,codigo,dias:[{dia,marcacoes[],ocorrencia,incerto}]}]
+  let nf=0,nd=0; const novos=[];
+  for(const f of lista||[]){
+    if(!f||!String(f.nome||"").trim()) continue;
+    let e=acharEmp(f.nome,f.codigo);
+    if(!e){ e=novoEmp(f.nome,f.codigo); S.doc.emps.push(e); novos.push(e.nome); }
+    if(f.codigo&&!e.cod) e.cod=String(f.codigo);
+    e.origem=origem; nf++;
+    for(const d of f.dias||[]){
+      const data=d.data||P.dataDoDia(S.comp,diaIni(),parseInt(d.dia)); if(!data) continue;
+      const m=(d.marcacoes||[]).map(x=>{const v=P.hm(x);return v==null?String(x):P.fmt2(v);}).join(" ");
+      const oc=P.OCORRENCIAS[d.ocorrencia]?d.ocorrencia:"";
+      if(!m&&!oc&&!d.incerto) continue;
+      e.dias[data]={m,oc,il:d.incerto?1:0,o:origem}; nd++;
+    }
+  }
+  ordenar(); return {nf,nd,novos};
+}
+const ordenar=()=>S.doc.emps.sort((a,b)=>(parseInt(a.cod)||1e9)-(parseInt(b.cod)||1e9)||a.nome.localeCompare(b.nome,"pt-BR"));
+
+// ---------- leitura de planilha ----------
+const OCRX=[[/atest/i,"ATESTADO"],[/f[eé]rias/i,"FERIAS"],[/abon|justif/i,"ABONO"],[/falta/i,"FALTA"],[/folga|compens|dsr|descanso/i,"FOLGA"],[/feriado/i,"FERIADO"],[/afast|inss|aux[ií]lio/i,"AFASTAMENTO"],[/licen/i,"LICENCA"],[/admi|demi|deslig/i,"NAOADM"]];
+const ocDe=t=>{ for(const [r,c] of OCRX) if(r.test(t||"")) return c; return ""; };
+function horaCel(v){
+  if(v==null||v==="") return null;
+  if(typeof v==="number"){
+    if(v<1) return Math.round(v*1440)%1440;                       // hora do Excel (fração do dia)
+    if(v<24){ const h=Math.floor(v), m=Math.round((v-h)*100); return m<60?h*60+m:null; } // digitado como 7.30
+    return Math.round((v%1)*1440)%1440;                            // data e hora juntas
+  }
+  if(v instanceof Date) return v.getHours()*60+v.getMinutes();
+  return P.hm(String(v).trim());
+}
+// devolve {data:"AAAA-MM-DD"|null, ok:dentro do periodo}
+function diaCel(v){
+  const per=new Set(periodo().map(d=>d.data)), a=+S.comp.slice(0,4);
+  const r=iso=>({data:iso,ok:per.has(iso)}), z=(y,m,d)=>`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  if(v==null||v==="") return null;
+  if(typeof v==="number"){ if(v>=1&&v<=31){ const iso=P.dataDoDia(S.comp,diaIni(),v); return iso?r(iso):null; } return r(new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10)); }
+  if(v instanceof Date) return r(z(v.getFullYear(),v.getMonth()+1,v.getDate()));
+  const s=String(v); let x=s.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  if(x){ const ano=x[3]?(+x[3]<100?2000+ +x[3]:+x[3]):(+x[2]>+S.comp.slice(5,7)?a-1:a); return r(z(ano,+x[2],+x[1])); }
+  x=s.match(/(\d{4})-(\d{2})-(\d{2})/); if(x) return r(x[0]);
+  x=s.match(/^\s*(\d{1,2})\b/); if(x){ const iso=P.dataDoDia(S.comp,diaIni(),+x[1]); return iso?r(iso):null; }
+  return null;
+}
+function lerPlanilha(wb){
+  const out={}, fora={n:0};
+  for(const nomeAba of wb.SheetNames){
+    const L=XLSX.utils.sheet_to_json(wb.Sheets[nomeAba],{header:1,raw:true,defval:""});
+    let hi=-1; for(let i=0;i<Math.min(L.length,40);i++){ const t=L[i].map(x=>String(x).toLowerCase()); if(t.some(x=>/^(data|dia)\b/.test(x.trim()))&&t.some(x=>/entr|sa[ií]|marca|^e\s?\d|^s\s?\d/.test(x))){hi=i;break;} }
+    if(hi<0) continue;
+    const H=L[hi].map(x=>String(x).toLowerCase().trim());
+    const col=re=>H.findIndex(x=>re.test(x));
+    const cN=col(/funcion|nome|colaborador|empregado/), cC=col(/^c[oó]d|matr|registro/), cD=H.findIndex(x=>/^(data|dia)\b/.test(x)), cO=col(/ocorr|obs|justif|situa/);
+    const cT=H.map((x,i)=>/entr|sa[ií]|marca|^e\s?\d|^s\s?\d/.test(x)?i:-1).filter(i=>i>=0&&i!==cN&&i!==cO);
+    let nomeFixo=nomeAba;
+    for(let i=0;i<hi;i++){ const r=L[i]; for(let j=0;j<r.length;j++){ if(/^(nome|funcion[aá]rio|empregado|colaborador)\s*:?$/i.test(String(r[j]).trim())){ const v=r.slice(j+1).find(x=>String(x).trim()); if(v) nomeFixo=String(v); } } }
+    for(let i=hi+1;i<L.length;i++){
+      const r=L[i]; const dd=diaCel(r[cD]); if(!dd) continue;
+      if(!dd.ok){ fora.n++; continue; }
+      const nome=String(cN>=0?r[cN]:nomeFixo).trim(); if(!nome) continue;
+      const k=chave(nome)+"|"+(cC>=0?String(r[cC]).trim():"");
+      const f=out[k]||(out[k]={nome,codigo:cC>=0?String(r[cC]).trim():"",dias:[]});
+      const marc=cT.map(c=>horaCel(r[c])).filter(v=>v!=null).map(P.fmt2);
+      const textoOc=cO>=0?String(r[cO]):"";
+      const outros=cT.map(c=>r[c]).filter(v=>typeof v==="string"&&v.trim()&&P.hm(v)==null).join(" ");
+      f.dias.push({data:dd.data,marcacoes:marc,ocorrencia:ocDe(textoOc+" "+outros)});
+    }
+  }
+  return {funcionarios:Object.values(out),fora:fora.n};
+}
+const PROMPT_BASE=`Você vai ler o controle de ponto de funcionários de uma empresa brasileira para a conferência da folha de pagamento.
+Regras:
+- Cada funcionário tem as marcações de cada dia do mês (entradas e saídas), em ordem cronológica, no formato HH:MM de 24 horas.
+- Copie somente o que está escrito. Nunca invente nem complete horários. Dia sem nenhuma marcação = lista vazia.
+- Palavras escritas no lugar das marcações viram "ocorrencia": FALTA, ATESTADO, FERIAS, FOLGA (também DSR, compensação, descanso), FERIADO, AFASTAMENTO, ABONO. Senão "".
+- Marque "incerto": true no dia em que algum número estiver ilegível, rasurado ou ambíguo (dê a leitura mais provável).
+- "codigo" é o número de registro/matrícula do funcionário se aparecer; senão "".
+Responda só com JSON neste formato:
+{"competencia":"MM/AAAA ou vazio","funcionarios":[{"nome":"NOME COMPLETO","codigo":"","dias":[{"dia":1,"marcacoes":["07:30","12:00","13:30","17:48"],"ocorrencia":"","incerto":false}]}],"observacoes":"o que não deu para ler ou precisa de atenção"}`;
+
+async function arquivosX(files){
+  for(const f of files){
+    const item=registrar(f.name,"Planilha","Lendo…");
+    try{
+      const wb=XLSX.read(await f.arrayBuffer(),{type:"array",cellDates:false});
+      let r=lerPlanilha(wb), via="leitura direta";
+      if(!r.funcionarios.length){
+        const sample=await F.use("sample");
+        if(!sample){ atualizar(item,"er","Não reconheci as colunas desta planilha. Use o modelo da Exato ou peça ao cliente as colunas Funcionário, Data e Entrada/Saída."); continue; }
+        atualizar(item,"at","Formato diferente: o Claude está organizando a leitura…");
+        let csv=wb.SheetNames.map(n=>"### Aba "+n+"\n"+XLSX.utils.sheet_to_csv(wb.Sheets[n],{blankrows:false})).join("\n\n");
+        if(csv.length>56000) csv=csv.slice(0,56000)+"\n[cortado]";
+        const j=await sample.json(PROMPT_BASE+`\nPeríodo esperado: ${rotuloPeriodo()}.\nPlanilha exportada em CSV:\n`+csv,{modelTier:"default"});
+        r={funcionarios:(j&&j.funcionarios)||[],fora:0,obs:j&&j.observacoes}; via="organizada pelo Claude";
+      }
+      const m=mesclar(r.funcionarios,"excel");
+      atualizar(item,"ok",`${m.nf} funcionário(s), ${m.nd} dia(s) com marcação ou ocorrência · ${via}${r.fora?` · ${r.fora} linha(s) de outra competência ignoradas`:""}${r.obs?" · "+r.obs:""}`);
+      S.doc.arquivos=[...(S.doc.arquivos||[]),{nome:f.name,tipo:"planilha",em:new Date().toISOString()}];
+      sujo(); render();
+    }catch(e){ console.error(e); atualizar(item,"er",msgErro(e,"Não consegui ler a planilha.")); }
+  }
+}
+async function arquivosF(files){
+  const sample=await F.use("sample");
+  if(!sample){ toast("A leitura de fotos precisa do Flow aberto pelo link do claude.ai."); return; }
+  for(const f of files){
+    const url=URL.createObjectURL(f);
+    const item=registrar(f.name,"Foto","O Claude está lendo o cartão… (pode levar até 1 minuto)",url);
+    try{
+      const j=await sample.json(PROMPT_BASE+`\nA imagem é a foto de um cartão ponto (ou de um lado dele). Período esperado: ${rotuloPeriodo()}. Se o cartão tiver colunas de manhã/tarde/extra, leia todas as entradas e saídas do dia em ordem.`,{images:[f],modelTier:"complex"});
+      const lista=(j&&j.funcionarios)||[];
+      if(!lista.length){ atualizar(item,"er","Não encontrei marcações nesta foto. Tire outra foto mais próxima e com luz."); continue; }
+      const m=mesclar(lista,"foto");
+      for(const fn of lista){ const e=acharEmp(fn.nome,fn.codigo); if(e){ (S.fotos[e.id]=S.fotos[e.id]||[]).push({url,nome:f.name}); } }
+      const inc=lista.reduce((t,x)=>t+(x.dias||[]).filter(d=>d.incerto).length,0);
+      const compLida=j.competencia&&/\d{2}\/\d{4}/.test(j.competencia)?j.competencia:"";
+      const compOk=!compLida||compLida===S.comp.split("-").reverse().join("/");
+      atualizar(item,inc||!compOk?"at":"ok",`${lista.map(x=>x.nome).join(", ")} · ${m.nd} dia(s) lidos${inc?` · ${inc} dia(s) com leitura incerta`:""}${compOk?"":` · o cartão parece ser de ${compLida}`}${j.observacoes?" · "+j.observacoes:""}`);
+      S.doc.arquivos=[...(S.doc.arquivos||[]),{nome:f.name,tipo:"foto",em:new Date().toISOString()}];
+      sujo(); render();
+    }catch(e){ console.error(e); atualizar(item,"er",msgErro(e,"Não consegui ler a foto.")); }
+  }
+}
+function msgErro(e,padrao){
+  const c=e&&e.code;
+  return ({not_granted:"Você não autorizou o uso do Claude nesta página.",rate_limited:"Muitas leituras seguidas. Aguarde um pouco e envie de novo.",image_rejected:"Foto não aceita: use JPG ou PNG com menos de 20 MB.",invalid_json:"O Claude não devolveu uma leitura válida. Envie de novo.",images_unavailable:"Leitura de fotos indisponível nesta visualização.",refused:"O Claude não conseguiu ler este arquivo."})[c]||padrao;
+}
+function registrar(nome,tipo,txt,url){
+  S.arquivos.push({nome,tipo,txt,st:"at",url}); renderArquivos(); return S.arquivos.length-1;
+}
+function atualizar(i,st,txt){ S.arquivos[i].st=st; S.arquivos[i].txt=txt; renderArquivos(); }
+function renderArquivos(){
+  const ant=(S.doc.arquivos||[]).filter(a=>!S.arquivos.some(x=>x.nome===a.nome));
+  $("files").innerHTML=S.arquivos.map(a=>`<div class="file"><span class="pill ${a.st==="ok"?"p-ok":a.st==="er"?"p-er":"p-at"}">${esc(a.tipo)}</span><div><b>${esc(a.nome)}</b><span class="meta">${esc(a.txt)}</span></div>${a.url?`<button class="btn ghost sm" type="button" data-zoom="${esc(a.url)}" data-nome="${esc(a.nome)}">Ver foto</button>`:"<span></span>"}</div>`).join("")
+    +ant.map(a=>`<div class="file"><span class="pill p-nt">${a.tipo==="foto"?"Foto":"Planilha"}</span><div><b>${esc(a.nome)}</b><span class="meta">Lido em ${new Date(a.em).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}</span></div><span></span></div>`).join("");
+  $("nArq").textContent=(S.doc.arquivos||[]).length||"";
+}
+
+// ---------- modelo Excel ----------
+async function baixarModelo(){
+  if(!S.cli) return;
+  const dias=periodo(), linhas=[["Código","Funcionário","Data","Entrada 1","Saída 1","Entrada 2","Saída 2","Entrada 3","Saída 3","Ocorrência"]];
+  const funcs=S.doc.emps.length?S.doc.emps:Object.values(S.regras.funcs).map(f=>({cod:f.cod,nome:f.nome}));
+  const base=funcs.length?funcs:[{cod:"",nome:"NOME DO FUNCIONÁRIO"}];
+  for(const e of base) for(const d of dias) linhas.push([e.cod||"",e.nome,d.data.split("-").reverse().join("/"),"","","","","","",""]);
+  const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(linhas);
+  ws["!cols"]=[{wch:8},{wch:34},{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:22}];
+  XLSX.utils.book_append_sheet(wb,ws,"PONTO");
+  const ins=XLSX.utils.aoa_to_sheet([["Como preencher"],["1. Uma linha por funcionário e dia. Não apague as colunas."],["2. Horários no formato 07:30 (24 horas). Use as colunas de Entrada/Saída na ordem em que aconteceram."],["3. Em dias sem trabalho, escreva na Ocorrência: Falta, Atestado, Férias, Folga, Feriado ou Afastamento."],["4. Envie o arquivo para a Exato até o prazo combinado."]]);
+  ins["!cols"]=[{wch:100}]; XLSX.utils.book_append_sheet(wb,ins,"INSTRUÇÕES");
+  const blob=new Blob([XLSX.write(wb,{bookType:"xlsx",type:"array"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  await baixar(`Ponto_${(S.cli.cod||"")}_${S.comp.replace("-","")}.xlsx`,blob);
+}
+async function baixar(nome,blob){
+  const dl=await F.use("downloads");
+  if(!dl){ toast("Download indisponível nesta visualização. Abra o Flow pelo link do claude.ai."); return false; }
+  try{ await dl.save({filename:nome,data:blob}); toast("Arquivo salvo: "+nome); return true; }
+  catch(e){ toast(e&&e.code==="declined"?"Download cancelado.":"Não consegui baixar o arquivo."); return false; }
+}
+
+// ---------- apuração e render ----------
+function apurarTodos(){ for(const e of S.doc.emps) e._ap=P.apurar(e,S.comp,S.regras); }
+function render(){
+  if(!S.doc) return;
+  apurarTodos(); renderArquivos(); renderLista(); renderDet(); renderTxt();
+  const st=S.doc.status, map={rascunho:["Em conferência","p-at"],conferido:["Conferido","p-ok"],exportado:["TXT gerado","p-ok"]};
+  $("stPill").innerHTML=S.doc.emps.length?`<span class="pill ${map[st][1]}">${map[st][0]}</span>`:"";
+  const alt=S.doc.emps.reduce((t,e)=>t+e._ap.tot.alertasAltos,0);
+  $("nConf").textContent=S.doc.emps.length?`${S.doc.emps.length} func.${alt?` · ${alt} pend.`:""}`:"";
+}
+function renderLista(){
+  const q=chave($("bEmp").value);
+  const L=S.doc.emps.filter(e=>!q||chave(e.nome).includes(q)||String(e.cod)===q);
+  if(!S.sel&&S.doc.emps.length) S.sel=S.doc.emps[0].id;
+  const alt=S.doc.emps.filter(e=>e._ap.tot.alertasAltos||!e.cod).length;
+  $("resEmp").textContent=`${S.doc.emps.length} funcionário(s)${alt?` · ${alt} com pendência`:" · sem pendências"}`;
+  $("lEmp").innerHTML=L.map(e=>{const t=e._ap.tot, he=t.heFaixas.reduce((a,x)=>a+x.min,0)+t.he100;
+    return `<li><button type="button" data-e="${e.id}" aria-current="${e.id===S.sel}"><span class="nm">${esc(e.nome)}</span><span class="sm"><span>${e.cod?"cód. "+esc(e.cod):'<span class="er">sem código</span>'}</span>${he?`<span>HE ${N(he)}</span>`:""}${t.faltas.length?`<span>${t.faltas.length} falta(s)</span>`:""}${t.alertasAltos?`<span class="er">${t.alertasAltos} a corrigir</span>`:""}</span></button></li>`;}).join("")||'<li class="empty meta">Nenhum funcionário.</li>';
+}
+function renderDet(){
+  const e=S.doc.emps.find(x=>x.id===S.sel);
+  if(!e){ $("det").innerHTML='<div class="card empty">Envie os arquivos do ponto na aba Arquivos ou adicione um funcionário.</div>'; return; }
+  const a=e._ap, t=a.tot, j=jornadaDe(e), he=t.heFaixas;
+  const fotos=S.fotos[e.id]||[];
+  const ocOpts=v=>Object.entries(P.OCORRENCIAS).map(([k,o])=>`<option value="${k}" ${k===v?"selected":""}>${esc(o.rot)}</option>`).join("");
+  $("det").innerHTML=`
+  <div class="card">
+    <div class="eh"><div><h2>${esc(e.nome)}</h2><span class="meta">${esc(j.nome)} · falta vale ${P.fmt(minDia(j))} · ${e.origem==="foto"?"lido da foto":e.origem==="excel"?"lido da planilha":"lançado à mão"}</span>
+      <div class="f">
+        <label class="fld">Código no Domínio<input id="eCod" value="${esc(e.cod)}" inputmode="numeric" placeholder="obrigatório"></label>
+        <label class="fld">Jornada<select id="eJor">${S.regras.jornadas.map(x=>`<option value="${esc(x.id)}" ${x.id===j.id?"selected":""}>${esc(x.nome)}</option>`).join("")}</select></label>
+        <label class="fld">Nome<input id="eNome" value="${esc(e.nome)}" style="width:260px"></label>
+      </div>
+      <div class="f"><label class="fld">Ocorrência no período<select id="pOc">${Object.entries(P.OCORRENCIAS).filter(([k])=>k).map(([k,o])=>`<option value="${k}">${esc(o.rot)}</option>`).join("")}</select></label>
+        <label class="fld">De<input id="pDe" type="date" min="${a.dias[0].data}" max="${a.dias[a.dias.length-1].data}"></label>
+        <label class="fld">Até<input id="pAte" type="date" min="${a.dias[0].data}" max="${a.dias[a.dias.length-1].data}"></label>
+        <button class="btn ghost sm" type="button" id="pAplicar">Aplicar</button></div></div>
+      <button class="btn ghost sm" type="button" id="eDel">Remover da apuração</button></div>
+    ${fotos.length?`<div><h3 style="margin-bottom:6px">Fotos do cartão</h3><div class="fotos">${fotos.map(f=>`<button type="button" data-zoom="${esc(f.url)}" data-nome="${esc(f.nome)}"><img src="${esc(f.url)}" alt="Cartão de ${esc(e.nome)}"></button>`).join("")}</div></div>`:""}
+  </div>
+  <div class="tots">
+    ${he.map(x=>`<div class="tot"><b>${N(x.min)||"0:00"}</b><span>HE ${x.pct}%</span></div>`).join("")}
+    <div class="tot"><b>${N(t.he100)||"0:00"}</b><span>HE ${S.regras.he.domFer.pct}% dom./feriado</span></div>
+    <div class="tot ${t.hfalta?"er":""}"><b>${N(t.hfalta)||"0:00"}</b><span>Horas faltas (atrasos)</span></div>
+    <div class="tot ${t.faltas.length?"er":""}"><b>${t.faltas.length}</b><span>Faltas · ${t.semanasDsr.length} DSR</span></div>
+    <div class="tot"><b>${N(t.noturnoLancar)||"0:00"}</b><span>Noturno ${S.regras.not.reduzida?"(reduzida)":""}</span></div>
+    <div class="tot"><b>${N(t.trab)}</b><span>Trabalhadas · prev. ${N(t.esperado)}</span></div>
+  </div>
+  <div class="tbox"><table class="grid">
+    <thead><tr><th>Dia</th><th>Marcações</th><th>Ocorrência</th><th class="n">Trab.</th><th class="n">Prev.</th><th class="n">HE útil</th><th class="n">HE 100%</th><th class="n">H. falta</th><th class="n">Not.</th><th>Alertas</th></tr></thead>
+    <tbody>${a.dias.map(d=>{const k=d.data, dd=br(k).slice(0,5), x=e.dias[k]||{};
+      return `<tr class="${d.feriado?"fer":(d.dow===0||d.dow===6)?"we":""}" data-k="${k}">
+        <td class="d">${dd} ${DOW[d.dow]}<small>${esc(d.feriado||(x.o?(x.o==="foto"?"foto":x.o==="excel"?"planilha":"manual"):""))}</small></td>
+        <td><input class="m" data-k="${k}" value="${esc(x.m||"")}" placeholder="${d.esperado?"sem marcação":""}" aria-label="Marcações do dia ${dd}"></td>
+        <td><select data-oc="${k}" aria-label="Ocorrência do dia ${dd}">${ocOpts(x.oc||"")}</select></td>
+        <td class="n ${d.trab?"":"z"}">${N(d.trab)||"–"}</td><td class="n ${d.esperado?"":"z"}">${N(d.esperado)||"–"}</td>
+        <td class="n ${d.heUtil?"":"z"}">${N(d.heUtil)||"–"}</td><td class="n ${d.he100?"":"z"}">${N(d.he100)||"–"}</td>
+        <td class="n ${d.hfalta?"":"z"}">${d.falta?'<span class="pill p-er">Falta</span>':(N(d.hfalta)||"–")}</td><td class="n ${d.noturno?"":"z"}">${N(d.noturno)||"–"}</td>
+        <td><div class="al">${d.alertas.map(al=>`<span class="${al.nivel}">${esc(al.t)}</span>`).join("")}</div></td></tr>`;}).join("")}</tbody>
+  </table></div>
+  <p class="note">Período ${esc(rotuloPeriodo())}. Marcações separadas por espaço, na ordem (entrada saída entrada saída). Virada de meia-noite é reconhecida sozinha. Tolerância de ${S.regras.tolDia} min por dia (art. 58, § 1º, CLT).</p>`;
+}
+
+function renderTxt(){
+  if(!S.cli) return;
+  const R=S.regras, empresa=S.cli.cod;
+  const funcs=S.doc.emps.map(e=>({cod:e.cod,nome:e.nome,apur:e._ap,minFalta:minDia(jornadaDe(e)),minDsr:minDia(jornadaDe(e))}));
+  const g=P.linhasTxt({empresa,comp:S.comp,processo:R.processo,formato:R.formato,regras:R,funcionarios:funcs});
+  S.txt=g;
+  const alt=S.doc.emps.reduce((t,e)=>t+e._ap.tot.alertasAltos,0), med=S.doc.emps.reduce((t,e)=>t+e._ap.tot.alertas-e._ap.tot.alertasAltos,0);
+  const semCod=S.doc.emps.filter(e=>!e.cod);
+  const it=[];
+  it.push(S.doc.emps.length?["ok",`${S.doc.emps.length} funcionário(s) na apuração`]:["er","Nenhum funcionário na apuração"]);
+  it.push(empresa?["ok",`Código da empresa no Domínio: ${empresa}`]:["er","Cliente sem código do Domínio no cadastro (módulo Clientes)"]);
+  it.push(semCod.length?["er",`${semCod.length} funcionário(s) sem código do Domínio: ${semCod.slice(0,4).map(e=>e.nome).join(", ")}${semCod.length>4?"…":""}`]:["ok","Todos os funcionários com código do Domínio"]);
+  it.push(alt?["er",`${alt} dia(s) com marcação a corrigir (ímpar, ilegível ou em ocorrência)`]:["ok","Nenhuma marcação a corrigir"]);
+  const muitas=S.doc.emps.filter(e=>e._ap.tot.faltas.length>=5);
+  if(muitas.length) it.push(["at",`${muitas.length} funcionário(s) com 5 faltas ou mais: ${muitas.slice(0,3).map(e=>e.nome+" ("+e._ap.tot.faltas.length+")").join(", ")}${muitas.length>3?"…":""}. Confira se o mês inteiro foi enviado (frente e verso do cartão) e se não há férias ou afastamento.`]);
+  if(med) it.push(["at",`${med} alerta(s) de jornada para conferir (intervalo, interjornada, mais de 2h extras). Não impedem o TXT.`]);
+  g.erros.filter(x=>!/sem c[oó]digo do empregado/.test(x)).forEach(x=>it.push(["er",x]));
+  $("chk").innerHTML=it.map(([c,t])=>`<li class="${c}"><i></i>${esc(t)}</li>`).join("");
+  const bloqueia=it.some(x=>x[0]==="er");
+  S.podeExportar=!bloqueia;
+  $("btnConferido").disabled=bloqueia||S.doc.status!=="rascunho";
+  $("confMeta").textContent=S.doc.status==="rascunho"?(bloqueia?"Resolva os itens em vermelho para concluir.":"Tudo certo para concluir a conferência."):`Conferido${S.doc.conf_em?" em "+new Date(S.doc.conf_em).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):""}${S.doc.status==="exportado"?" · TXT gerado":""}.`;
+  $("btnBaixar").disabled=$("btnCopiar").disabled=bloqueia||S.doc.status==="rascunho";
+  const cols=["he","he100","hf","not","fal","dsr"];
+  $("tRes").innerHTML=`<thead><tr><th>Cód.</th><th>Funcionário</th>${S.regras.he.faixas.map(f=>`<th class="n">HE ${f.pct}%<br><span class="mono">${esc(f.rub)}</span></th>`).join("")}<th class="n">HE ${R.he.domFer.pct}%<br><span class="mono">${esc(R.he.domFer.rub)}</span></th><th class="n">H. faltas<br><span class="mono">${esc(R.hfalta.rub)}</span></th><th class="n">Noturno<br><span class="mono">${esc(R.not.rub||"?")}</span></th>${R.not.rubRed?`<th class="n">Redução<br><span class="mono">${esc(R.not.rubRed)}</span></th>`:""}<th class="n">Faltas<br><span class="mono">${esc(R.falta.rub)}</span></th><th class="n">DSR<br><span class="mono">${esc(R.dsr.rub)}</span></th></tr></thead>
+   <tbody>${S.doc.emps.map(e=>{const t=e._ap.tot, md=minDia(jornadaDe(e)); return `<tr><td class="mono">${esc(e.cod||"—")}</td><td>${esc(e.nome)}</td>${t.heFaixas.map(x=>`<td class="n">${N(x.min)||"–"}</td>`).join("")}<td class="n">${N(t.he100)||"–"}</td><td class="n">${N(t.hfalta)||"–"}</td><td class="n">${N(t.noturnoLancar)||"–"}</td>${R.not.rubRed?`<td class="n">${N(t.reducaoNoturna)||"–"}</td>`:""}<td class="n">${t.faltas.length?`${t.faltas.length} = ${N(t.faltas.length*md)}`:"–"}</td><td class="n">${t.semanasDsr.length?`${t.semanasDsr.length} = ${N(t.semanasDsr.length*md)}`:"–"}</td></tr>`;}).join("")}</tbody>`;
+  $("txt").textContent=g.linhas.length?g.linhas.join("\n"):"Nenhum lançamento a importar.";
+  $("fmtNota").textContent=R.formato;
+}
+
+// ---------- regras: formulário ----------
+function preencherRegras(){
+  const R=S.regras, f1=R.he.faixas[0]||{}, f2=R.he.faixas[1]||{};
+  const set=(id,v)=>{$(id).value=v??"";};
+  set("r-tol",R.tolDia); set("r-p1",f1.pct); set("r-a1",f1.ate!=null&&R.he.faixas.length>1?P.fmt(f1.ate):""); set("r-r1",f1.rub);
+  set("r-p2",R.he.faixas.length>1?f2.pct:""); set("r-r2",R.he.faixas.length>1?f2.rub:"");
+  set("r-p100",R.he.domFer.pct); set("r-r100",R.he.domFer.rub); set("r-rhf",R.hfalta.rub); set("r-rf",R.falta.rub); set("r-rd",R.dsr.rub); $("r-gd").checked=!!R.dsr.gerar;
+  $("r-lim").value=R.he.limite||"mes"; $("r-sab").checked=!!R.he.sab100; $("r-iv").value=String(R.interv.modo||2);
+  set("r-meio",R.dsr.meio?P.fmt(R.dsr.meio):""); set("r-nrr",R.not.rubRed); set("r-ini",R.periodo.diaIni>1?R.periodo.diaIni:""); $("r-r11").checked=R.txt.reg11!==false;
+  set("r-ni",R.not.ini); set("r-nf",R.not.fim); set("r-np",R.not.pct); set("r-nr",R.not.rub); $("r-nred").checked=!!R.not.reduzida; $("r-npr").checked=!!R.not.prorroga;
+  $("r-fmt").value=R.formato; $("r-proc").value=String(R.processo);
+  renderJornadas(); renderFeriados();
+}
+function lerRegras(){
+  const R=S.regras, n=id=>{const v=String($(id).value).trim();return v===""?"":Number(v.replace(",","."));};
+  R.tolDia=n("r-tol")===""?10:n("r-tol");
+  const a1=P.hm($("r-a1").value), p2=n("r-p2");
+  R.he.faixas=[{ate:p2!==""&&a1!=null?a1:null,pct:n("r-p1")||50,rub:n("r-r1")}];
+  if(p2!==""&&a1!=null) R.he.faixas.push({ate:null,pct:p2,rub:n("r-r2")});
+  R.he.domFer={pct:n("r-p100")||100,rub:n("r-r100")}; R.hfalta={rub:n("r-rhf")}; R.falta={...R.falta,rub:n("r-rf")}; R.dsr={...R.dsr,rub:n("r-rd"),gerar:$("r-gd").checked};
+  R.not={ini:$("r-ni").value.trim()||"22:00",fim:$("r-nf").value.trim()||"05:00",pct:n("r-np")||20,rub:n("r-nr"),reduzida:$("r-nred").checked,prorroga:$("r-npr").checked};
+  R.formato=$("r-fmt").value; R.processo=+$("r-proc").value;
+  R.he.limite=$("r-lim").value; R.he.sab100=$("r-sab").checked; R.interv={...R.interv,modo:+$("r-iv").value};
+  R.dsr.meio=P.hm($("r-meio").value)||null; R.not.rubRed=n("r-nrr");
+  const di=parseInt($("r-ini").value); R.periodo={diaIni:di>1&&di<=28?di:1}; R.txt={...R.txt,reg11:$("r-r11").checked};
+}
+function renderJornadas(){
+  $("jors").innerHTML=S.regras.jornadas.map((j,i)=>`<div class="jr" data-j="${i}">
+    <div class="row" style="justify-content:space-between"><label style="flex:1 1 260px">Nome da jornada<input data-jn="${i}" value="${esc(j.nome)}"></label>
+      <span class="meta">${P.fmt(semanal(j))} por semana · falta = ${P.fmt(minDia(j))}</span>${S.regras.jornadas.length>1?`<button class="btn ghost sm" type="button" data-jdel="${i}">Excluir</button>`:""}</div>
+    <div class="dias">${[1,2,3,4,5,6,0].map(d=>`<label>${DOW[d]}<input data-jd="${i}:${d}" value="${esc(j.dias[d]||"")}" placeholder="folga"></label>`).join("")}</div></div>`).join("");
+}
+function renderFeriados(){
+  const L=S.regras.feriados||[];
+  $("fers").innerHTML=L.length?L.map((f,i)=>`<span class="pill p-nt" style="margin:0 6px 6px 0">${esc(f.data.split("-").reverse().join("/"))} · ${esc(f.nome)} <button type="button" data-fdel="${i}" style="border:0;background:none;cursor:pointer;color:inherit" aria-label="Excluir">✕</button></span>`).join(""):"Nenhum feriado local cadastrado.";
+}
+
+// ---------- abas ----------
+function aba(t){ S.tab=t; document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===t)); ["arq","conf","reg","txt"].forEach(x=>$("t-"+x).hidden=x!==t); if(t==="txt") renderTxt(); }
+
+// ---------- eventos ----------
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>aba(b.dataset.t));
+$("cli").addEventListener("change",abrir); $("comp").addEventListener("change",abrir);
+$("inX").onchange=e=>{ if(S.cli) arquivosX([...e.target.files]); e.target.value=""; };
+$("inF").onchange=e=>{ if(S.cli) arquivosF([...e.target.files]); e.target.value=""; };
+for(const [id,fn,re] of [["dropX",arquivosX,/\.(xlsx|xls|csv|ods)$/i],["dropF",arquivosF,/\.(jpe?g|png|webp)$/i]]){
+  const el=$(id);
+  el.addEventListener("dragover",e=>{e.preventDefault();el.classList.add("over");});
+  el.addEventListener("dragleave",()=>el.classList.remove("over"));
+  el.addEventListener("drop",e=>{e.preventDefault();el.classList.remove("over"); if(!S.cli) return; const fs=[...e.dataTransfer.files].filter(f=>re.test(f.name)); if(fs.length) fn(fs); else toast("Tipo de arquivo não aceito aqui.");});
+}
+$("btnModelo").onclick=baixarModelo;
+$("btnAddFunc").onclick=()=>{ const e=novoEmp("NOVO FUNCIONÁRIO",""); S.doc.emps.push(e); S.sel=e.id; sujo(); render(); aba("conf"); setTimeout(()=>{$("eNome").select();},50); };
+$("bEmp").oninput=renderLista;
+$("lEmp").addEventListener("click",e=>{const b=e.target.closest("[data-e]"); if(!b) return; S.sel=b.dataset.e; renderLista(); renderDet();});
+$("det").addEventListener("change",ev=>{
+  const e=S.doc.emps.find(x=>x.id===S.sel); if(!e) return; const t=ev.target;
+  if(t.matches("input.m")){ const k=t.dataset.k, x=e.dias[k]||{}; const v=t.value.trim(); e.dias[k]={...x,m:v,il:0,o:x.o&&x.m===v?x.o:"manual"}; if(!v&&!x.oc) delete e.dias[k]; }
+  else if(t.matches("select[data-oc]")){ const k=t.dataset.oc, x=e.dias[k]||{}; e.dias[k]={...x,oc:t.value,il:0,o:x.o||"manual"}; }
+  else if(t.id==="eCod"){ e.cod=F.digitos(t.value); lembrar(e); }
+  else if(t.id==="eJor"){ e.jornada=t.value; lembrar(e); }
+  else if(t.id==="eNome"){ e.nome=t.value.trim().toUpperCase()||e.nome; lembrar(e); }
+  else return;
+  sujo();
+  setTimeout(()=>{ // redesenha mantendo o foco onde o usuário foi (Tab ou clique)
+    const a=document.activeElement, d=a&&a.dataset||{};
+    const sel=d.k?`input.m[data-k="${d.k}"]`:d.oc?`select[data-oc="${d.oc}"]`:(a&&a.id&&$("det").contains(a))?"#"+a.id:null;
+    const y=window.scrollY; render(); window.scrollTo(0,y);
+    if(sel){ const n=document.querySelector(sel); if(n) n.focus(); }
+  },0);
+});
+$("det").addEventListener("keydown",ev=>{ if(ev.key==="Enter"&&ev.target.matches("input.m")){ ev.preventDefault(); const L=[...document.querySelectorAll("input.m")], i=L.indexOf(ev.target), k=L[i+1]&&L[i+1].dataset.k; ev.target.blur(); setTimeout(()=>{const nx=k&&document.querySelector(`input.m[data-k="${k}"]`); if(nx) nx.focus();},30); } });
+$("det").addEventListener("click",ev=>{
+  if(ev.target.id==="pAplicar"){
+    const e=S.doc.emps.find(x=>x.id===S.sel), de=$("pDe").value, ate=$("pAte").value||de, oc=$("pOc").value;
+    if(!e||!de){ toast("Informe a data inicial."); return; }
+    let n=0; for(const d of periodo()){ if(d.data>=de&&d.data<=ate){ const x=e.dias[d.data]||{}; e.dias[d.data]={...x,oc,il:0,o:x.o||"manual"}; n++; } }
+    sujo(); render(); toast(`${P.OCORRENCIAS[oc].rot} aplicada em ${n} dia(s).`); return;
+  }
+  if(ev.target.id==="eDel"){ const b=ev.target; if(b.dataset.arm){ S.doc.emps=S.doc.emps.filter(x=>x.id!==S.sel); S.sel=null; sujo(); render(); } else { b.dataset.arm=1; b.textContent="Clique de novo para remover"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.arm; b.textContent="Remover da apuração"; } },3500); } }
+});
+document.addEventListener("click",ev=>{ const z=ev.target.closest("[data-zoom]"); if(!z) return; $("zImg").src=z.dataset.zoom; $("zTit").textContent=z.dataset.nome||"Cartão ponto"; $("dlgZoom").showModal(); });
+$("zFechar").onclick=()=>$("dlgZoom").close();
+// regras
+$("t-reg").addEventListener("input",ev=>{
+  const t=ev.target;
+  if(t.dataset.jn!=null){ S.regras.jornadas[+t.dataset.jn].nome=t.value; }
+  else if(t.dataset.jd){ const [i,d]=t.dataset.jd.split(":"); S.regras.jornadas[+i].dias[d]=t.value.trim(); }
+});
+$("t-reg").addEventListener("change",ev=>{ if(ev.target.dataset.jd||ev.target.dataset.jn!=null){ renderJornadas(); } });
+$("t-reg").addEventListener("click",ev=>{
+  const d=ev.target.closest("[data-jdel]"), f=ev.target.closest("[data-fdel]");
+  if(d){ const i=+d.dataset.jdel, id=S.regras.jornadas[i].id; S.regras.jornadas.splice(i,1); S.doc.emps.forEach(e=>{ if(e.jornada===id) e.jornada=S.regras.jornadas[0].id; }); renderJornadas(); }
+  if(f){ S.regras.feriados.splice(+f.dataset.fdel,1); renderFeriados(); }
+});
+$("btnAddJor").onclick=()=>{ S.regras.jornadas.push({id:"j"+Date.now().toString(36),nome:"Nova jornada",dias:{1:"",2:"",3:"",4:"",5:"",6:"",0:""}}); renderJornadas(); };
+$("btnFer").onclick=()=>{ const d=$("ferData").value, n=$("ferNome").value.trim(); if(!d||!n){ toast("Informe a data e o nome do feriado."); return; } S.regras.feriados=[...(S.regras.feriados||[]).filter(x=>x.data!==d),{data:d,nome:n}].sort((a,b)=>a.data.localeCompare(b.data)); $("ferData").value=""; $("ferNome").value=""; renderFeriados(); };
+$("btnRegras").onclick=async()=>{
+  lerRegras();
+  const ruins=S.regras.jornadas.filter(j=>[0,1,2,3,4,5,6].some(d=>j.dias[d]&&P.intervalosJornada(j.dias[d]).length!==j.dias[d].split(/\s+/).filter(Boolean).length));
+  if(ruins.length){ toast(`Confira os horários da jornada "${ruins[0].nome}". Use o formato 07:30-12:00 13:30-17:48.`); return; }
+  if(await salvarRegras()){ if(S.doc.status!=="rascunho"){ S.doc.status="rascunho"; sujo(); } render(); }
+};
+// txt
+$("btnConferido").onclick=async()=>{ if(!S.podeExportar) return; S.doc.status="conferido"; S.doc.conf_em=new Date().toISOString(); S.doc.conf_por=await F.usuarioId(); await salvarAgora(); render(); toast("Conferência concluída. O TXT está liberado."); };
+$("btnBaixar").onclick=async()=>{
+  const nome=`Lancamentos_Ponto_${S.cli.cod||F.digitos(S.cli.cnpj)}_${S.comp.replace("-","")}.txt`;
+  const blob=new Blob([S.txt.linhas.join("\r\n")+"\r\n"],{type:"text/plain"});
+  if(await baixar(nome,blob)){ S.doc.status="exportado"; S.doc.txt_em=new Date().toISOString(); await salvarAgora(); render(); }
+};
+$("btnCopiar").onclick=async()=>{ try{ await navigator.clipboard.writeText(S.txt.linhas.join("\r\n")+"\r\n"); toast("TXT copiado. Cole num arquivo .txt para importar."); }catch(e){ const r=document.createRange(); r.selectNodeContents($("txt")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("Texto selecionado: use Ctrl+C para copiar."); } };
+window.addEventListener("pagehide",()=>{ if(tSalvar) salvarAgora(); });
+
+// ---------- início ----------
+(function(){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); $("comp").value=d.toISOString().slice(0,7);
+  try{ const u=JSON.parse(localStorage.getItem("flow.ponto.ult")||"null"); if(u){ $("cli").value=u.cli||""; if(u.comp) $("comp").value=u.comp; } }catch(e){} })();
+F.use("sample").then(async s=>{ const lim=s&&s.limits?await s.limits().catch(()=>null):null; if(!lim||!lim.images){ $("lblF").classList.add("disabled"); $("inF").disabled=true; $("fotoAviso").hidden=false; $("fotoAviso").textContent="Leitura de fotos disponível só com o Flow aberto pelo link do claude.ai."; } });
+F.assinar(est=>{
+  S.E=est;
+  if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }
+  if(est.pronto.clientes){ if(!tSalvar&&!S.salvando) setSync("on","Sincronizado"); listaClientes(); if(!S.cli&&$("cli").value) abrir(); }
+});
+</script>
+<script src="../nucleo/tema-exato.js" data-mod="ponto"></script>
+</body></html>

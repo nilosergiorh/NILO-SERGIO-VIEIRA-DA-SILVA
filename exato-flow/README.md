@@ -13,7 +13,7 @@ Ecossistema dos aplicativos de Departamento Pessoal da Exato. Cada aplicativo é
 | Etapa | O que acontece | Módulo | Situação |
 |---|---|---|---|
 | 1 · CCT | Piso, reajuste, adicionais e jornada de cada cliente | Painel Sindical | Ativo |
-| 2 · Ponto | Horas extras, faltas e adicionais pela regra da CCT | Ponto | Em construção |
+| 2 · Ponto | Ponto em Excel ou foto: horas extras, faltas, DSR e noturno, com TXT para o Domínio | Ponto | Ativo |
 | 3 · Folha | Lançamentos importados e folha calculada | Sistema Domínio | Externo |
 | 4 · Guias | Extrato da folha conferido contra as DARFs da DCTFWeb | Auditoria de Guias | Ativo |
 
@@ -23,11 +23,18 @@ Ecossistema dos aplicativos de Departamento Pessoal da Exato. Cada aplicativo é
 exato-flow/
 ├── index.html                    # tela principal: trilho de módulos + Início com resumo do cadastro
 ├── nucleo/
-│   └── flow-dados.js             # núcleo compartilhado: CNPJ, status da CCT, pendências, conexão com a base
-└── modulos/
-    ├── clientes.html             # Cadastro único de clientes
-    ├── painel-sindical.html      # Painel Sindical Exato
-    └── auditoria-guias.html      # Exato Auditoria de Guias (INSS e IRRF)
+│   ├── flow-dados.js             # núcleo compartilhado: CNPJ, status da CCT, pendências, conexão com a base
+│   ├── ponto-calculo.js          # motor de apuração do ponto e do TXT do Domínio (sem tela; roda no Node)
+│   ├── tema-exato.css / .js      # tema escuro e mascote E-exato (todos os módulos)
+│   ├── tema-sindical.css         # tema do Painel Sindical
+│   └── mascote*.png
+├── modulos/
+│   ├── clientes.html             # Cadastro único de clientes
+│   ├── painel-sindical.html      # Painel Sindical Exato
+│   ├── ponto.html                # Conferência de ponto
+│   └── auditoria-guias.html      # Exato Auditoria de Guias (INSS e IRRF)
+└── testes/
+    └── ponto-calculo.test.js     # node exato-flow/testes/ponto-calculo.test.js
 ```
 
 - `index.html` é a casca do programa. Ela abre cada módulo numa área própria e mantém o módulo aberto quando você troca de tela.
@@ -52,6 +59,36 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 - **Coleção `auditorias`:** um documento por CNPJ, com a última auditoria de guias (`ultima`) e as últimas 12 competências (`hist`). A Auditoria de Guias grava esses dados sozinha a cada auditoria, mas só quando o resultado muda.
 - O módulo Clientes não exclui clientes. Para tirar um cliente da carteira, mude a situação para "Inativo" e o histórico fica preservado.
 
+## Conferência de ponto
+
+1. **Arquivos:** o cliente envia o ponto em Excel/CSV ou em foto do cartão.
+   - A planilha no modelo da Exato (botão "Baixar modelo Excel") é lida direto, sem custo.
+   - Planilhas em outro formato e fotos são organizadas pelo Claude. Isso consome o uso do Claude de quem está operando.
+   - Nas fotos, os dias com leitura incerta ficam marcados para conferência.
+2. **Conferência:** grade do período por funcionário, com as marcações editáveis, a ocorrência do dia e os alertas:
+   - marcação ímpar ou ilegível;
+   - intervalo menor que 1h;
+   - mais de 2h extras no dia;
+   - interjornada menor que 11h;
+   - semana acima de 44h.
+
+   Férias e afastamentos podem ser aplicados a um intervalo de datas de uma vez.
+3. **Regras do cliente** (guardadas em `ponto_regras/{cnpj}`):
+   - jornadas e tolerância;
+   - faixas de hora extra, com limite por mês (ex.: 70% até 30h) ou por dia;
+   - sábado a 100% e tratamento do dia com um só par de marcações;
+   - perda do DSR por falta de meio período;
+   - adicional noturno, com hora reduzida, prorrogação e rubrica de redução opcional;
+   - feriados locais e período do ponto (ex.: 21 a 20);
+   - rubricas, formato das horas e registro 11.
+4. **TXT do Domínio:** leiaute "Importar Lançamentos". Registro 10 com 43 posições; registro 11 opcional, com a data de cada falta. Rubricas padrão da Exato: 150, 200, 8069, 40 e 42; a do adicional noturno é por cliente. O TXT só é liberado depois de "Marcar como conferido", sem pendências em vermelho.
+
+A apuração de cada mês fica em `ponto/{cnpj}_{AAAAMM}`. O código do Domínio e a jornada de cada funcionário ficam lembrados para os meses seguintes.
+
+As regras de cálculo seguem o sistema `ponto-dominio` (branch `claude/init-git-repo-mjhm65`). Diferenças a confirmar antes de usar em produção:
+- Formato das horas: o `ponto-dominio` usa horas decimais (centesimal); a planilha de lançamentos usa sexagesimal. No Flow, a escolha é por cliente.
+- Registro 11: o `ponto-dominio` não gera; a planilha de lançamentos gera para a rubrica 40. No Flow, também é escolha por cliente.
+
 ## Publicação
 
 O programa é publicado como Artifact no claude.ai, no mesmo endereço do antigo Painel Sindical. Com isso, a base de dados, os PDFs das convenções e as permissões continuam os mesmos.
@@ -63,6 +100,9 @@ O programa é publicado como Artifact no claude.ai, no mesmo endereço do antigo
 | `modulos/auditoria-guias.html` | `modulos/auditoria-guias.html` |
 | `modulos/clientes.html` | `modulos/clientes.html` |
 | `nucleo/flow-dados.js` | `nucleo/flow-dados.js` |
+| `modulos/ponto.html` | `modulos/ponto.html` |
+| `nucleo/ponto-calculo.js` | `nucleo/ponto-calculo.js` |
+| `nucleo/tema-*.css`, `tema-exato.js`, `mascote*.png` | mesmo caminho |
 
 ## Como adicionar um módulo novo (ex.: Ponto)
 
@@ -73,5 +113,5 @@ O programa é publicado como Artifact no claude.ai, no mesmo endereço do antigo
 
 ## Próximos passos
 
-- **Módulo Ponto**: aplicar as regras de jornada e hora extra da CCT e exportar no leiaute de importação do Domínio.
+- **Versão para computador** (branch `claude/gallant-lovelace-pidnih`): incluir o módulo Ponto em `web/modulos` e os arquivos de `nucleo`.
 - **Tabelas com vigência**: faixas do INSS, IRRF e valores de CCT guardados com data de início, para não ficarem fixos no código.

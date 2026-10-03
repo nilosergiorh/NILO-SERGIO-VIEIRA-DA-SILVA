@@ -120,6 +120,7 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
+<link rel="stylesheet" href="nucleo/tema-exato.css">
 
 <div class="app">
   <nav class="rail" aria-label="Módulos do Exato Flow">
@@ -140,9 +141,9 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="m10 14 2 2 4-4"/></svg>
       <span>Guias</span>
     </button>
-    <button class="tab" type="button" data-go="ponto" id="t-ponto" aria-disabled="true" title="Módulo em construção">
+    <button class="tab" type="button" data-go="ponto" id="t-ponto">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
-      <span>Ponto</span><small>em breve</small>
+      <span>Ponto</span>
     </button>
     <div class="by">por Exato<br>Soluções<br>Contábeis</div>
   </nav>
@@ -173,7 +174,7 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
           <p class="lead">Cada etapa usa o resultado da anterior. Um piso ou percentual de hora extra errado na convenção aparece lá na guia. Por isso os módulos ficam no mesmo programa.</p>
           <div class="flow">
             <div class="step"><span class="n">1 · CCT</span><b>Regras do sindicato</b><p>Piso, reajuste, adicionais e jornada de cada cliente.</p><span class="pill ok">Painel Sindical</span></div>
-            <div class="step"><span class="n">2 · Ponto</span><b>Apuração da jornada</b><p>Horas extras, faltas e adicionais pela regra da CCT.</p><span class="pill wip">Em construção</span></div>
+            <div class="step"><span class="n">2 · Ponto</span><b>Apuração da jornada</b><p>Ponto em Excel ou foto do cartão: horas extras, faltas, DSR e noturno, com TXT para o Domínio.</p><span class="pill ok">Ponto</span></div>
             <div class="step"><span class="n">3 · Folha</span><b>Cálculo no Domínio</b><p>Lançamentos importados e folha calculada.</p><span class="pill ext">Sistema Domínio</span></div>
             <div class="step"><span class="n">4 · Guias</span><b>Conferência antes de pagar</b><p>Extrato da folha contra as DARFs da DCTFWeb.</p><span class="pill ok">Auditoria de Guias</span></div>
           </div>
@@ -202,10 +203,10 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
               <button class="go" type="button" data-go="guias">Abrir Auditoria de Guias</button>
             </article>
             <article class="mod">
-              <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><span class="pill wip">Em construção</span></div>
+              <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><span class="pill ok">Ativo</span></div>
               <h3>Ponto</h3>
-              <ul><li>Leitura da folha ponto dos clientes</li><li>Horas extras e adicionais pela CCT</li><li>Exportação para o Domínio</li></ul>
-              <button class="go" type="button" disabled>Em breve</button>
+              <ul><li>Ponto em Excel ou foto do cartão</li><li>Horas extras, faltas, DSR e adicional noturno</li><li>TXT para o Domínio Folha</li></ul>
+              <button class="go" type="button" data-go="ponto">Abrir Ponto</button>
             </article>
           </div>
         </section>
@@ -216,6 +217,7 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
 
     <section class="view" id="v-clientes" aria-label="Clientes" hidden></section>
     <section class="view" id="v-sindical" aria-label="Painel Sindical" hidden></section>
+    <section class="view" id="v-ponto" aria-label="Conferência de ponto" hidden></section>
     <section class="view" id="v-guias" aria-label="Auditoria de Guias" hidden></section>
   </main>
 </div>
@@ -225,9 +227,10 @@ h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
 const MODS={
   clientes:{src:"modulos/clientes.html",title:"Clientes"},
   sindical:{src:"modulos/painel-sindical.html",title:"Painel Sindical"},
+  ponto:{src:"modulos/ponto.html",title:"Conferência de ponto"},
   guias:{src:"modulos/auditoria-guias.html",title:"Auditoria de Guias"}
 };
-const VIEWS=["inicio","clientes","sindical","guias"];
+const VIEWS=["inicio","clientes","sindical","ponto","guias"];
 function abrir(v){
   if(!VIEWS.includes(v)) v="inicio";
   const m=MODS[v], box=document.getElementById("v-"+v);
@@ -270,3 +273,5 @@ let ini=(location.hash||"").slice(1);
 if(!VIEWS.includes(ini)){ try{ini=localStorage.getItem("exatoflow.tela")||""}catch(e){ini=""} }
 abrir(ini);
 </script>
+
+<script src="nucleo/tema-exato.js" data-mod="inicio"></script>
