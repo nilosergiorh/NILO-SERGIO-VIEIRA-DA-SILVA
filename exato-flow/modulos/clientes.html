@@ -87,6 +87,8 @@ td small{display:block;color:var(--mute);font-family:var(--f-mono);font-size:.72
 .panel .sub{margin:4px 0 0;color:var(--mute);font-size:.84rem}
 .close{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;flex:none}
 .box{border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:10px}
+.row-b{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mono{font-family:var(--f-mono)}
 .box h3{margin:0;font:700 .78rem var(--f-disp);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
 .plist{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:.88rem}
 .plist li{display:flex;gap:8px;align-items:baseline}
@@ -161,7 +163,9 @@ td small{display:block;color:var(--mute);font-family:var(--f-mono);font-size:.72
 <div class="drawer" id="drawer" hidden><div class="panel" id="panel" role="dialog" aria-modal="true" aria-labelledby="fTit"></div></div>
 <div class="toast" id="toast" hidden></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="../nucleo/flow-dados.js" charset="utf-8"></script>
+<script src="../nucleo/dominio-relatorios.js" charset="utf-8"></script>
 <script>
 const F=window.FlowDados;
 const $=id=>document.getElementById(id);
@@ -274,8 +278,10 @@ function ficha(id){
       <dt>Vigência</dt><dd>${k?`${F.fmtData(k.ini)} a ${F.fmtData(k.fim)}${k.db?` · data-base ${esc(k.db)}`:""}`:"—"}</dd>
       <dt>Confirmado</dt><dd>${c.confirmado==="Sim"?"Sim":"Ainda não"}${c.conf?` · confiança ${esc(c.conf)}`:""}</dd></dl>
       <button class="link" type="button" data-modulo="sindical">Alterar no Painel Sindical →</button></div>
-    <div class="box"><h3>Auditoria de guias</h3>${aud(a)}<button class="link" type="button" data-modulo="guias">Abrir a Auditoria de Guias →</button></div>`:""}`;
+    <div class="box"><h3>Auditoria de guias</h3>${aud(a)}<button class="link" type="button" data-modulo="guias">Abrir a Auditoria de Guias →</button></div>
+    ${docsHtml(c)}`:""}`;
   $("drawer").hidden=false;
+  if(c){ abrirFuncionarios(c); renderRev(); }
   const cn=$("f-cnpj"); if(cn) cn.addEventListener("blur",()=>{ if(F.digitos(cn.value).length===14) cn.value=F.fmtCnpj(cn.value); });
   $("fCli").addEventListener("submit",ev=>{ev.preventDefault(); salvar(c);});
 }
@@ -324,13 +330,128 @@ async function salvar(c){
     if(btn) btn.disabled=false;
   }
 }
-function fechar(){ $("drawer").hidden=true; S.aberto=null; }
+function fechar(){ $("drawer").hidden=true; S.aberto=null; if(DOC.parar){ DOC.parar(); DOC.parar=null; } DOC.rev=null; }
+// ---------- documentos do Domínio: ficha da empresa e fichas dos funcionários ----------
+const DR=window.DominioRel;
+const DOC={rev:null,funcs:null,parar:null,cnpj:""};
+const brD=s=>s?String(s).split("-").reverse().join("/"):"";
+const hoje=()=>new Date().toISOString().slice(0,10);
+function docsHtml(c){
+  const L=c.emp_docs||[];
+  return `<div class="box" id="boxDocs"><h3>Documentos do Domínio</h3>
+    <p class="meta" style="margin:0">A ficha da empresa atualiza o cadastro do cliente para todos os módulos. As fichas dos funcionários montam o cadastro de funcionários usado no Ponto e nos próximos módulos. Nada é gravado antes de você conferir e aplicar.</p>
+    ${S.somenteLeitura?"":`<div class="row-b"><label class="btn ghost" for="inEmpresa">Anexar ficha da empresa</label><label class="btn ghost" for="inFuncs">Enviar fichas dos funcionários</label></div>
+    <input id="inEmpresa" type="file" accept=".pdf,image/jpeg,image/png,image/webp" multiple hidden>
+    <input id="inFuncs" type="file" accept=".pdf,.xlsx,.xls,.csv,image/jpeg,image/png,image/webp" multiple hidden>`}
+    <p class="meta" id="docSt" style="margin:0"></p>
+    <div id="docRev"></div>
+    ${L.length?`<div><span class="meta">Anexos:</span> ${L.map(d=>`<a class="link" href="/_blob/${esc(d.id)}" target="_blank" rel="noopener">${esc(d.nome)}</a> <span class="meta">(${esc(d.tipo)}, ${new Date(d.em).toLocaleDateString("pt-BR")})</span>`).join(" · ")}</div>`:""}
+  </div>
+  <div class="box"><h3>Funcionários <span id="nFun"></span></h3><div id="funList"><p class="meta" style="margin:0">Carregando…</p></div></div>`;
+}
+function abrirFuncionarios(c){
+  if(DOC.parar) DOC.parar();
+  DOC.funcs=null; DOC.rev=null; DOC.cnpj=F.digitos(c.cnpj);
+  if(!DOC.cnpj){ $("funList").innerHTML='<p class="meta" style="margin:0">Informe o CNPJ do cliente para cadastrar funcionários.</p>'; return; }
+  DOC.parar=F.assinarFuncionarios(DOC.cnpj,lista=>{ DOC.funcs=lista; renderFuncs(); });
+}
+function renderFuncs(){
+  const el=$("funList"); if(!el) return;
+  if(DOC.funcs===null){ el.innerHTML='<p class="meta" style="margin:0">Base indisponível nesta visualização.</p>'; return; }
+  const L=DOC.funcs, at=L.filter(f=>F.funcAtivo(f,hoje()));
+  $("nFun").textContent=L.length?`(${at.length} ativo${at.length===1?"":"s"}${L.length>at.length?`, ${L.length-at.length} desligado(s)`:""})`:"";
+  if(!L.length){ el.innerHTML='<p class="meta" style="margin:0">Nenhum funcionário cadastrado. Use "Enviar fichas dos funcionários".</p>'; return; }
+  el.innerHTML=`<div style="overflow-x:auto"><table class="hist"><thead><tr><th>Cód.</th><th>Nome</th><th>Cargo</th><th>Admissão</th><th>Situação</th><th></th></tr></thead><tbody>${L.map((f,i)=>{
+    const a=DR.idade(f.nascimento,hoje()), ativo=F.funcAtivo(f,hoje());
+    return `<tr${ativo?"":' style="opacity:.55"'}><td class="mono">${esc(f.codigo||"—")}</td><td>${esc(f.nome)}${a!=null&&a<18?' <span class="pill p-er">menor</span>':""}</td><td>${esc(f.cargo||"")}</td><td>${brD(f.admissao)}</td><td>${esc(f.situacao||"")}${f.rescisao?` · rescisão ${brD(f.rescisao)}`:""}${f.ferias_ini?` · férias ${brD(f.ferias_ini)} a ${brD(f.ferias_fim)}`:""}${f.afast_ini?` · ${esc((f.afast_tipo||"afastamento").toLowerCase())} desde ${brD(f.afast_ini)}`:""}</td>
+      <td>${S.somenteLeitura?"":`<button class="link" type="button" data-fdel="${i}" aria-label="Remover ${esc(f.nome)}">remover</button>`}</td></tr>`; }).join("")}</tbody></table></div>`;
+}
+function docSt(t){ const p=$("docSt"); if(p) p.textContent=t; }
+async function lerEmpresa(c,files){
+  try{
+    const sample=await F.use("sample");
+    const r=await DR.lerFichaEmpresa(files,{sample,XLSX:window.XLSX,progresso:docSt});
+    if(!Object.keys(r.campos).length){ docSt("Não encontrei dados de empresa nesse arquivo."); return; }
+    DOC.rev={tipo:"empresa",c,files,...r}; docSt("Leitura concluída: confira e aplique."); renderRev();
+  }catch(e){ console.error(e); docSt(e&&e.code==="sem_claude"?e.message:e&&e.code==="not_granted"?"Você não autorizou o uso do Claude nesta página.":e&&e.code==="rate_limited"?"Muitas leituras seguidas. Aguarde e tente de novo.":"Não consegui ler a ficha da empresa."); }
+}
+async function lerFuncs(c,files){
+  try{
+    const sample=await F.use("sample");
+    const p=await DR.lerRelatorios(files,{cnpj:F.digitos(c.cnpj),sample,XLSX:window.XLSX,progresso:docSt,refData:hoje()});
+    if(!p.funcionarios.length){ docSt("Não encontrei funcionários nesses arquivos."); if(p.alertas.length) toast(p.alertas[0]); return; }
+    DOC.rev={tipo:"funcs",c,...p}; docSt("Leitura concluída: confira e aplique."); renderRev();
+  }catch(e){ console.error(e); docSt(e&&e.code==="not_granted"?"Você não autorizou o uso do Claude nesta página.":e&&e.code==="rate_limited"?"Muitas leituras seguidas. Aguarde e tente de novo.":(e&&e.message)||"Não consegui ler as fichas."); }
+}
+function renderRev(){
+  const r=DOC.rev, el=$("docRev"); if(!el) return;
+  if(!r){ el.innerHTML=""; return; }
+  const al=(r.alertas||[]).length?`<ul class="plist">${r.alertas.map(a=>`<li><i class="media"></i>${esc(a)}</li>`).join("")}</ul>`:"";
+  if(r.tipo==="empresa"){
+    const c=r.c, cn=r.campos.cnpj&&F.digitos(r.campos.cnpj)!==F.digitos(c.cnpj);
+    const linhas=DR.CAMPOS_EMPRESA.filter(([k])=>r.campos[k]).map(([k,rot])=>{
+      const atual=c[k]??"", novo=r.campos[k], igual=F.chaveNome(atual)===F.chaveNome(novo);
+      const bloq=k==="cnpj"&&cn;
+      return `<tr><td><input type="checkbox" data-ce="${k}" ${!igual&&!atual&&!bloq?"checked":""} ${igual||bloq?"disabled":""} aria-label="Usar ${esc(rot)}"></td><td>${esc(rot)}</td><td>${esc(atual||"—")}</td><td><b>${esc(novo)}</b>${igual?' <span class="meta">igual</span>':""}</td></tr>`; }).join("");
+    el.innerHTML=`<div class="box" style="border-color:var(--red-hi)"><h3>Ficha da empresa: conferir</h3>
+      ${cn?`<ul class="plist"><li><i class="alta"></i>O CNPJ da ficha (${esc(r.campos.cnpj)}) é diferente do cliente. Confira se escolheu o cliente certo: o CNPJ não será trocado.</li></ul>`:""}${al}
+      <p class="meta" style="margin:0">Marcados: campos vazios no cadastro. Campos que mudaram ficam desmarcados: marque se quiser trocar.</p>
+      <div style="overflow-x:auto"><table class="hist"><thead><tr><th></th><th>Campo</th><th>Hoje</th><th>Na ficha</th></tr></thead><tbody>${linhas}</tbody></table></div>
+      <div class="row-b"><button class="btn" type="button" id="revAplicar">Aplicar ao cliente</button><button class="btn ghost" type="button" id="revDesc">Descartar</button></div></div>`;
+  } else {
+    const atual=DOC.funcs||[];
+    el.innerHTML=`<div class="box" style="border-color:var(--red-hi)"><h3>Fichas dos funcionários: conferir (${r.funcionarios.length})</h3>${al}
+      <p class="meta" style="margin:0">Arquivos: ${r.arquivos.map(a=>esc(a.nome)+" ("+esc(a.tipo)+")").join(" · ")}. CPF, endereço, salário e dados bancários não são guardados.</p>
+      <div style="overflow-x:auto"><table class="hist"><thead><tr><th><input type="checkbox" id="revTodos" checked aria-label="Todos"></th><th>Cód.</th><th>Nome</th><th>Cargo</th><th>Admissão</th><th>Nasc.</th><th>Horário (seg)</th><th></th></tr></thead><tbody>${r.funcionarios.map((f,i)=>{
+        const ja=atual.find(x=>(f.codigo&&String(x.codigo)===String(f.codigo))||F.chaveNome(x.nome)===F.chaveNome(f.nome)), a=DR.idade(f.nascimento,hoje());
+        return `<tr><td><input type="checkbox" data-rf="${i}" checked aria-label="Usar ${esc(f.nome)}"></td><td class="mono">${esc(f.codigo||"—")}</td><td>${esc(f.nome)}${a!=null&&a<18?' <span class="pill p-er">menor</span>':""}</td><td>${esc(f.cargo||"")}</td><td>${brD(f.admissao)}</td><td>${brD(f.nascimento)}</td><td class="mono" style="font-size:.74rem">${esc((f.horario&&f.horario.seg)||"—")}</td><td><span class="pill ${ja?"p-nt":"p-ok"}">${ja?"atualiza":"novo"}</span></td></tr>`; }).join("")}</tbody></table></div>
+      <label class="meta" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="revQtd" checked> Atualizar o nº de funcionários do cliente</label>
+      <div class="row-b"><button class="btn" type="button" id="revAplicar">Aplicar ao cadastro</button><button class="btn ghost" type="button" id="revDesc">Descartar</button></div></div>`;
+  }
+}
+async function aplicarRev(){
+  const r=DOC.rev; if(!r) return; const db=E.db; if(!db){ toast("Sem conexão com a base."); return; }
+  const btn=$("revAplicar"); if(btn) btn.disabled=true;
+  try{
+    if(r.tipo==="empresa"){
+      const d={}; document.querySelectorAll("[data-ce]").forEach(x=>{ if(x.checked) d[x.dataset.ce]=r.campos[x.dataset.ce]; });
+      if(d.cod){ const outro=(IDX.porCod[d.cod]||[]).find(x=>x._id!==r.c._id); if(outro){ toast(`O código ${d.cod} já é de ${outro.nome}.`); if(btn) btn.disabled=false; return; } }
+      let anexo=null;
+      const assets=await F.use("assets");
+      if(assets&&r.files&&r.files[0]){ try{ const up=await assets.upload(r.files[0]); anexo={id:up.id,nome:r.files[0].name,tipo:"Ficha da empresa",em:new Date().toISOString()}; }catch(e){ toast("Os dados foram aplicados, mas o arquivo não foi anexado."); } }
+      if(anexo) d.emp_docs=[...(r.c.emp_docs||[]),anexo];
+      if(!Object.keys(d).length){ toast("Nada marcado para aplicar."); if(btn) btn.disabled=false; return; }
+      Object.assign(d,await F.carimbo());
+      await db.doc("clientes/"+r.c._id).update(d);
+      Object.assign(r.c,d); DOC.rev=null; toast(`Ficha da empresa aplicada (${Object.keys(d).filter(k=>!/^upd_|emp_docs/.test(k)).length} campo(s)).`); ficha(r.c._id);
+    } else {
+      const sel=r.funcionarios.filter((f,i)=>{ const x=document.querySelector(`[data-rf="${i}"]`); return x&&x.checked; });
+      if(!sel.length){ toast("Nenhum funcionário marcado."); if(btn) btn.disabled=false; return; }
+      const lista=F.mesclarFuncionarios(DOC.funcs||[],sel);
+      await F.salvarFuncionarios(r.c.cnpj,lista); DOC.funcs=lista; renderFuncs();
+      if($("revQtd")&&$("revQtd").checked){ const n=lista.filter(f=>F.funcAtivo(f,hoje())).length; await db.doc("clientes/"+r.c._id).update({dp_func:n,...(await F.carimbo())}); r.c.dp_func=n; const fi=$("f-dp_func"); if(fi) fi.value=n; }
+      DOC.rev=null; renderRev(); docSt(""); toast(`${sel.length} funcionário(s) gravados no cadastro.`);
+    }
+  }catch(e){ console.error(e); toast(e&&e.code==="invalid_argument"?"Você tem acesso só para consulta.":"Não foi possível gravar. Tente de novo."); if(btn) btn.disabled=false; }
+}
+
 
 // ---------- eventos ----------
 $("btnNovo").onclick=()=>ficha(null);
 $("tb").addEventListener("click",e=>{const r=e.target.closest("tr.row"); if(r) ficha(r.dataset.id);});
 $("tb").addEventListener("keydown",e=>{ if(e.key==="Enter"){const r=e.target.closest("tr.row"); if(r) ficha(r.dataset.id);} });
-$("drawer").addEventListener("click",e=>{
+$("drawer").addEventListener("change",e=>{
+  const c=S.aberto&&E.clientes.find(x=>x._id===S.aberto); if(!c) return;
+  if(e.target.id==="inEmpresa"&&e.target.files.length){ lerEmpresa(c,[...e.target.files]); e.target.value=""; }
+  if(e.target.id==="inFuncs"&&e.target.files.length){ lerFuncs(c,[...e.target.files]); e.target.value=""; }
+  if(e.target.id==="revTodos") document.querySelectorAll("[data-rf]").forEach(x=>x.checked=e.target.checked);
+});
+$("drawer").addEventListener("click",async e=>{
+  if(e.target.id==="revAplicar"){ aplicarRev(); return; }
+  if(e.target.id==="revDesc"){ DOC.rev=null; renderRev(); docSt(""); return; }
+  const del=e.target.closest("[data-fdel]");
+  if(del){ if(!del.dataset.arm){ del.dataset.arm=1; del.textContent="confirmar?"; setTimeout(()=>{ if(del.isConnected){ delete del.dataset.arm; del.textContent="remover"; } },3500); return; }
+    const L=(DOC.funcs||[]).filter((_,i)=>i!==+del.dataset.fdel); try{ await F.salvarFuncionarios(DOC.cnpj,L); DOC.funcs=L; renderFuncs(); toast("Funcionário removido do cadastro."); }catch(x){ toast("Não foi possível remover."); } return; }
   if(e.target===$("drawer")||e.target.closest("[data-fechar]")) fechar();
   const m=e.target.closest("[data-modulo]");
   if(m){ try{ window.parent.postMessage({flow:"abrir",tela:m.dataset.modulo},location.origin); }catch(x){} }

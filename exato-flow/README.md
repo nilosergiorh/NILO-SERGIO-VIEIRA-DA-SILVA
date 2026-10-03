@@ -58,6 +58,15 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
   - **Médias:** sem código do Domínio, CCT fora do Painel, sem regime tributário.
   - **Leves:** enquadramento não confirmado, sem número de funcionários.
 - **Coleção `auditorias`:** um documento por CNPJ, com a última auditoria de guias (`ultima`) e as últimas 12 competências (`hist`). A Auditoria de Guias grava esses dados sozinha a cada auditoria, mas só quando o resultado muda.
+- **Ficha da empresa** (botão "Anexar ficha da empresa", na ficha do cliente):
+  - Lida pelo Claude: relatório Empresas do Domínio, cartão CNPJ ou documento parecido.
+  - Propõe os campos para conferir: código, razão social, fantasia, CNAE, município/UF, endereço, CEP, regime e início das atividades, e também `emp_fpas`, `emp_rat`, `emp_fap`, `emp_terceiros`, inscrições, responsável e contatos.
+  - Campos vazios no cadastro vêm marcados; campos que mudaram ficam desmarcados. O CNPJ nunca é trocado: se for diferente, aparece alerta.
+  - O PDF fica anexado ao cliente (`emp_docs`, no armazenamento de arquivos do Flow).
+- **Cadastro de funcionários** (`funcionarios/{cnpj}`, um documento por cliente com a `lista`). Pode ser alimentado pelo botão "Enviar fichas dos funcionários", na ficha do cliente, ou pela aba Arquivos do Ponto.
+  - Guarda só o que os módulos usam: código, nome, cargo, situação, admissão, nascimento, horário por dia da semana, férias, afastamento e rescisão.
+  - CPF, endereço, salário e dados bancários não são guardados, e o PDF das fichas não é armazenado (LGPD).
+  - Funcionários com o mesmo código ou nome são atualizados, sem duplicar. Ao aplicar, o nº de funcionários do cliente (`dp_func`) pode ser atualizado.
 - O módulo Clientes não exclui clientes. Para tirar um cliente da carteira, mude a situação para "Inativo" e o histórico fica preservado.
 
 ## Conferência de ponto
@@ -65,7 +74,8 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 1. **Relatórios do Domínio** (uma vez por cliente; repita quando houver admissão ou mudança de rubrica):
    - **Extrato Mensal** (PDF): lido direto, sem custo, com o mesmo leitor da Auditoria de Guias. Traz os empregados com o código e todos os eventos lançados. O Flow escolhe, pela descrição, as rubricas de HE (com o percentual), HE 100%, adicional noturno, redução noturna, horas faltas, falta de dia inteiro e DSR. Reflexos e médias ficam de fora.
    - **Fichas de Empregado** e outros relatórios (PDF, planilha ou imagem): lidos pelo Claude. Trazem cargo, admissão, nascimento, horário de trabalho (vira jornada do funcionário), férias, afastamento e rescisão.
-   - Tudo aparece numa **proposta para conferir**. Só é gravado depois de "Aplicar ao cliente" (`ponto_regras/{cnpj}`: rubricas, `funcs` e `dominio`).
+   - Tudo aparece numa **proposta para conferir**. Só é gravado depois de "Aplicar ao cliente": rubricas em `ponto_regras/{cnpj}` e funcionários no cadastro compartilhado `funcionarios/{cnpj}`.
+   - A jornada de cada funcionário sai do horário da ficha. Código e jornada escolhidos no próprio Ponto prevalecem (`ponto_regras.funcs`).
    - Na apuração, férias, afastamento, dias antes da admissão e dias depois da rescisão entram sozinhos como ocorrência.
    - Na aba TXT aparecem os cruzamentos:
      - funcionário do Domínio sem ponto no mês;

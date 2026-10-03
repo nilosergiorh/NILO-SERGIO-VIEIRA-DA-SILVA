@@ -120,6 +120,40 @@
   async function usuarioId(){ const u=await use("user"); if(!u) return ""; try{ return (await u.id())||""; }catch(e){ return ""; } }
   async function carimbo(){ return {upd_by:await usuarioId(), upd_at:new Date().toISOString()}; }
 
+
+  // ---------- cadastro de funcion\u00e1rios por cliente (documento funcionarios/{cnpj}) ----------
+  // lista: [{codigo, nome, cargo, situacao, admissao, nascimento, horario:{seg..dom}, ferias_ini, ferias_fim,
+  //          afast_ini, afast_fim, afast_tipo, rescisao, atualizado}]  (sem CPF, endere\u00e7o, sal\u00e1rio ou dados banc\u00e1rios)
+  const chaveNome=s=>String(s??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
+  function assinarFuncionarios(cnpj,fn){
+    let parar=null, vivo=true;
+    conectar().then(db=>{
+      if(!vivo) return;
+      if(!db){ fn(null); return; }
+      parar=db.doc("funcionarios/"+digitos(cnpj)).onSnapshot(s=>fn(s.exists?((s.data()||{}).lista||[]):[]),()=>fn(null));
+    });
+    return ()=>{ vivo=false; if(parar) parar(); };
+  }
+  // junta a lista atual com os funcion\u00e1rios lidos (mesmo c\u00f3digo ou mesmo nome); campos vazios n\u00e3o apagam o que j\u00e1 existe
+  function mesclarFuncionarios(atual,novos){
+    const out=(atual||[]).map(f=>({...f})), agora=new Date().toISOString();
+    for(const n of novos||[]){
+      let i=out.findIndex(f=>n.codigo&&f.codigo&&String(f.codigo)===String(n.codigo));
+      if(i<0) i=out.findIndex(f=>chaveNome(f.nome)===chaveNome(n.nome));
+      const base=i>=0?out[i]:{};
+      const m={...base}; for(const [k,v] of Object.entries(n)){ if(v!==""&&v!=null&&!(typeof v==="object"&&!Object.values(v).some(Boolean))) m[k]=v; }
+      m.atualizado=agora;
+      if(i>=0) out[i]=m; else out.push(m);
+    }
+    return out.sort((a,b)=>(parseInt(a.codigo)||1e9)-(parseInt(b.codigo)||1e9)||String(a.nome).localeCompare(b.nome,"pt-BR"));
+  }
+  async function salvarFuncionarios(cnpj,lista){
+    const db=await conectar(); if(!db) throw {code:"sem_base"};
+    await db.doc("funcionarios/"+digitos(cnpj)).set({cnpj:digitos(cnpj),lista,...(await carimbo())});
+  }
+  const funcAtivo=(f,ref)=>!(f.rescisao&&ref&&f.rescisao<ref)&&!/demit|rescind|deslig/i.test(f.situacao||"");
+
   window.FlowDados={use,digitos,fmtCnpj,cnpjValido,raiz,hoje,isoData,fmtData,statusCct,ROTULO_CCT,compChave,
-    REGIMES,SITUACOES,PONTO,ativo,pendencias,indices,conectar,assinar,estado,usuarioId,carimbo};
+    REGIMES,SITUACOES,PONTO,ativo,pendencias,indices,conectar,assinar,estado,usuarioId,carimbo,
+    chaveNome,assinarFuncionarios,mesclarFuncionarios,salvarFuncionarios,funcAtivo};
 })();
