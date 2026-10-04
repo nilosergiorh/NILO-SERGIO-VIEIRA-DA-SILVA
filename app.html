@@ -352,6 +352,7 @@ function render() {
   <div class="card"><div class="tabs">
     <div class="tab" data-a="pend">Pendências <b>${t.pendencias}</b></div>
     <div class="tab" data-a="func">Funcionários <b>${P.funcionarios.length}</b></div>
+    <div class="tab" data-a="oc">Atestados e ocorrências <b>${(P.ocorrencias || []).filter(o => o.grupo === 'ATESTADO').length}</b></div>
     <div class="tab" data-a="irr">Irregularidades legais <b>${t.irregulares}</b></div></div>
     <div class="pane" id="pane"></div></div>
   ${P.txt ? `<div class="txtok"><span class="pill ok">TXT gerado</span> ${esc(P.txt)} <a href="/api/arquivo?${q({cliente: P.cliente, mes: P.mes, nome: P.txt})}"><button>Baixar TXT</button></a></div>` : ''}`;
@@ -379,6 +380,24 @@ function aba() {
       <td><div class="bar" style="width:${Math.max(4, (f.he70 + f.he100) / max * 100)}%"><i style="width:${(f.he70 / Math.max(1, f.he70 + f.he100)) * 100}%;background:#cc0000"></i><i style="flex:1;background:#f08080"></i></div></td>
       <td class="n">${f.noturno ? hm(f.noturno) : '–'}</td><td class="n">${f.faltas_h ? hm(f.faltas_h) : '–'}</td><td class="n">${f.faltas_dias || '–'}</td><td class="n">${f.dsr || '–'}</td></tr>`).join('')}</table>
     <p class="msg">Faltas (h) já incluem os dias inteiros convertidos em horas, como vão para o Domínio.</p>`;
+  } else if (ABA === 'oc') {
+    // dias seguidos da mesma pessoa com a mesma ocorrência viram um período (ex.: férias 01/09 a 30/09)
+    const oc = [];
+    for (const o of (P.ocorrencias || []).filter(o => o.grupo !== 'FERIADO')) {
+      const u = oc[oc.length - 1], ontem = new Date(new Date(o.data + 'T12:00').getTime() - 864e5).toISOString().slice(0, 10);
+      if (u && u.func === o.func && u.ocorrencia === o.ocorrencia && u.ate === ontem) {
+        u.ate = o.data; u.trabalhado += o.trabalhado; u.abonado += o.abonado; u.dias++;
+      } else oc.push({...o, ate: o.data, dias: 1});
+    }
+    oc.forEach(o => { if (o.dias > 1) { o.dia = `${o.dias} dias`; o.alerta = o.alerta || ''; } });
+    const cor = g => g === 'ATESTADO' ? 'warn' : g === 'NÃO CADASTRADA' ? 'bad' : 'mut';
+    el.innerHTML = !oc.length ? '<p class="msg">Nenhum atestado, férias ou licença no mês.</p>' :
+      `<div class="pane-top"><span>Informação já marcada no ponto pelo cliente: <b>não é pendência</b>. O tempo não trabalhado nesses dias é abonado (sem desconto).</span></div>
+      <table><tr><th>Funcionário</th><th>Data</th><th>Ocorrência</th><th class="n">Trabalhou</th><th class="n">Abonado</th><th>Como foi tratado</th></tr>
+      ${oc.map(o => `<tr><td><b>${esc(o.func)}</b></td><td>${dt(o.data)}${o.dias > 1 ? ' a ' + dt(o.ate) : ''} (${esc(o.dia)})</td>
+        <td><span class="pill ${cor(o.grupo)}">${esc(o.ocorrencia)}</span></td>
+        <td class="n">${o.trabalhado ? hm(o.trabalhado) : '–'}</td><td class="n">${o.abonado ? hm(o.abonado) : '–'}</td>
+        <td class="msg">${esc(o.alerta.split('. ')[0] || (o.grupo === 'FÉRIAS' ? 'Férias: sem falta' : o.grupo === 'AFASTAMENTO' ? 'Afastamento: sem falta (lançar no Domínio)' : 'Sem desconto'))}</td></tr>`).join('')}</table>`;
   } else {
     el.innerHTML = `<table><tr><th>Irregularidade</th><th class="n">Dias</th></tr>${P.irreg.map(r => `<tr><td>${esc(r.nome)}</td><td class="n">${r.dias ? `<span class="pill bad">${r.dias}</span>` : '<span class="pill ok">0</span>'}</td></tr>`).join('')}</table>
     ${P.dias_irreg.length ? `<h4 style="margin:18px 0 6px">Dias com irregularidade</h4><table><tr><th>Funcionário</th><th>Data</th><th>Alertas</th></tr>

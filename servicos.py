@@ -162,10 +162,16 @@ def dados_painel(planilha, recalcular=False, log=print):
         tipos = [('jornada10', 39, 'Jornada acima de 10h (CLT art.59)'), ('interj', 40, 'Interjornada menor que 11h (CLT art.66)'),
                  ('almoco', 41, 'Almoço não registrado em jornada > 6h (CLT art.71)'), ('interv_menor', 42, 'Intervalo menor que 1h (CLT art.71)'),
                  ('interv_maior', 43, 'Intervalo maior que 2h (CLT art.71)'), ('ferias', 44, 'Trabalho em férias/afastamento')]
-        irreg = {k: 0 for k, _, _ in tipos}; dias_irreg = []
+        irreg = {k: 0 for k, _, _ in tipos}; dias_irreg = []; ocorrencias = []
         for r in range(5, ca.max_row + 1):
             if not ca.cell(r, 1).value: continue
             for k, col, _ in tipos: irreg[k] += _num(ca.cell(r, col).value)
+            # atestados, férias, licenças etc.: informação do dia (não são pendência)
+            if ca.cell(r, 5).value and _num(ca.cell(r, 8).value):
+                ocorrencias.append(dict(func=ca.cell(r, 1).value, data=_data(ca.cell(r, 2).value), dia=ca.cell(r, 3).value,
+                                        ocorrencia=str(ca.cell(r, 5).value), grupo=str(ca.cell(r, 6).value or ''),
+                                        trabalhado=minutos(ca.cell(r, 14).value), abonado=minutos(ca.cell(r, 19).value),
+                                        alerta=ca.cell(r, 32).value or ''))
             if _num(ca.cell(r, 45).value):
                 dias_irreg.append(dict(func=ca.cell(r, 1).value, data=_data(ca.cell(r, 2).value), alerta=ca.cell(r, 32).value or ''))
         pasta = os.path.dirname(planilha)
@@ -181,7 +187,8 @@ def dados_painel(planilha, recalcular=False, log=print):
                              faltas_dias=sum(f['faltas_dias'] for f in funcs), dsr=sum(f['dsr'] for f in funcs),
                              pendencias=len(pend), irregulares=len(dias_irreg)),
                  funcionarios=funcs, pendencias=pend, irreg=[dict(chave=k, nome=n, dias=irreg[k]) for k, _, n in tipos],
-                 dias_irreg=dias_irreg[:300], txt=txt if os.path.exists(os.path.join(pasta, txt)) else None)
+                 dias_irreg=dias_irreg[:300], ocorrencias=ocorrencias,
+                 txt=txt if os.path.exists(os.path.join(pasta, txt)) else None)
         json.dump(d, open(cache, 'w', encoding='utf-8'), ensure_ascii=False)
         return d
     finally:
@@ -221,6 +228,9 @@ def contexto_mes(cliente, mes):
     linhas += [f"- {p['mensagem']}" for p in d['pendencias']] or ['- nenhuma']
     linhas.append('Irregularidades legais (dias): ' + '; '.join(f"{i['nome']}: {i['dias']}" for i in d['irreg']))
     linhas += [f"- {x['func']} {x['data']}: {x['alerta']}" for x in d['dias_irreg'][:120]]
+    linhas.append('Atestados e outras ocorrências do mês (informação, NÃO são pendência):')
+    linhas += [f"- {o['func']} {o['data']}: {o['ocorrencia']} (trabalhou {_hm(o['trabalhado'])}, abonado {_hm(o['abonado'])})"
+               for o in d.get('ocorrencias', [])] or ['- nenhuma']
     return '\n'.join(linhas)
 
 
