@@ -246,7 +246,8 @@ for x in recs:
     for k,m in enumerate(x['punches']): 
         c=ws.cell(r,4+k,tm(m)); c.number_format=T_CLK
     if x['note']:
-        _oc = {leitores.norm(o[0]): o[0] for o in oc}
+        _oc = {}
+        for _o in oc: _oc.setdefault(leitores.norm(_o[0]), _o[0])  # prefere o nome com acento
         ws.cell(r,10,_oc.get(leitores.norm(x['note']), x['note']))
     if x.get('motivo'): ws.cell(r,11,x['motivo'])
     sw=[x['chprev'],x['normais'],x['faltas'],x['atraso'],x['extras'],x['exsab'],x['exdom'],x['adnot']]
