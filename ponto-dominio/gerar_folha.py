@@ -177,7 +177,10 @@ oc=[('ATESTADO','ATESTADO','SIM','CLT art.473/Lei 605 art.6º §2º; CCT cl.35 (
     ('FOLGA COMPENSAÇÃO','COMPENSAÇÃO','SIM','Compensação de feriado/ponte (CCT cl.25).'),
     ('ABONO','ABONO','SIM','Abono gerencial - documentar autorização.'),
     ('FALTA INJUSTIFICADA','FALTA','NÃO','Desconta o dia e o DSR da semana (Lei 605/49 art.6º).'),
-    ('FERIADO','FERIADO','SIM','Feriado marcado no próprio espelho. Cadastre a data na lista de feriados (col. F) para o trabalho no dia virar HE 100%.')]
+    ('FERIADO','FERIADO','SIM','Feriado marcado no próprio espelho. Cadastre a data na lista de feriados (col. F) para o trabalho no dia virar HE 100%.'),
+    ('FERIAS','FÉRIAS','SIM','Mesmo que FÉRIAS (escrito sem acento no espelho).'),
+    ('LICENCA PATERNIDADE','LICENÇA','SIM','Mesmo que LICENÇA PATERNIDADE (sem acento).'),
+    ('FOLGA COMPENSACAO','COMPENSAÇÃO','SIM','Mesmo que FOLGA COMPENSAÇÃO (sem acento).')]
 for i in range(26):
     r=5+i
     for j in range(4):
@@ -242,7 +245,9 @@ for x in recs:
     ws.cell(r,1,x['emp']); ws.cell(r,2,x['date']).number_format=T_DT; ws.cell(r,3,x['dow'])
     for k,m in enumerate(x['punches']): 
         c=ws.cell(r,4+k,tm(m)); c.number_format=T_CLK
-    if x['note']: ws.cell(r,10,x['note'])
+    if x['note']:
+        _oc = {leitores.norm(o[0]): o[0] for o in oc}
+        ws.cell(r,10,_oc.get(leitores.norm(x['note']), x['note']))
     if x.get('motivo'): ws.cell(r,11,x['motivo'])
     sw=[x['chprev'],x['normais'],x['faltas'],x['atraso'],x['extras'],x['exsab'],x['exdom'],x['adnot']]
     for k,m in enumerate(sw):
@@ -268,11 +273,11 @@ cols=[  # (letra, título, largura, crit, formato, doc-regra)
  ('H','Apurado (1/0)',8,0,'0','1 se a data está entre P_DT_INI e P_DT_FIM, não é posterior à rescisão (FUNCIONARIOS col. F) e o funcionário controla ponto (col. G).'),
  ('I','Jornada prevista',10,1,T_HM,'Dia útil = jornada do funcionário (ou P_JORNADA); sáb/dom/feriado = 0; fora do período = 0.'),
  ('J','Nº marcações',8,0,'0','Quantidade de horários digitados.'),
- ('K','Status',18,1,None,'FORA DO PERÍODO / OCORRÊNCIA / SEM MARCAÇÃO / FOLGA / MARCAÇÃO ÍMPAR / OK.'),
- ('L','Bruto (pares)',10,1,T_HM,'Soma (Saída-Entrada) dos pares; MOD(,1) trata virada de meia-noite. Zero se marcação ímpar.'),
+ ('K','Status',18,1,None,'FORA DO PERÍODO / OCORRÊNCIA / SEM MARCAÇÃO / FOLGA / MARCAÇÃO ÍMPAR / ATESTADO PARCIAL / OK. Atestado com batida sem par não é pendência.'),
+ ('L','Bruto (pares)',10,1,T_HM,'Soma (Saída-Entrada) dos pares; MOD(,1) trata virada de meia-noite. Zero se marcação ímpar (no atestado parcial soma só os pares completos).'),
  ('M','Intervalo deduzido',11,1,T_HM,'Só se P_INTERV_MODO=1: com 1 par e bruto > P_INTERV_LIM, desconta P_INTERV_PRE. No modo 2 (padrão) fica zero: o tempo é pago como extra.'),
  ('N','Trabalhado líquido',10,1,T_HM,'Bruto - intervalo pré-assinalado.'),
- ('O','Apurável (1/0)',8,0,'0','1 se o dia pode ser calculado (status OK, OCORRÊNCIA ou FOLGA). Marcação ímpar e dia útil sem marcação/observação = pendente (perguntar ao cliente).'),
+ ('O','Apurável (1/0)',8,0,'0','1 se o dia pode ser calculado (status OK, OCORRÊNCIA, FOLGA ou ATESTADO PARCIAL). Marcação ímpar e dia útil sem marcação/observação = pendente (perguntar ao cliente).'),
  ('P','Saldo do dia',10,0,'+[h]:mm;-[h]:mm;','Trabalhado - Previsto (arredondado ao minuto).'),
  ('Q','Tolerância (1/0)',8,0,'0','1 se |saldo| <= P_TOL (CLT art.58 §1º): não gera falta nem extra.'),
  ('R','Faltas/atrasos (h)',10,1,T_HM,'Saldo negativo, fora da tolerância, sem ocorrência abonadora.'),
@@ -329,18 +334,18 @@ def frm(r):
     F['H']=f'=IF(AND(B{r}>=P_DT_INI,B{r}<=P_DT_FIM,IFERROR(OR(INDEX(FUNC_DESL,MATCH(A{r},FUNC_NOME,0))=0,B{r}<=INDEX(FUNC_DESL,MATCH(A{r},FUNC_NOME,0))),TRUE),IFERROR(INDEX(FUNC_CONTROLA,MATCH(A{r},FUNC_NOME,0))<>"NÃO",TRUE)),1,0)'
     F['I']=f'=IF(H{r}=0,0,IF(D{r}="Útil",IFERROR(INDEX(FUNC_JORNADA,MATCH(A{r},FUNC_NOME,0)),P_JORNADA),0))'
     F['J']=f'=COUNT({PB}D{r}:I{r})'
-    F['K']=f'=IF(H{r}=0,"FORA DO PERÍODO",IF(J{r}=0,IF(E{r}<>"","OCORRÊNCIA",IF(I{r}>0,"SEM MARCAÇÃO","FOLGA")),IF(MOD(J{r},2)=1,"MARCAÇÃO ÍMPAR","OK")))'
-    F['L']=f'=IF(MOD(J{r},2)=1,0,ROUND(('+'+'.join(pairdur(p(a+''),p(b)) for a,b in pairs)+')*1440,0)/1440)'
+    F['K']=f'=IF(H{r}=0,"FORA DO PERÍODO",IF(J{r}=0,IF(E{r}<>"","OCORRÊNCIA",IF(I{r}>0,"SEM MARCAÇÃO","FOLGA")),IF(MOD(J{r},2)=1,IF(F{r}="ATESTADO","ATESTADO PARCIAL","MARCAÇÃO ÍMPAR"),"OK")))'
+    F['L']=f'=IF(AND(MOD(J{r},2)=1,F{r}<>"ATESTADO"),0,ROUND(('+'+'.join(pairdur(p(a+''),p(b)) for a,b in pairs)+')*1440,0)/1440)'
     F['M']=f'=IF(AND(P_INTERV_MODO=1,J{r}=2,L{r}>P_INTERV_LIM),P_INTERV_PRE,0)'
     F['N']=f'=MAX(0,L{r}-M{r})'
-    F['O']=f'=IF(OR(K{r}="OK",K{r}="OCORRÊNCIA",K{r}="FOLGA"),1,0)'
+    F['O']=f'=IF(OR(K{r}="OK",K{r}="OCORRÊNCIA",K{r}="FOLGA",K{r}="ATESTADO PARCIAL"),1,0)'
     F['P']=f'=IF(O{r}=1,ROUND((N{r}-I{r})*1440,0)/1440,0)'
     F['Q']=f'=IF(AND(O{r}=1,P{r}<>0,ROUND(ABS(P{r})*1440,0)<=ROUND(P_TOL*1440,0)),1,0)'
     F['R']=f'=IF(AND(O{r}=1,P{r}<0,Q{r}=0,G{r}<>"SIM"),-P{r},0)'
     F['S']=f'=IF(AND(O{r}=1,P{r}<0,G{r}="SIM"),-P{r},0)'
     F['T']=f'=IF(AND(O{r}=1,P{r}>0,Q{r}=0),P{r},0)'
     F['U']=f'=IF(D{r}="Útil",T{r},0)'; F['V']=f'=IF(D{r}="Sábado",T{r},0)'; F['W']=f'=IF(OR(D{r}="Domingo",D{r}="Feriado"),T{r},0)'
-    F['X']=f'=IF(AND(O{r}=1,J{r}>0,MOD(J{r},2)=0),ROUND(('+'+'.join(nightpair(p(a),p(b)) for a,b in pairs)+')*1440,0)/1440,0)'
+    F['X']=f'=IF(AND(O{r}=1,J{r}>0,OR(MOD(J{r},2)=0,F{r}="ATESTADO")),ROUND(('+'+'.join(nightpair(p(a),p(b)) for a,b in pairs)+')*1440,0)/1440,0)'
     F['Y']=f'=ROUND(X{r}*(1/24)/P_HORA_NOT*1440,0)/1440'
     F['Z']=f'=MIN(X{r},T{r})'
     F['AA']=f'=IF(AND(O{r}=1,I{r}>0,N{r}=0,G{r}<>"SIM"),1,0)'
@@ -348,7 +353,7 @@ def frm(r):
     F['AC']=f'=IF(J{r}>0,{p("D")},"")'
     F['AD']=f'=IF(J{r}=0,"",IF({p("I")}<>"",{p("I")},IF({p("H")}<>"",{p("H")},IF({p("G")}<>"",{p("G")},IF({p("F")}<>"",{p("F")},IF({p("E")}<>"",{p("E")},{p("D")}))))))'
     F['AE']=f'=IFERROR(IF(AND(A{r}=A{r-1},B{r}-B{r-1}=1,AC{r}<>"",AD{r-1}<>"",K{r-1}="OK"),ROUND(((B{r}-B{r-1})+AC{r}-AD{r-1})*1440,0)/1440,""),"")'
-    F['AF']=('=TRIM(IF(K{r}="MARCAÇÃO ÍMPAR","Marcação ímpar: corrigir antes de exportar. ","")&IF(K{r}="SEM MARCAÇÃO","Dia útil sem marcação e sem observação: perguntar ao cliente (falta, folga, férias ou atestado?). ","")'
+    F['AF']=('=TRIM(IF(F{r}="ATESTADO","Atestado no dia"&IF(J{r}>0," (parcial): horas trabalhadas contadas"&IF(MOD(J{r},2)=1,", batida sem par desconsiderada","")&", restante abonado. ",": dia abonado. "),"")&IF(K{r}="MARCAÇÃO ÍMPAR","Marcação ímpar: corrigir antes de exportar. ","")&IF(K{r}="SEM MARCAÇÃO","Dia útil sem marcação e sem observação: perguntar ao cliente (falta, folga, férias ou atestado?). ","")'
              '&IF(AND(J{r}=2,L{r}>P_INTERV_LIM),IF(P_INTERV_MODO=1,"Só 1 par: intervalo pré-assinalado (deduzido). ","Só 1 par: almoço não registrado, pago como extra. "),"")&IF(N{r}>P_LIM_DIA,"Jornada > 10h (CLT 59). ","")'
              '&IF(AND(AE{r}<>"",N(AE{r})<P_INTERJ,AE{r}<>""),"Interjornada < 11h (CLT 66). ","")'
              '&IF(AND(J{r}>0,OR(F{r}="FÉRIAS",F{r}="AFASTAMENTO",F{r}="LICENÇA")),"Trabalho em férias/afastamento/licença. ","")'
