@@ -104,6 +104,8 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 - O espelho gerado pelo `cartoes_para_espelho.py` da ECO HAM é lido direto; a coluna **Conferir** vira dia de leitura incerta.
 - **Horas extras em até 3 faixas** (ex.: Piasseski, 50% até 10h, 60% até 40h e 100% acima no mês). O limite de cada faixa é o total acumulado e aceita mais de 24h (30:00, 40:00).
 - Funcionário marcado no cadastro com `ponto: "nao"` (não bate cartão) não entra no aviso de "sem ponto no período". O cadastro aceita só o primeiro nome (como nas automações).
+- **Fonte dos valores = espelho do relógio** (ex.: AF Móveis): o PDF **Apuração do Ponto** do Ponto System Web é lido por posição das colunas (marcações e Normal, Falta, F.Parcial, Ex50, Ex100, Ad.Not, Desc.DSR). O TXT usa os valores do relógio; o Flow recalcula pelas marcações só para conferir (diferença acima da tolerância vira pendência). Soma dos dias diferente do TOTAL do PDF gera aviso.
+- **Falta de dia inteiro em dias** (1 falta = 1,00 no TXT) ou em horas (7:20), por cliente.
 - **Baixar transcrição em Excel** (abas Conferência e TXT): baixa as marcações conferidas no formato do espelho (uma aba por funcionário, `código - nome`). Serve para ler as fotos no app do Claude e calcular no programa do computador sem chave da API.
 
 - Com o cliente configurado, a aba Arquivos abre direto no "Ponto do mês", e a configuração vira uma linha "✓ Cliente configurado", com o botão "Atualizar configuração" para admissões ou mudança de rubrica.

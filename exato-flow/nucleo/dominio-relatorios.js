@@ -96,6 +96,26 @@ function parseExtrato(text){
     return out.join('\n\f\n');
   }
 
+  // texto com posição (para relatórios em colunas, como o espelho do Ponto System Web).
+  // Cada palavra vira {s, x0, x1, y}; trechos com espaços são divididos com a largura proporcional aos caracteres.
+  async function pdfItens(file){
+    const lib=await getPdfjs();
+    const doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer()),verbosity:0}).promise;
+    const pags=[];
+    for(let i=1;i<=doc.numPages;i++){
+      const p=await doc.getPage(i), vp=p.getViewport({scale:1}), tc=await p.getTextContent(), it=[];
+      for(const t of tc.items){
+        const str=t.str||""; if(!str.trim()) continue;
+        const x=t.transform[4], y=vp.height-t.transform[5], cw=str.length?(t.width||0)/str.length:0;
+        const re=/\S+/g; let m;
+        while((m=re.exec(str))) it.push({s:m[0],x0:x+m.index*cw,x1:x+(m.index+m[0].length)*cw,y});
+      }
+      pags.push({n:i,itens:it,texto:itemsToLines(tc.items).join('\n')});
+    }
+    await doc.destroy();
+    return pags;
+  }
+
   // ---------- rubricas ----------
   const semAcento=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
   // eventos distintos do extrato de uma empresa: {cod, desc, tp (P/D), horas (referencia em hh:mm), qtd}
@@ -267,6 +287,6 @@ Responda s\u00f3 com JSON: {"afastamentos":[{"codigo":"","nome":"","motivo":"","
     return {afastamentos:out,alertas};
   }
 
-  const API={itemsToLines,parseExtrato,pdfText,rubricasDoExtrato,classificarRubricas,empregadosDoExtrato,semAcento,chaveNome,idade,lerRelatorios,lerFichaEmpresa,CAMPOS_EMPRESA,lerAfastamentos,tipoAfast};
+  const API={itemsToLines,parseExtrato,pdfText,pdfItens,rubricasDoExtrato,classificarRubricas,empregadosDoExtrato,semAcento,chaveNome,idade,lerRelatorios,lerFichaEmpresa,CAMPOS_EMPRESA,lerAfastamentos,tipoAfast};
   if(typeof module!=="undefined"&&module.exports) module.exports=API; else raiz.DominioRel=API;
 })(typeof window!=="undefined"?window:globalThis);

@@ -119,4 +119,14 @@ eq('TXT igual ao exemplo real da ECO HAM (Mateus, HE 100% 12:26)',txtEco.linhas,
 const muito3={}; for(let d=1;d<=30;d++){ const w=new Date(Date.UTC(2026,8,d)).getUTCDay(); if(w>=1&&w<=5&&d!==7) muito3[D(d)]={m:'07:30 12:00 13:30 20:48'}; }
 const ap5=P.apurar({jornada:'padrao',dias:muito3},'2026-09',{he:{faixas:[{ate:600,pct:50,rub:150},{ate:2400,pct:60,rub:201},{ate:null,pct:100,rub:200}],domFer:{pct:100,rub:200},limite:'mes'}});
 eq('3 faixas no mês (21 dias x 3h = 63h -> 10h + 30h + 23h)',ap5.tot.heFaixas.map(x=>N(x.min)),['10:00','30:00','23:00']);
+
+// ---------- AF MÓVEIS: valores do espelho do relógio (Ponto System Web) ----------
+const AF={fonte:'espelho',jornadas:[{id:'af',dias:{1:'07:00-12:00 13:00-17:00',2:'07:00-12:00 13:00-17:00',3:'07:00-12:00 13:00-17:00',4:'07:00-12:00 13:00-17:00',5:'07:00-12:00 13:00-16:00',6:'',0:''}}],
+  he:{faixas:[{ate:120,pct:50,rub:150},{ate:null,pct:100,rub:200}],domFer:{pct:100,rub:200},limite:'dia',sab100:true},hfalta:{rub:8069},falta:{rub:40,min:440,unidade:'dias'},dsr:{rub:42,min:440,gerar:true},not:{ini:'22:00',fim:'05:00',pct:25,rub:26,rubRed:'',reduzida:false,prorroga:false},txt:{reg11:true}};
+const afd={[D(9)]:{m:'05:00 12:00 13:00 20:27',sw:{n:540,e50:120,e100:207}},[D(15)]:{m:'',sw:{f:540}},[D(16)]:{m:'07:30 12:00 13:00 17:30',sw:{n:540,an:30}},[D(20)]:{m:'',sw:{dsr:440}},[D(17)]:{m:'07:00 12:00 13:00 18:00',sw:{n:540}}};
+const apAf=P.apurar({jornada:'af',dias:afd},'2026-09',AF);
+eq('espelho: HE 50/100 e falta vêm do relógio',[N(apAf.tot.heFaixas[0].min),N(apAf.tot.he100),apAf.tot.faltas,N(apAf.tot.dsrMin),N(apAf.tot.noturnoLancar)],['2:00','3:27',[D(15)],'7:20','0:30']);
+eq('espelho: diverge das marcações vira pendência',apAf.dias[16].alertas.some(a=>a.nivel==='alta'&&/diverge/.test(a.t)),true);
+const txtAf=P.linhasTxt({empresa:189,comp:'2026-09',processo:11,formato:'SEXAGESIMAL',regras:{...P.REGRAS_PADRAO,...AF},funcionarios:[{cod:10,nome:'MATEUS',apur:apAf}]});
+eq('falta em DIAS (1 = 100) com registro 11',txtAf.linhas.filter(l=>/0040110/.test(l)||l.startsWith('11')),['1000000000102026090040110000001000000000189','11202609151']);
 console.log(`${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);

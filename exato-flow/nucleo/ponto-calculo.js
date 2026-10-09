@@ -18,7 +18,7 @@
  * por mes ou por dia, sabado a 100%, dia com um so par de marcacoes (paga como extra
  * ou deduz o almoco), perda do DSR por falta de meio periodo, rubrica da reducao da
  * hora noturna, fechamento do periodo (ex.: 21 a 20) e alerta de semana acima de 44h.
- * Modo de calculo "marcacao" (opcao por cliente, conforme a CCT e a pratica da empresa; ex.: ECO HAM): em dia util com as 4 batidas, cada
+ * Modo de calculo "marcacao" (automacoes Eletrotak/ECO HAM): em dia util com as 4 batidas, cada
  * batida e comparada ao horario fixo; atraso e hora extra do mesmo dia nao se compensam.
  * Dia util sem marcacao e sem ocorrencia fica pendente (nao vira falta sozinho).
  * Percentuais e regras de CCT mudam de cliente para cliente: confira na convencao.
@@ -32,13 +32,14 @@
     tolRegra:"sumula366",          // "sumula366": passou de 5 min numa batida ou de 10 no dia, conta tudo; "porMarcacao": so as batidas acima de 5 min (regra antiga das planilhas)
     calc:"saldo",                  // "saldo" = trabalhado - previsto; "marcacao" = batida a batida contra o horario, sem compensar atraso com extra
     semMarcacao:"pendente",        // dia util sem marcacao e sem ocorrencia: "pendente" (perguntar ao cliente) ou "falta"
+    fonte:"calculo",               // "calculo" = o Flow calcula; "espelho" = valores do relogio (Normal, Falta, F.Parcial, Ex50, Ex100, Ad.Not, Desc.DSR) e o Flow so confere
     he:{faixas:[{ate:null,pct:50,rub:150}], domFer:{pct:100,rub:200}, limite:"mes", sab100:false},
     interv:{modo:2,padrao:60,lim:360},  // 1 par so: 2 = paga como extra; 1 = deduz o almoco padrao se passar de lim
     periodo:{diaIni:1},                 // 1 = mes civil; 21 = de 21 do mes anterior a 20 do mes
     semanaLim:2640,                     // 44h (CF art. 7, XIII)
     txt:{reg11:true},
     hfalta:{rub:8069},
-    falta:{rub:40,min:440},        // 7:20 = 220h / 30
+    falta:{rub:40,min:440,unidade:"horas"},   // 7:20 = 220h / 30; unidade "dias" = 1 falta vale 100 no TXT
     dsr:{rub:42,min:440,gerar:true,meio:null}, // meio: minutos de falta parcial no dia que tambem tiram o DSR (null = so falta inteira)
     not:{ini:"22:00",fim:"05:00",pct:20,rub:"",rubRed:"",reduzida:true,prorroga:true},
     feriados:[],                   // "AAAA-MM-DD" municipais/estaduais do cliente
@@ -211,6 +212,22 @@
     return r;
   }
 
+  // ---------- fonte = espelho do relogio ----------
+  // sw = valores do dia no espelho (minutos): n (Normal), f (Falta), fp (F.Parcial), e50, e100, an (Ad.Not), dsr (Desc.DSR)
+  function doEspelho(r,sw,R){
+    r.proprio={heUtil:r.heUtil,he100:r.he100,hfalta:r.hfalta,falta:r.falta};
+    sw=sw||{};   // dia sem valores no espelho: nada a lancar (falta so vem do relogio)
+    r.alertas=r.alertas.filter(a=>!/^Falta lan/.test(a.t));
+    r.heUtil=sw.e50||0; r.he100=sw.e100||0; r.hfalta=sw.fp||0; r.noturnoSw=sw.an||0; r.dsrSw=sw.dsr||0;
+    r.falta=(sw.f||0)>0 && !r.pares.length;
+    if(r.falta||r.oc){ r.pendente=false; r.alertas=r.alertas.filter(a=>!/sem marca/.test(a.t)); }
+    if(r.pares.length && !r.alertas.some(a=>/mpar de marca/.test(a.t))){
+      const dif=(sw.n||0)+(sw.e50||0)+(sw.e100||0)-r.trab;
+      if(Math.abs(dif)>(R.tolDia??10)) r.alertas.push({nivel:"alta",t:"O c\u00e1lculo do rel\u00f3gio diverge das marca\u00e7\u00f5es em "+fmt(dif)+" (Normal + extras = "+fmt((sw.n||0)+(sw.e50||0)+(sw.e100||0))+"; marca\u00e7\u00f5es = "+fmt(r.trab)+")"});
+    }
+    return r;
+  }
+
   // ---------- apuracao do mes de um funcionario ----------
   function apurar(func,comp,regras,extras){
     const R=Object.assign({},REGRAS_PADRAO,regras||{});
@@ -221,7 +238,9 @@
     const diaIni=(R.periodo&&R.periodo.diaIni)||1;
     const dias=diasDoMes(comp,diaIni).map(d=>{
       const x=(func.dias||{})[d.data]||{};
-      return dia({...d,m:x.m||"",oc:x.oc||"",ilegivel:!!x.il,prev:x.p,nota:x.n||"",fc:!!x.fc},ctx);
+      const r=dia({...d,m:x.m||"",oc:x.oc||"",ilegivel:!!x.il,prev:x.p,nota:x.n||"",fc:!!x.fc},ctx);
+      if(R.fonte==="espelho") return doEspelho(r,x.sw,R);
+      return r;
     });
     // semana acima de 44h (segunda a domingo)
     const porSem={}; dias.forEach(d=>{ const k=fimSemana(d.data); (porSem[k]=porSem[k]||[]).push(d); });
@@ -240,6 +259,7 @@
     }
     const perdeDsr=dias.filter(d=>d.falta||(R.dsr&&R.dsr.meio&&d.hfalta>=R.dsr.meio&&!d.oc)).map(d=>d.data);
     t.semanasDsr=R.dsr&&R.dsr.gerar?[...new Set(perdeDsr.map(fimSemana))]:[];
+    if(R.fonte==="espelho"){ t.semanasDsr=[]; t.dsrMin=dias.reduce((a,d)=>a+(d.dsrSw||0),0); t.noturno=dias.reduce((a,d)=>a+(d.noturnoSw||0),0); }
     // Lei 605/49, art. 6: falta injustificada na semana com feriado tambem tira a remuneracao do feriado (avisa; nao lanca)
     [...new Set(dias.filter(d=>d.falta).map(d=>fimSemana(d.data)))].forEach(k=>{
       const fer=(porSem[k]||[]).filter(d=>d.feriado&&d.dow!==0&&!d.trab);
@@ -251,6 +271,11 @@
     const reparte=(qtd,usadoIni)=>{ let resto=qtd, usado=usadoIni; fx.forEach((f,i)=>{ if(resto<=0) return; const lim=f.ate==null?Infinity:Math.max(0,f.ate-usado); const q=Math.min(resto,lim); t.heFaixas[i].min+=q; resto-=q; usado+=q; }); return usado; };
     if((R.he&&R.he.limite)==="dia") dias.forEach(d=>reparte(d.heUtil,0));
     else { let acum=0; dias.forEach(d=>{ acum=reparte(d.heUtil,acum); }); }
+    if(R.fonte==="espelho"){   // o espelho ja separa 50% e 100% e ja traz o noturno como deve ser lancado
+      t.heFaixas=[{pct:fx[0].pct,rub:fx[0].rub,min:t.heUtil}];
+      t.noturnoReduzido=t.noturno; t.noturnoLancar=t.noturno; t.reducaoNoturna=0;
+      return {dias,tot:t,jornada,regras:R};
+    }
     t.noturnoReduzido=Math.round(t.noturno*60/52.5);
     t.noturnoLancar=R.not&&R.not.reduzida&&!R.not.rubRed?t.noturnoReduzido:t.noturno;
     t.reducaoNoturna=R.not&&R.not.rubRed?t.noturnoReduzido-t.noturno:0;
@@ -270,8 +295,8 @@
       const t=f.apur.tot, itens=[], porRub=new Map();
       if(!f.cod){ erros.push(f.nome+": sem c\u00f3digo do empregado no Dom\u00ednio"); continue; }
       // a mesma rubrica pode receber mais de um item (ex.: faltas parciais e de dia inteiro na 8069): soma numa linha so
-      const push=(rub,min,desc,datas)=>{ if(min<=0) return; if(!rub){ erros.push(f.nome+": "+desc+" sem rubrica configurada"); return; } itens.push({rub,min,desc});
-        const k=String(rub), x=porRub.get(k)||{min:0,datas:[]}; x.min+=min; if(datas) x.datas.push(...datas); porRub.set(k,x); };
+      const push=(rub,min,desc,datas,raw)=>{ if(min<=0) return; if(!rub){ erros.push(f.nome+": "+desc+" sem rubrica configurada"); return; } itens.push({rub,min,desc,raw});
+        const k=String(rub), x=porRub.get(k)||{min:0,datas:[],raw:null}; x.min+=min; if(raw!=null) x.raw=(x.raw||0)+raw; if(datas) x.datas.push(...datas); porRub.set(k,x); };
       t.heFaixas.forEach(x=>push(x.rub,x.min,"Horas extras "+x.pct+"%"));
       push(R.he.domFer.rub,t.he100,"Horas extras "+R.he.domFer.pct+"%");
       push(R.hfalta.rub,t.hfalta,"Horas faltas (atrasos/sa\u00eddas)");
@@ -279,10 +304,11 @@
       if(R.not.rubRed) push(R.not.rubRed,t.reducaoNoturna,"Redu\u00e7\u00e3o da hora noturna");
       if(t.faltas.length){
         const minDia=f.minFalta||R.falta.min;
-        push(R.falta.rub,t.faltas.length*minDia,"Faltas ("+t.faltas.length+" dia"+(t.faltas.length>1?"s":"")+")",(R.txt&&R.txt.reg11===false)?null:t.faltas);
+        push(R.falta.rub,t.faltas.length*minDia,"Faltas ("+t.faltas.length+" dia"+(t.faltas.length>1?"s":"")+")",(R.txt&&R.txt.reg11===false)?null:t.faltas,R.falta.unidade==="dias"?t.faltas.length*100:null);
       }
-      if(t.semanasDsr.length) push(R.dsr.rub,t.semanasDsr.length*(f.minDsr||R.dsr.min),"DSR sobre faltas ("+t.semanasDsr.length+" semana"+(t.semanasDsr.length>1?"s":"")+")");
-      for(const [rub,x] of porRub){ out.push(r10(f.cod,rub,valorHoras(x.min,op.formato))); x.datas.forEach(d=>out.push("11"+d.replace(/-/g,"")+"1")); }
+      if(t.dsrMin!=null){ if(t.dsrMin>0) push(R.dsr.rub,t.dsrMin,"DSR descontado (espelho)"); }
+      else if(t.semanasDsr.length) push(R.dsr.rub,t.semanasDsr.length*(f.minDsr||R.dsr.min),"DSR sobre faltas ("+t.semanasDsr.length+" semana"+(t.semanasDsr.length>1?"s":"")+")");
+      for(const [rub,x] of porRub){ out.push(r10(f.cod,rub,x.raw!=null?x.raw:valorHoras(x.min,op.formato))); x.datas.forEach(d=>out.push("11"+d.replace(/-/g,"")+"1")); }
       resumo.push({cod:f.cod,nome:f.nome,itens});
     }
     for(const l of out){ const n=l.startsWith("10")?43:11; if(l.length!==n) erros.push("Linha com tamanho errado ("+l.length+"): "+l); }

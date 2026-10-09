@@ -249,10 +249,10 @@ dialog::backdrop{background:var(--scrim)}
       <h2 id="mesTit" style="margin:4px 0 -4px">Ponto do mês</h2>
       <div class="drops" id="mesDrops">
         <div class="drop" id="dropX">
-          <h2>Ponto em planilha (Excel ou CSV)</h2>
-          <p>Uma linha por funcionário e dia, com as marcações em colunas. Funciona com o modelo da Exato e com a maioria das planilhas de relógio de ponto. Se o formato for diferente, o Claude organiza a leitura.</p>
+          <h2>Ponto em planilha ou espelho do relógio</h2>
+          <p>Excel ou CSV: uma linha por funcionário e dia, com as marcações em colunas (modelo da Exato e a maioria das planilhas de relógio). PDF: Apuração do Ponto do Ponto System Web. Se o formato for diferente, o Claude organiza a leitura.</p>
           <div class="row"><label class="btn ghost" for="inX">Selecionar planilha</label><button class="btn ghost" type="button" id="btnModelo">Baixar modelo Excel</button></div>
-          <input id="inX" type="file" accept=".xlsx,.xls,.csv,.ods" multiple hidden>
+          <input id="inX" type="file" accept=".xlsx,.xls,.csv,.ods,.pdf" multiple hidden>
         </div>
         <div class="drop" id="dropF">
           <h2>Ponto em foto do cartão</h2>
@@ -309,6 +309,7 @@ dialog::backdrop{background:var(--scrim)}
       <div class="rgrid">
         <div class="card"><h3>Horas extras e faltas</h3>
           <div class="form">
+            <label>Fonte dos valores<select id="r-fonte"><option value="calculo">O Flow calcula pelas marcações</option><option value="espelho">Valores do espelho do relógio (o Flow só confere)</option></select></label>
             <label>Forma de cálculo<select id="r-calc"><option value="saldo">Saldo do dia (trabalhado − previsto)</option><option value="marcacao">Por marcação: atraso e extra não se compensam</option></select></label>
             <label>Tolerância diária (min)<input id="r-tol" inputmode="numeric"></label>
             <label>Tolerância por marcação (min)<input id="r-tolm" inputmode="numeric" placeholder="5"></label>
@@ -327,6 +328,7 @@ dialog::backdrop{background:var(--scrim)}
             <label>Rubrica domingo/feriado<input id="r-r100" inputmode="numeric"></label>
             <label>Rubrica horas faltas (atrasos)<input id="r-rhf" inputmode="numeric"></label>
             <label>Rubrica falta dia inteiro<input id="r-rf" inputmode="numeric"></label>
+            <label>Falta dia inteiro no TXT em<select id="r-fu"><option value="horas">Horas (7:20 por dia)</option><option value="dias">Dias (1 falta = 1,00)</option></select></label>
             <label>Rubrica DSR sobre faltas<input id="r-rd" inputmode="numeric"></label>
             <label class="chk"><input type="checkbox" id="r-gd"> Descontar DSR da semana com falta</label>
             <label>Falta parcial que também tira o DSR (h:mm)<input id="r-meio" placeholder="só falta inteira"></label>
@@ -497,8 +499,8 @@ function mesclar(lista,origem){ // [{nome,codigo,dias:[{dia,marcacoes[],ocorrenc
       const data=d.data||P.dataDoDia(S.comp,diaIni(),parseInt(d.dia)); if(!data) continue;
       const m=(d.marcacoes||[]).map(x=>{const v=P.hm(x);return v==null?String(x):P.fmt2(v);}).join(" ");
       const oc=P.OCORRENCIAS[d.ocorrencia]?d.ocorrencia:"";
-      if(!m&&!oc&&!d.incerto&&d.prev==null) continue;
-      e.dias[data]={m,oc,il:d.incerto?1:0,o:origem,...(d.prev!=null?{p:d.prev}:{}),...(d.nota?{n:d.nota}:{})}; nd++;
+      if(!m&&!oc&&!d.incerto&&d.prev==null&&!d.sw&&!d.nota) continue;
+      e.dias[data]={m,oc,il:d.incerto?1:0,o:origem,...(d.prev!=null?{p:d.prev}:{}),...(d.nota?{n:d.nota}:{}),...(d.sw?{sw:d.sw}:{})}; nd++;
     }
   }
   ordenar(); return {nf,nd,novos};
@@ -612,7 +614,81 @@ Regras:
 Responda só com JSON neste formato:
 {"competencia":"MM/AAAA ou vazio","funcionarios":[{"nome":"NOME COMPLETO","codigo":"","dias":[{"dia":1,"marcacoes":["07:30","12:00","13:30","17:48"],"ocorrencia":"","incerto":false,"nota":""}]}],"observacoes":"o que não deu para ler ou precisa de atenção"}`;
 
+// ---------- Apuração do Ponto (Ponto System Web, PDF) ----------
+// Colunas: marcações (Ent./Saí. 1 a 3) e os valores do relógio (Normal, Falta, F.Parcial, Ex50, Ex100, Ad.Not, Desc.DSR).
+// As colunas de valores são localizadas pela linha TOTAIS de cada página; as de marcação, pelo cabeçalho.
+const PSW_SW=["n","f","fp","e50","e100","an","dsr"];
+function lerApuracaoPSW(pags){
+  const HORA=/^(\d{1,3}):(\d{2})([IPD])?$/, DATA=/^(\d{2})\/(\d{2})\/(\d{2})$/, mn=t=>{const m=HORA.exec(t);return m?(+m[1])*60+(+m[2]):null;};
+  const per=new Set(periodo().map(d=>d.data)), out=[], avisos=[]; let fora=0, periodoPdf="";
+  for(const pg of pags){
+    const txt=pg.texto||"";
+    if(!periodoPdf){ const m=txt.match(/Per[ií]odo:\s*(\d{2}\/\d{2}\/\d{4})\s*at[ée]\s*(\d{2}\/\d{2}\/\d{4})/); if(m) periodoPdf=m[1]+" a "+m[2]; }
+    const nm=txt.match(/Funcion[áa]rio\s+([^\n]+)/); if(!nm) continue;
+    // agrupa as palavras em linhas pela altura (tolerância de 2 pontos)
+    const its=[...pg.itens].sort((a,b)=>a.y-b.y||a.x0-b.x0), lins=[];
+    for(const it of its){ const l=lins[lins.length-1]; if(l&&Math.abs(l.y-it.y)<=2) l.w.push(it); else lins.push({y:it.y,w:[it]}); }
+    lins.forEach(l=>l.w.sort((a,b)=>a.x0-b.x0));
+    const head=lins.find(l=>l.w.some(w=>w.s==="Data")&&l.w.some(w=>w.s==="Normal"));
+    const tot=lins.find(l=>l.w.some(w=>w.s==="TOTAIS"));
+    if(!head||!tot){ avisos.push(`Página ${pg.n}: não encontrei o cabeçalho ou a linha TOTAIS.`); continue; }
+    const xm=head.w.filter(w=>w.s==="Ent."||w.s==="Saí.").map(w=>w.x0).sort((a,b)=>a-b).slice(0,6);
+    const vals=tot.w.filter(w=>HORA.test(w.s)).sort((a,b)=>a.x1-b.x1);
+    if(vals.length!==7||xm.length!==6){ avisos.push(`Página ${pg.n}: colunas fora do padrão (TOTAIS com ${vals.length} valores).`); continue; }
+    const anc=vals.map(w=>w.x1), lim=anc[0]-18, perto=(arr,x)=>arr.reduce((b,v,i)=>Math.abs(v-x)<Math.abs(arr[b]-x)?i:b,0);
+    const f={nome:nm[1].trim().toUpperCase(),codigo:((txt.match(/Matr[íi]cula\s+(\d+)/)||[])[1])||"",adm:((txt.match(/Admiss[ãa]o\s+(\d{2}\/\d{2}\/\d{4})/)||[])[1])||"",dias:[],
+      tot:Object.fromEntries(PSW_SW.map((k,i)=>[k,mn(vals[i].s)])),sw:null};
+    const soma=Object.fromEntries(PSW_SW.map(k=>[k,0]));
+    for(const l of lins){
+      const d=DATA.exec(l.w[0].s); if(!d) continue;
+      const data=`20${d[3]}-${d[2]}-${d[1]}`;
+      const marc=Array(6).fill(null), oc=[], sw=Object.fromEntries(PSW_SW.map(k=>[k,0])); let man=0;
+      for(const w of l.w.slice(3)){
+        if(w.x1>=lim&&HORA.test(w.s)){ sw[PSW_SW[perto(anc,w.x1)]]+=mn(w.s); continue; }
+        const h=HORA.exec(w.s);
+        if(h){ marc[perto(xm,w.x0)]=P.fmt2((+h[1])*60+(+h[2])); if(h[3]==="I") man++; }
+        else if(!oc.includes(w.s)) oc.push(w.s);
+      }
+      PSW_SW.forEach(k=>soma[k]+=sw[k]);
+      if(!per.has(data)){ fora++; continue; }
+      const mk=marc.filter(Boolean); let txtOc=oc.join(" ");
+      if(oc.includes("J")) txtOc="Falta J";
+      let ocorrencia="", nota="";
+      if(txtOc){
+        if(mk.length) nota=txtOc+" (parcial)";
+        else if(txtOc==="Falta J") nota="Falta J: desconta a falta e não o DSR, como no relógio";
+        else ocorrencia=ocDe(txtOc)||"", nota=ocorrencia?"":txtOc;
+      }
+      if(man) nota=(nota?nota+" · ":"")+man+" marcação(ões) incluída(s) à mão no relógio";
+      const tem=PSW_SW.some(k=>sw[k]);
+      f.dias.push({data,marcacoes:mk,ocorrencia,nota,...(tem?{sw}:{})});
+    }
+    for(const k of PSW_SW) if(soma[k]!==f.tot[k]) avisos.push(`${f.nome}: a soma dos dias (${P.fmt(soma[k])}) não bate com o TOTAL do PDF (${P.fmt(f.tot[k])}) em ${({n:"Normal",f:"Falta",fp:"F.Parcial",e50:"Ex50",e100:"Ex100",an:"Ad.Not",dsr:"Desc.DSR"})[k]}. Confira a página ${pg.n}.`);
+    f.sw={extras:f.tot.e50+f.tot.e100,faltas:f.tot.f,atraso:f.tot.fp,adnot:f.tot.an,exsab:0,exdom:f.tot.e100};
+    out.push(f);
+  }
+  return {funcionarios:out,fora,avisos,periodoPdf};
+}
+async function arquivoPdfPonto(f){
+  const item=registrar(f.name,"Espelho","Lendo…");
+  try{
+    if(!window.DominioRel||!DominioRel.pdfItens) throw new Error("leitor");
+    const pags=await DominioRel.pdfItens(f);
+    if(!pags.some(p=>/APURA[ÇC][ÃA]O DO PONTO/i.test(p.texto||""))){ atualizar(item,"er","Este PDF não é uma Apuração do Ponto (Ponto System Web). Para outros relógios, envie o espelho em Excel."); return; }
+    const r=lerApuracaoPSW(pags);
+    if(!r.funcionarios.length){ atualizar(item,"er","Não encontrei funcionários neste PDF."+(r.avisos[0]?" "+r.avisos[0]:"")); return; }
+    const m=mesclar(r.funcionarios,"espelho");
+    for(const fx of r.funcionarios){ const e=acharEmp(fx.nome,fx.codigo); if(e){ e.sw=fx.sw; e.adm_ponto=fx.adm; } }
+    const avisos=[...r.avisos];
+    if(S.regras.fonte!=="espelho") avisos.unshift("Este cliente está calculando pelo Flow. Para usar os valores do relógio no TXT, mude em Regras › Fonte dos valores.");
+    if(r.fora) avisos.push(`${r.fora} dia(s) fora de ${rotuloPeriodo()} ignorados (espelho de ${r.periodoPdf}).`);
+    atualizar(item,avisos.length?"at":"ok",`${m.nf} funcionário(s), ${m.nd} dia(s) · Apuração do Ponto (Ponto System Web)${avisos.length?" · "+avisos.join(" "):""}`);
+    sujo(); render();
+  }catch(e){ console.error(e); atualizar(item,"er","Não consegui ler o PDF. Confira se é a Apuração do Ponto em PDF (não imagem)."); }
+}
 async function arquivosX(files){
+  const pdfs=[...files].filter(f=>/\.pdf$/i.test(f.name)); files=[...files].filter(f=>!/\.pdf$/i.test(f.name));
+  for(const f of pdfs) await arquivoPdfPonto(f);
   for(const f of files){
     const item=registrar(f.name,"Planilha","Lendo…");
     try{
@@ -1137,7 +1213,7 @@ function renderTxt(){
 function preencherRegras(){
   const R=S.regras, f1=R.he.faixas[0]||{}, f2=R.he.faixas[1]||{};
   const set=(id,v)=>{$(id).value=v??"";};
-  set("r-tol",R.tolDia); set("r-tolm",R.tolMarc??5); $("r-calc").value=R.calc||"saldo"; $("r-tolr").value=R.tolRegra||"sumula366"; $("r-sem").value=R.semMarcacao||"pendente"; set("r-p1",f1.pct); set("r-a1",f1.ate!=null&&R.he.faixas.length>1?P.fmt(f1.ate):""); set("r-r1",f1.rub);
+  set("r-tol",R.tolDia); set("r-tolm",R.tolMarc??5); $("r-calc").value=R.calc||"saldo"; $("r-tolr").value=R.tolRegra||"sumula366"; $("r-sem").value=R.semMarcacao||"pendente"; $("r-fonte").value=R.fonte||"calculo"; $("r-fu").value=(R.falta&&R.falta.unidade)||"horas"; set("r-p1",f1.pct); set("r-a1",f1.ate!=null&&R.he.faixas.length>1?P.fmt(f1.ate):""); set("r-r1",f1.rub);
   const f3=R.he.faixas[2]||{};
   set("r-p2",R.he.faixas.length>1?f2.pct:""); set("r-r2",R.he.faixas.length>1?f2.rub:""); set("r-a2",R.he.faixas.length>2&&f2.ate!=null?P.fmt(f2.ate):"");
   set("r-p3",R.he.faixas.length>2?f3.pct:""); set("r-r3",R.he.faixas.length>2?f3.rub:"");
@@ -1151,14 +1227,14 @@ function preencherRegras(){
 function lerRegras(){
   const R=S.regras, n=id=>{const v=String($(id).value).trim();return v===""?"":Number(v.replace(",","."));};
   R.tolDia=n("r-tol")===""?10:n("r-tol"); R.tolMarc=n("r-tolm")===""?5:n("r-tolm");
-  R.calc=$("r-calc").value; R.tolRegra=$("r-tolr").value; R.semMarcacao=$("r-sem").value;
+  R.calc=$("r-calc").value; R.tolRegra=$("r-tolr").value; R.semMarcacao=$("r-sem").value; R.fonte=$("r-fonte").value;
   // faixas de HE: "até" é o total acumulado de horas extras (no mês ou no dia) em que a faixa termina
   const hm2=id=>{ const v=String($(id).value).trim(); if(!v) return null; const m=v.match(/^(\d{1,3})(?::(\d{2}))?$/); return m?(+m[1])*60+(+(m[2]||0)):P.hm(v); };
   const a1=hm2("r-a1"), a2=hm2("r-a2"), p2=n("r-p2"), p3=n("r-p3");
   R.he.faixas=[{ate:p2!==""&&a1!=null?a1:null,pct:n("r-p1")||50,rub:n("r-r1")}];
   if(p2!==""&&a1!=null) R.he.faixas.push({ate:p3!==""&&a2!=null&&a2>a1?a2:null,pct:p2,rub:n("r-r2")});
   if(p2!==""&&a1!=null&&p3!==""&&a2!=null&&a2>a1) R.he.faixas.push({ate:null,pct:p3,rub:n("r-r3")});
-  R.he.domFer={pct:n("r-p100")||100,rub:n("r-r100")}; R.hfalta={rub:n("r-rhf")}; R.falta={...R.falta,rub:n("r-rf")}; R.dsr={...R.dsr,rub:n("r-rd"),gerar:$("r-gd").checked};
+  R.he.domFer={pct:n("r-p100")||100,rub:n("r-r100")}; R.hfalta={rub:n("r-rhf")}; R.falta={...R.falta,rub:n("r-rf"),unidade:$("r-fu").value}; R.dsr={...R.dsr,rub:n("r-rd"),gerar:$("r-gd").checked};
   R.not={ini:$("r-ni").value.trim()||"22:00",fim:$("r-nf").value.trim()||"05:00",pct:n("r-np")||20,rub:n("r-nr"),reduzida:$("r-nred").checked,prorroga:$("r-npr").checked};
   R.formato=$("r-fmt").value; R.processo=+$("r-proc").value;
   R.he.limite=$("r-lim").value; R.he.sab100=$("r-sab").checked; R.interv={...R.interv,modo:+$("r-iv").value};
@@ -1345,7 +1421,7 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>aba(b.dataset.t));
 $("cli").addEventListener("change",abrir); $("comp").addEventListener("change",abrir);
 $("inX").onchange=e=>{ if(S.cli) arquivosX([...e.target.files]); e.target.value=""; };
 $("inF").onchange=e=>{ if(S.cli) arquivosF([...e.target.files]); e.target.value=""; };
-for(const [id,fn,re] of [["dropD",lerDominio,/\.(pdf|xlsx|xls|csv|jpe?g|png|webp)$/i],["dropX",arquivosX,/\.(xlsx|xls|csv|ods)$/i],["dropF",arquivosF,/\.(jpe?g|png|webp)$/i]]){
+for(const [id,fn,re] of [["dropD",lerDominio,/\.(pdf|xlsx|xls|csv|jpe?g|png|webp)$/i],["dropX",arquivosX,/\.(xlsx|xls|csv|ods|pdf)$/i],["dropF",arquivosF,/\.(jpe?g|png|webp)$/i]]){
   const el=$(id);
   el.addEventListener("dragover",e=>{e.preventDefault();el.classList.add("over");});
   el.addEventListener("dragleave",()=>el.classList.remove("over"));
