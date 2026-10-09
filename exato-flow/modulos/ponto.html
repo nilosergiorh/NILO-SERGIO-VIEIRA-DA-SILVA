@@ -48,6 +48,17 @@ h3{margin:0;font:700 .76rem var(--f-disp);letter-spacing:.1em;text-transform:upp
 .bar .st{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .pill{display:inline-block;font:500 10px var(--f-mono);letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap}
 .p-ok{background:var(--ok-bg);color:var(--ok)} .p-at{background:var(--at-bg);color:var(--at)} .p-er{background:var(--er-bg);color:var(--er)} .p-nt{background:var(--nt-bg);color:var(--nt)}
+.cctw{overflow-x:auto;margin-top:6px}
+.cctt{width:100%;border-collapse:collapse;font-size:.88rem;min-width:620px}
+.cctt th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:6px 8px;border-bottom:1px solid var(--line)}
+.cctt td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.cctt td small{display:block;color:var(--mute);font-size:.76rem;margin-top:2px}
+.cctt .acts{display:flex;flex-wrap:wrap;gap:6px}
+.cctx{display:grid;gap:6px;margin-top:10px;font-size:.86rem}
+.cctx li{color:var(--mute)} .cctx b{color:var(--ink)}
+.cctf{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:10px}
+.cctf label{display:grid;gap:4px;font-size:.8rem;color:var(--mute)}
+.cctf input,.cctf select{padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surf2);color:inherit;font:inherit}
 .sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mute)}
 .sync i{width:8px;height:8px;border-radius:50%;background:var(--mute)} .sync.on i{background:var(--ok)} .sync.err i{background:var(--er)} .sync.wait i{background:var(--at)}
 
@@ -283,7 +294,14 @@ dialog::backdrop{background:var(--scrim)}
 
     <!-- REGRAS -->
     <section id="t-reg" hidden style="display:grid;gap:14px;margin-top:14px">
-      <p class="note">Estas regras valem para todos os meses deste cliente. Confira na convenção coletiva os percentuais de hora extra, o adicional noturno e a tolerância: a CCT pode prever condições diferentes da CLT. <span id="cctInfo"></span></p>
+      <p class="note">Estas regras valem para todos os meses deste cliente. A convenção coletiva é o mínimo: a regra do cliente pode ser igual ou melhor para o empregado, nunca pior. <span id="cctInfo"></span></p>
+      <div class="card" id="cctCard">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <div><h3>Convenção coletiva do cliente</h3><p class="meta" id="cctMeta">—</p></div>
+          <div class="row"><button class="btn sm" type="button" id="btnCctLer">Ler regras da convenção</button><button class="btn ghost sm" type="button" id="btnCctEd">Editar à mão</button><button class="btn ghost sm" type="button" data-abrir="sindical" id="btnCctSind">Abrir no Painel Sindical</button></div>
+        </div>
+        <div id="cctBody"></div>
+      </div>
       <div class="card"><div class="row" style="justify-content:space-between"><h3>Jornadas de trabalho</h3><button class="btn ghost sm" type="button" id="btnAddJor">Nova jornada</button></div>
         <p class="note">Escreva os períodos de cada dia como 07:30-12:00 13:30-17:48. Deixe em branco o dia de folga. A falta de um dia vale as horas mensais da jornada ÷ 30 (44h semanais → 7:20).</p>
         <div id="jors" style="display:grid;gap:10px"></div></div>
@@ -421,7 +439,7 @@ async function abrir2(){
   S.doc.emps=(S.doc.emps||[]).map(e=>({...e,dias:e.dias||{}}));
   $("semCli").hidden=true; $("area").hidden=false;
   $("cctInfo").textContent=c.cct?`CCT deste cliente: ${c.cct}.`:"Este cliente ainda não tem CCT definida no Painel Sindical.";
-  preencherRegras(); render();
+  preencherRegras(); render(); carregarCct();
   if(!S.doc.emps.length) aba("arq"); else aba(S.tab==="arq"?"conf":S.tab);
 }
 
@@ -1060,6 +1078,7 @@ function renderTxt(){
   }
   const muitas=S.doc.emps.filter(e=>e._ap.tot.faltas.length>=5);
   if(muitas.length) it.push(["at",`${muitas.length} funcionário(s) com 5 faltas ou mais: ${muitas.slice(0,3).map(e=>e.nome+" ("+e._ap.tot.faltas.length+")").join(", ")}${muitas.length>3?"…":""}. Confira se o mês inteiro foi enviado (frente e verso do cartão) e se não há férias ou afastamento.`]);
+  cctChecklist().forEach(x=>it.push(x));
   if(med) it.push(["at",`${med} alerta(s) de jornada para conferir (intervalo, interjornada, mais de 2h extras). Não impedem o TXT.`]);
   g.erros.filter(x=>!/sem c[oó]digo do empregado/.test(x)).forEach(x=>it.push(["er",x]));
   $("chk").innerHTML=it.map(([c,t])=>`<li class="${c}"><i></i>${esc(t)}</li>`).join("");
@@ -1111,6 +1130,167 @@ function renderJornadas(){
 function renderFeriados(){
   const L=S.regras.feriados||[];
   $("fers").innerHTML=L.length?L.map((f,i)=>`<span class="pill p-nt" style="margin:0 6px 6px 0">${esc(f.data.split("-").reverse().join("/"))} · ${esc(f.nome)} <button type="button" data-fdel="${i}" style="border:0;background:none;cursor:pointer;color:inherit" aria-label="Excluir">✕</button></span>`).join(""):"Nenhum feriado local cadastrado.";
+}
+
+// ---------- convenção coletiva (Painel Sindical → Ponto) ----------
+// As regras de jornada lidas da CCT ficam em cct_ponto/{id da CCT} e valem para todos os clientes dessa convenção.
+const CCT_SAB={"100":"100%","util":"como dia útil (mesma faixa)","nao_trata":"não trata"};
+const cctDoCliente=()=>S.cli&&S.cli.cct?(S.E.ccts||[]).find(k=>k.ramo===S.cli.cct)||null:null;
+async function carregarCct(){
+  const cli=S.cli; if(!cli) return;
+  if(!(S.E.pronto&&S.E.pronto.ccts)&&(carregarCct.n=(carregarCct.n||0)+1)<20){ setTimeout(()=>{ if(cli===S.cli) carregarCct(); },500); return; }
+  carregarCct.n=0; S.cct={k:cctDoCliente(),p:null,edita:false,aceitar:null};
+  if(S.cct.k&&S.E.db){ try{ const d=await S.E.db.doc("cct_ponto/"+S.cct.k._id).get(); if(cli!==S.cli) return; if(d.exists) S.cct.p=d.data(); }catch(e){} }
+  renderCct(); if(S.tab==="txt") renderTxt();
+}
+// percentual aplicado ao minuto extra que está na posição d do dia e m do mês
+function pctEm(fx,lim,d,m){ const u=lim==="dia"?d:m; for(const f of fx||[]) if(f.ate==null||u<f.ate) return +f.pct; return fx&&fx.length?+fx[fx.length-1].pct:null; }
+const descFx=(fx,lim)=>!fx||!fx.length?"—":fx.map((f,i)=>f.pct+"%"+(f.ate!=null?" até "+P.fmt(f.ate)+(lim==="dia"?" por dia":" no mês"):(i?" acima disso":" sem limite"))).join("; ");
+function cmpNum(cli,cct,maiorMelhor=true){ if(cct==null||cct==="") return "nt"; cli=+cli; cct=+cct; if(cli===cct) return "ok"; return (cli>cct)===maiorMelhor?"up":"er"; }
+function linhasCct(){
+  const p=S.cct&&S.cct.p; if(!p) return [];
+  const R=S.regras, L=[];
+  // hora extra em dia útil: compara o percentual em vários pontos (início e fim do dia, início e fim do mês)
+  let st="nt";
+  if(p.he&&p.he.faixas&&p.he.faixas.length){
+    const pr=[[30,30],[150,150],[30,1900],[150,1900],[30,600],[150,3000]].map(([d,m])=>[pctEm(R.he.faixas,R.he.limite,d,m),pctEm(p.he.faixas,p.he.limite,d,m)]);
+    st=pr.every(([a,b])=>a===b)?"ok":pr.some(([a,b])=>a<b)?"er":"up";
+  }
+  L.push({k:"he",tema:"Hora extra em dia útil",cct:p.he&&p.he.faixas&&p.he.faixas.length?descFx(p.he.faixas,p.he.limite):"não trata",cli:descFx(R.he.faixas,R.he.limite),st,cl:p.he&&p.he.clausula,val:p.he});
+  L.push({k:"domFer",tema:"Domingo e feriado trabalhados",cct:p.domFer!=null?p.domFer+"%":"não trata",cli:R.he.domFer.pct+"%",st:cmpNum(R.he.domFer.pct,p.domFer),cl:p.domFer_cl,val:p.domFer});
+  const sc=p.sab||"nao_trata";
+  L.push({k:"sab",tema:"Sábado trabalhado (fora da jornada)",cct:CCT_SAB[sc]||sc,cli:R.he.sab100?"100%":"como dia útil",st:sc==="nao_trata"?"nt":sc==="100"?(R.he.sab100?"ok":"er"):(R.he.sab100?"up":"ok"),cl:p.sab_cl,val:sc});
+  L.push({k:"not",tema:"Adicional noturno",cct:p.not!=null?p.not+"%":"não trata (CLT: 20%)",cli:R.not.pct+"%",st:cmpNum(R.not.pct,p.not),cl:p.not_cl,val:p.not});
+  L.push({k:"tol",tema:"Tolerância de marcação",cct:p.tol!=null?p.tol+" min por dia":"não trata (CLT: 10 min)",cli:R.tolDia+" min por dia",st:cmpNum(R.tolDia,p.tol,false),cl:p.tol_cl,val:p.tol});
+  const A=R.cctAceite||{};
+  L.forEach(x=>{ const a=A[x.k]; if(x.st==="er"&&a&&a.cct===JSON.stringify(x.val)) { x.st="aceito"; x.motivo=a.motivo; } });
+  return L;
+}
+const ST_CCT={ok:["p-ok","Confere"],up:["p-ok","Acima da CCT"],er:["p-er","Abaixo da CCT"],nt:["p-nt","CCT não trata"],aceito:["p-at","Mantido com motivo"]};
+function renderCct(){
+  if(!$("cctBody")) return;
+  const c=S.cct||{}, k=c.k, p=c.p;
+  $("btnCctLer").disabled=$("btnCctEd").disabled=!k;
+  if(!S.cli||!S.cli.cct){ $("cctMeta").textContent="Este cliente não tem convenção definida no Painel Sindical."; $("cctBody").innerHTML=`<p class="note">Defina a CCT do cliente no Painel Sindical para o Flow comparar hora extra, noturno e tolerância com a convenção.</p>`; return; }
+  if(!k){ $("cctMeta").textContent=S.cli.cct; $("cctBody").innerHTML=`<p class="note">Esta convenção não está cadastrada no Painel Sindical.</p>`; return; }
+  const st=F.statusCct(k), vig=k.ini||k.fim?`${k.ini?F.fmtData(k.ini):"?"} a ${k.fim?F.fmtData(k.fim):"?"}`:"vigência não informada";
+  $("cctMeta").innerHTML=`${esc(k.ramo)} · ${esc(vig)} <span class="pill ${st==="VIGENTE"?"p-ok":st==="VENCE"?"p-at":st==="VENCIDA"?"p-er":"p-nt"}">${esc(F.ROTULO_CCT[st])}</span>`;
+  if(c.edita){ $("cctBody").innerHTML=formCct(p||{}); return; }
+  if(!p){ $("cctBody").innerHTML=`<p class="note">As regras de jornada desta convenção ainda não foram lidas. Clique em <b>Ler regras da convenção</b>: o Claude lê o PDF guardado no Painel Sindical (ou o resumo, se o PDF for imagem) e você confere antes de usar. A leitura vale para todos os clientes desta CCT.</p>`; return; }
+  const L=linhasCct(), velho=p.cct_fim!==(k.fim||"")||p.cct_ini!==(k.ini||"");
+  const ac=c.aceitar;
+  $("cctBody").innerHTML=`${velho?`<div class="banner er">A convenção mudou no Painel Sindical depois desta leitura. Leia de novo para conferir as regras da vigência atual.</div>`:""}
+  <div class="cctw"><table class="cctt"><thead><tr><th>Tema</th><th>A CCT diz</th><th>O cliente usa</th><th>Situação</th><th></th></tr></thead><tbody>
+  ${L.map(x=>`<tr><td><b>${esc(x.tema)}</b></td><td>${esc(x.cct)}${x.cl?`<small>${esc(x.cl)}</small>`:""}</td><td>${esc(x.cli)}${x.motivo?`<small>Motivo: ${esc(x.motivo)}</small>`:""}${x.st==="up"?`<small>Melhor para o empregado. Reduzir pode ser alteração lesiva (art. 468 da CLT).</small>`:""}</td><td><span class="pill ${ST_CCT[x.st][0]}">${ST_CCT[x.st][1]}</span></td>
+    <td><div class="acts">${(x.st==="er"||x.st==="aceito")?`<button class="btn ghost sm" type="button" data-cusar="${x.k}">Usar a da CCT</button>`:""}${x.st==="er"?`<button class="btn ghost sm" type="button" data-cmanter="${x.k}">Manter com motivo</button>`:""}</div></td></tr>
+    ${ac===x.k?`<tr><td colspan="5"><div class="row"><input id="cctMotivo" placeholder="Por que o cliente fica abaixo da CCT? (ex.: acordo coletivo próprio, CCT não se aplica)" style="flex:1 1 320px;min-width:0;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surf2);color:inherit"><button class="btn sm" type="button" data-cok="${x.k}">Registrar</button><button class="btn ghost sm" type="button" data-cno="1">Cancelar</button></div></td></tr>`:""}`).join("")}
+  </tbody></table></div>
+  ${(p.dsr||(p.outras&&p.outras.length))?`<ul class="cctx">${p.dsr?`<li><b>DSR e atrasos:</b> ${esc(p.dsr)}</li>`:""}${(p.outras||[]).slice(0,8).map(o=>`<li><b>${esc(o.tema)}:</b> ${esc(o.texto)}${o.clausula?` <span class="meta">(${esc(o.clausula)})</span>`:""}</li>`).join("")}</ul>`:""}
+  <p class="meta" style="margin-top:8px">Lido ${p.fonte==="manual"?"à mão":p.fonte==="pdf"?"do PDF da convenção":"do resumo do Painel Sindical (PDF sem texto)"} em ${new Date(p.lido_em).toLocaleDateString("pt-BR")}.${p.obs?" "+esc(p.obs):""} Confira na convenção antes de mudar a regra do cliente.</p>`;
+}
+function formCct(p){
+  const f1=(p.he&&p.he.faixas||[])[0]||{}, f2=(p.he&&p.he.faixas||[])[1]||{};
+  return `<div class="cctf">
+    <label>HE dia útil: % faixa 1<input id="c-p1" inputmode="numeric" value="${esc(f1.pct??"")}"></label>
+    <label>Faixa 1 até (h:mm)<input id="c-a1" value="${f1.ate!=null?P.fmt(f1.ate):""}" placeholder="sem limite"></label>
+    <label>Limite conta<select id="c-lim"><option value="dia" ${(p.he&&p.he.limite)==="dia"?"selected":""}>por dia</option><option value="mes" ${(p.he&&p.he.limite)!=="dia"?"selected":""}>no mês</option></select></label>
+    <label>HE dia útil: % faixa 2<input id="c-p2" inputmode="numeric" value="${esc(f2.pct??"")}" placeholder="não tem"></label>
+    <label>Domingo e feriado (%)<input id="c-df" inputmode="numeric" value="${esc(p.domFer??"")}" placeholder="não trata"></label>
+    <label>Sábado trabalhado<select id="c-sab">${Object.entries(CCT_SAB).map(([v,t])=>`<option value="${v}" ${(p.sab||"nao_trata")===v?"selected":""}>${t}</option>`).join("")}</select></label>
+    <label>Adicional noturno (%)<input id="c-not" inputmode="numeric" value="${esc(p.not??"")}" placeholder="não trata"></label>
+    <label>Tolerância (min por dia)<input id="c-tol" inputmode="numeric" value="${esc(p.tol??"")}" placeholder="não trata"></label>
+    <label style="grid-column:1/-1">DSR e atrasos<input id="c-dsr" value="${esc(p.dsr||"")}" placeholder="o que a CCT diz sobre perda do DSR"></label>
+  </div><div class="row" style="margin-top:10px"><button class="btn sm" type="button" id="btnCctSalvar">Salvar regras da CCT</button><button class="btn ghost sm" type="button" data-cno="1">Cancelar</button><span class="meta">Vale para todos os clientes desta convenção.</span></div>`;
+}
+async function gravarCct(dados){
+  const k=S.cct.k, db=S.E.db; if(!k||!db){ toast("Sem conexão com a base."); return false; }
+  const doc={...dados,cct_id:k._id,ramo:k.ramo,cct_ini:k.ini||"",cct_fim:k.fim||"",...(await F.carimbo())};
+  try{ await db.doc("cct_ponto/"+k._id).set(doc); S.cct.p=doc; return true; }catch(e){ toast(e&&e.code==="invalid_argument"?"Você tem acesso só para consulta.":"Não foi possível salvar as regras da CCT."); return false; }
+}
+const PROMPT_CCT=`Você vai ler trechos de uma convenção coletiva de trabalho (CCT) brasileira e extrair só as regras que afetam o cálculo do ponto e da folha.
+Regras:
+- Use só o que está escrito. Se a CCT não tratar de um tema, use null (ou "nao_trata" no sábado). Não complete com a CLT.
+- Horas extras em dia útil: liste as faixas em ordem. "ate" é o total acumulado de horas extras em que a faixa termina, no formato HH:MM (null na última faixa). "limite" diz se esse total conta por "dia" ou por "mes". Ex.: "50% nas 2 primeiras horas do dia e 100% nas demais" = [{"ate":"02:00","pct":50},{"ate":null,"pct":100}], limite "dia".
+- domingo_feriado_pct: percentual da hora trabalhada em domingo ou feriado sem folga compensatória.
+- sabado: "100" se a CCT manda pagar o sábado trabalhado a 100%; "util" se diz que é hora extra comum; "nao_trata" se não fala.
+- noturno_pct: percentual do adicional noturno. tolerancia_min: minutos diários de tolerância no registro de ponto, se a CCT definir.
+- dsr: uma frase sobre perda do DSR por faltas ou atrasos, se houver.
+- outras: até 8 regras de jornada que o DP precisa saber (banco de horas, compensação, 12x36, intervalo, atestado de acompanhante, abono de faltas), cada uma com o número da cláusula.
+- Em cada regra principal, informe a cláusula em *_clausula.
+Responda só com JSON:
+{"he":{"faixas":[{"ate":"02:00","pct":50},{"ate":null,"pct":100}],"limite":"dia"},"he_clausula":"","domingo_feriado_pct":100,"domingo_feriado_clausula":"","sabado":"nao_trata","sabado_clausula":"","noturno_pct":null,"noturno_clausula":"","tolerancia_min":null,"tolerancia_clausula":"","dsr":"","outras":[{"tema":"","texto":"","clausula":""}],"observacoes":"o que ficou em dúvida"}`;
+const RX_CCT=/extraordin|horas? extra|noturn|toler[aâ]n|s[aá]bado|compensa|banco de horas|repouso|\bDSR\b|atraso|jornada|intervalo|feriado|domingo|12\s*x\s*36|atestado|abono|falta/i;
+function trechosCct(txt){
+  const L=String(txt||"").split(/\n+/), keep=new Set();
+  L.forEach((l,i)=>{ if(RX_CCT.test(l)) for(let j=Math.max(0,i-2);j<=Math.min(L.length-1,i+4);j++) keep.add(j); });
+  return [...keep].sort((a,b)=>a-b).map(i=>L[i]).join("\n").slice(0,60000);
+}
+async function lerCct(){
+  const k=S.cct&&S.cct.k; if(!k) return;
+  const sample=await F.use("sample"); if(!sample){ toast("A leitura pelo Claude não está disponível aqui. Use Editar à mão."); return; }
+  const b=$("btnCctLer"); b.disabled=true; b.textContent="Lendo a convenção…";
+  try{
+    let txt="", fonte="resumo", arq="";
+    const pdf=(k.pdfs||[])[0];
+    if(pdf&&window.DominioRel){
+      try{ const r=await fetch("/_blob/"+pdf.id); if(r.ok){ const t=await DominioRel.pdfText(await r.blob()); if(t.replace(/\s/g,"").length>800){ txt=trechosCct(t); fonte="pdf"; arq=pdf.nome||""; } } }catch(e){}
+    }
+    const resumo=`Convenção: ${k.ramo}\nVigência: ${k.ini||"?"} a ${k.fim||"?"}\nRegistro: ${k.reg||""}\nResumo do Painel Sindical: ${k.obs||""}`;
+    const j=await sample.json(PROMPT_CCT+"\n\n"+resumo+(txt?"\n\nTrechos do PDF da convenção:\n"+txt:"\n\n(O PDF não tem texto legível: use só o resumo.)"),{modelTier:"complex"});
+    const fx=((j.he&&j.he.faixas)||[]).filter(f=>f&&f.pct!=null&&f.pct!=="").map(f=>({ate:f.ate?P.hm(f.ate):null,pct:+f.pct}));
+    const num=v=>v==null||v===""||isNaN(+v)?null:+v;
+    const ok=await gravarCct({he:{faixas:fx,limite:(j.he&&j.he.limite)==="dia"?"dia":"mes",clausula:j.he_clausula||""},domFer:num(j.domingo_feriado_pct),domFer_cl:j.domingo_feriado_clausula||"",
+      sab:["100","util","nao_trata"].includes(String(j.sabado))?String(j.sabado):"nao_trata",sab_cl:j.sabado_clausula||"",not:num(j.noturno_pct),not_cl:j.noturno_clausula||"",
+      tol:num(j.tolerancia_min),tol_cl:j.tolerancia_clausula||"",dsr:String(j.dsr||"").slice(0,400),outras:(j.outras||[]).filter(o=>o&&o.tema).slice(0,8).map(o=>({tema:String(o.tema).slice(0,80),texto:String(o.texto||"").slice(0,400),clausula:String(o.clausula||"").slice(0,40)})),
+      obs:String(j.observacoes||"").slice(0,400),fonte,arquivo:arq,lido_em:new Date().toISOString()});
+    if(ok){ toast(fonte==="pdf"?"Regras lidas do PDF da convenção. Confira antes de usar.":"O PDF não tem texto legível: usei o resumo do Painel Sindical. Confira na convenção."); renderCct(); if(S.doc) render(); }
+  }catch(e){ toast(e&&e.code==="rate_limited"?"Muitas leituras seguidas. Tente de novo em alguns minutos.":"Não consegui ler a convenção. Tente de novo ou use Editar à mão."); }
+  finally{ b.disabled=false; b.textContent="Ler regras da convenção"; }
+}
+function usarDaCct(tema){
+  const p=S.cct.p, R=S.regras;
+  if(tema==="he"){ const ant=R.he.faixas; R.he.faixas=p.he.faixas.map((f,i)=>({ate:i<p.he.faixas.length-1?f.ate:null,pct:f.pct,rub:(ant[i]&&ant[i].pct===f.pct&&ant[i].rub)||(f.pct===R.he.domFer.pct?R.he.domFer.rub:(ant[i]&&ant[i].rub)||"")})); R.he.limite=p.he.limite||"mes"; }
+  if(tema==="domFer") R.he.domFer={...R.he.domFer,pct:p.domFer};
+  if(tema==="sab") R.he.sab100=p.sab==="100";
+  if(tema==="not") R.not={...R.not,pct:p.not};
+  if(tema==="tol") R.tolDia=p.tol;
+  if(R.cctAceite) delete R.cctAceite[tema];
+}
+$("cctCard").addEventListener("click",async ev=>{
+  const t=ev.target.closest("button"); if(!t) return;
+  if(t.id==="btnCctSind"){ try{ window.parent.postMessage({flow:"abrir",tela:"sindical"},location.origin); }catch(x){} return; }
+  if(t.id==="btnCctLer"){ lerCct(); return; }
+  if(t.id==="btnCctEd"){ S.cct.edita=true; S.cct.aceitar=null; renderCct(); return; }
+  if(t.dataset.cno){ S.cct.edita=false; S.cct.aceitar=null; renderCct(); return; }
+  if(t.id==="btnCctSalvar"){
+    const n=id=>{ const v=String($(id).value).trim().replace(",","."); return v===""||isNaN(+v)?null:+v; };
+    const fx=[]; const p1=n("c-p1"), a1=P.hm($("c-a1").value), p2=n("c-p2");
+    if(p1!=null) fx.push({ate:p2!=null&&a1!=null?a1:null,pct:p1}); if(p1!=null&&p2!=null&&a1!=null) fx.push({ate:null,pct:p2});
+    const ant=S.cct.p||{};
+    if(await gravarCct({...ant,he:{faixas:fx,limite:$("c-lim").value,clausula:(ant.he&&ant.he.clausula)||""},domFer:n("c-df"),sab:$("c-sab").value,not:n("c-not"),tol:n("c-tol"),dsr:$("c-dsr").value.trim(),fonte:"manual",lido_em:new Date().toISOString()})){ S.cct.edita=false; renderCct(); if(S.doc) render(); toast("Regras da convenção salvas."); }
+    return;
+  }
+  if(t.dataset.cusar){ usarDaCct(t.dataset.cusar); preencherRegras(); if(await salvarRegras(true)){ if(S.doc.status!=="rascunho"){ S.doc.status="rascunho"; sujo(); } renderCct(); render(); toast("Regra do cliente ajustada à convenção. A apuração foi recalculada."); } return; }
+  if(t.dataset.cmanter){ S.cct.aceitar=t.dataset.cmanter; renderCct(); setTimeout(()=>$("cctMotivo")&&$("cctMotivo").focus(),0); return; }
+  if(t.dataset.cok){
+    const m=$("cctMotivo").value.trim(); if(m.length<8){ toast("Escreva o motivo para manter a regra abaixo da CCT."); return; }
+    const x=linhasCct().find(l=>l.k===t.dataset.cok); if(!x) return;
+    S.regras.cctAceite={...(S.regras.cctAceite||{}),[x.k]:{cct:JSON.stringify(x.val),motivo:m.slice(0,300),em:new Date().toISOString(),por:await F.usuarioId()}};
+    if(await salvarRegras(true)){ S.cct.aceitar=null; renderCct(); render(); toast("Motivo registrado. A divergência não bloqueia mais o TXT."); }
+  }
+});
+// itens da lista do TXT
+function cctChecklist(){
+  const out=[], k=S.cct&&S.cct.k, p=S.cct&&S.cct.p;
+  if(!S.cli||!S.cli.cct){ out.push(["at","Cliente sem convenção no Painel Sindical: hora extra, noturno e tolerância não foram conferidos com uma CCT."]); return out; }
+  if(!k) return out;
+  const st=F.statusCct(k);
+  if(st==="VENCIDA") out.push(["at",`CCT ${k.ramo} vencida em ${F.fmtData(k.fim)}: confira se a nova mudou hora extra, noturno ou tolerância.`]);
+  if(!p){ out.push(["at","Regras da convenção ainda não conferidas: em Regras, clique em Ler regras da convenção."]); return out; }
+  if(p.cct_fim!==(k.fim||"")||p.cct_ini!==(k.ini||"")) out.push(["at","A convenção mudou no Painel Sindical depois da leitura das regras: leia de novo em Regras."]);
+  const noturno=(S.doc&&S.doc.emps||[]).some(e=>e._ap&&e._ap.tot.noturno>0);
+  linhasCct().filter(x=>x.st==="er").forEach(x=>out.push([x.k==="not"&&!noturno?"at":"er",`Abaixo da CCT · ${x.tema}: a CCT diz ${x.cct}; o cliente usa ${x.cli}. Ajuste em Regras ou registre o motivo.`]));
+  return out;
 }
 
 // ---------- abas ----------

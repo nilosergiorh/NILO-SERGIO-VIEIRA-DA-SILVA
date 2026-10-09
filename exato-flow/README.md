@@ -86,6 +86,13 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 
 **Cada cliente tem as próprias regras**, tiradas da convenção coletiva dele e confirmadas com o RH. O que é comum a todos é a sistemática: configurar uma vez, calcular o ponto do mês, conferir e importar o TXT no Domínio.
 
+**Convenção coletiva → regras do cliente** (aba Regras, quadro "Convenção coletiva do cliente"):
+
+- A CCT vem do Painel Sindical (campo CCT do cliente). **Ler regras da convenção** faz o Claude ler o PDF guardado no Painel (ou o resumo, quando o PDF é imagem) e extrair: faixas de hora extra, domingo/feriado, sábado, adicional noturno, tolerância, DSR e outras regras de jornada, com a cláusula. Também dá para **editar à mão**.
+- A leitura fica em `cct_ponto/{id da CCT}` e vale para todos os clientes daquela convenção. Se a CCT mudar no Painel Sindical (nova vigência), o Flow pede para ler de novo.
+- Cada tema mostra **Confere**, **Acima da CCT** (melhor para o empregado; não oferece reduzir, por causa do art. 468 da CLT), **Abaixo da CCT** ou **CCT não trata**.
+- **Abaixo da CCT bloqueia o TXT** até ajustar a regra (**Usar a da CCT**) ou registrar o motivo (**Manter com motivo**, guardado em `ponto_regras.cctAceite`). Adicional noturno abaixo da CCT só bloqueia se houver hora noturna no mês. CCT vencida e regras não lidas aparecem como atenção.
+
 **Formas de cálculo** (aba Regras):
 
 - **Saldo do dia:** trabalhado − previsto, com tolerância diária.
