@@ -41,6 +41,9 @@ usam a API do Claude (modelo `claude-opus-5-5`). Crie uma chave em console.anthr
 *Dados e configurações*. O uso é cobrado pela Anthropic, por leitura. Sem a chave funcionam o ponto em Excel,
 o cálculo, o TXT do Domínio, o cadastro, o Painel Sindical e a Auditoria de Guias.
 
+Sem chave, as fotos de cartão são lidas no app do Claude: Cálculo de Ponto › enviar as fotos › conferir ›
+**Baixar transcrição em Excel**; no programa, importe esse Excel em Arquivos › Planilha.
+
 ### Rodar a partir do código
 
 ```bash

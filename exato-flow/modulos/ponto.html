@@ -283,6 +283,7 @@ dialog::backdrop{background:var(--scrim)}
 
     <!-- CONFERENCIA -->
     <section id="t-conf" hidden style="margin-top:14px">
+      <div class="row" style="justify-content:flex-end;margin-bottom:10px"><span class="meta">Leu as fotos aqui e vai calcular no programa do computador?</span><button class="btn ghost sm" type="button" data-espelho="1">Baixar transcrição em Excel</button></div>
       <div class="conf">
         <aside class="emps">
           <div class="hd"><input type="search" id="bEmp" placeholder="Buscar funcionário" aria-label="Buscar funcionário"><span class="meta" id="resEmp"></span></div>
@@ -358,6 +359,7 @@ dialog::backdrop{background:var(--scrim)}
     <section id="t-txt" hidden style="display:grid;gap:14px;margin-top:14px">
       <div class="card"><h3>Antes de gerar</h3><ul class="check" id="chk"></ul>
         <div class="row"><button class="btn ghost" type="button" id="btnConferido">Marcar como conferido</button><span class="meta" id="confMeta"></span></div></div>
+      <div class="card"><div class="row" style="justify-content:space-between"><div><h3>Levar para o programa do computador</h3><p class="meta" style="margin:2px 0 0">Baixa as marcações conferidas (uma aba por funcionário, no formato do espelho). No programa: Cálculo de Ponto › mesmo cliente e competência › Arquivos › Planilha.</p></div><button class="btn ghost" type="button" data-espelho="1">Baixar transcrição em Excel</button></div></div>
       <div class="card"><h3>Lançamentos por funcionário</h3><div class="tbox" style="border:0"><table id="tRes"></table></div></div>
       <div class="card"><div class="row" style="justify-content:space-between"><h3>Arquivo TXT</h3><div class="row"><button class="btn ghost" type="button" id="btnCopiar">Copiar TXT</button><button class="btn" type="button" id="btnBaixar">Baixar TXT</button></div></div>
         <pre class="txt" id="txt"></pre>
@@ -569,7 +571,8 @@ function lerEspelho(wb){
     const merges={}; (ws["!merges"]||[]).forEach(m=>{ const v=(L[m.s.r]||[])[m.s.c]; for(let r=m.s.r;r<=m.e.r;r++) merges[r]=v; });
     const sw={extras:0,faltas:0,atraso:0,adnot:0,exsab:0,exdom:0};
     const iConf=H.findIndex(x=>/^Conferir/i.test(x));   // dúvidas da leitura das fotos (automação ECO HAM)
-    const f={nome:nome.trim().toUpperCase(),codigo:"",dias:[],sw};
+    const mc=nome.trim().match(/^(\d{1,10})\s*-\s*(.+)$/);   // aba "24 - MATEUS VISCARDI" (transcrição baixada do Flow)
+    const f={nome:(mc?mc[2]:nome).trim().toUpperCase(),codigo:mc?mc[1]:"",dias:[],sw};
     for(let r=2;r<L.length;r++){
       const row=L[r], dd=diaCel(row[0]); if(!dd||!dd.data) continue;
       if(!dd.ok){ fora++; continue; }
@@ -688,6 +691,37 @@ async function baixarModelo(){
   const blob=new Blob([XLSX.write(wb,{bookType:"xlsx",type:"array"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
   await baixar(`Ponto_${(S.cli.cod||"")}_${S.comp.replace("-","")}.xlsx`,blob);
 }
+// Transcrição em Excel no formato do espelho (o mesmo que lerEspelho lê): o programa do computador calcula a partir dela.
+const OC_TXT={FALTA:"FALTA INJUSTIFICADA",FALTAJUST:"FALTA JUSTIFICADA",ATESTADO:"ATESTADO",ABONO:"ABONO",FERIAS:"FÉRIAS",FOLGA:"FOLGA",FERIADO:"FERIADO",AFASTAMENTO:"AFASTAMENTO",LICENCA:"LICENÇA",NAOADM:"NÃO ADMITIDO"};
+async function baixarEspelho(){
+  if(!S.cli||!S.doc||!S.doc.emps.length){ toast("Envie e confira o ponto do mês antes de baixar a transcrição."); return; }
+  const DS=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+  const H=["Data"]; for(let i=1;i<=6;i++) H.push("Ent."+i,"Sai."+i);
+  H.push("Tipo de Cálculo","CHPrev","Conferir");
+  const wb=XLSX.utils.book_new(), usados=new Set(); let nd=0;
+  for(const e of S.doc.emps){
+    const L=[H,[]];
+    for(const d of periodo()){
+      const x=e.dias[d.data]||{}, marc=P.marcacoes(x.m).mins.map(m=>P.fmt2(m%1440)).slice(0,12);
+      const lin=[d.data.split("-").reverse().join("/")+" "+DS[d.dow]];
+      for(let i=0;i<12;i++) lin.push(marc[i]||"");
+      if(x.oc&&OC_TXT[x.oc]){ const k=Math.min(1+marc.length,12); lin[k]=lin[k]?lin[k]+" "+OC_TXT[x.oc]:OC_TXT[x.oc]; }
+      lin.push("",x.p!=null&&x.p!==""?P.fmt2(+x.p):"",x.il?(x.n||"Leitura incerta: conferir no cartão"):"");
+      if(marc.length||x.oc) nd++;
+      L.push(lin);
+    }
+    let nome=((e.cod?e.cod+" - ":"")+String(e.nome||"SEM NOME")).replace(/[\\\/?*\[\]:]/g," ").slice(0,31).trim(), n=nome, i=2;
+    while(usados.has(n.toUpperCase())) n=nome.slice(0,28)+" "+(i++);
+    usados.add(n.toUpperCase());
+    const ws=XLSX.utils.aoa_to_sheet(L); ws["!cols"]=[{wch:16},...Array(12).fill({wch:8}),{wch:14},{wch:8},{wch:40}];
+    XLSX.utils.book_append_sheet(wb,ws,n);
+  }
+  const buf=XLSX.write(wb,{type:"array",bookType:"xlsx"});
+  const nome=`Espelho_${String(S.cli.cod||F.digitos(S.cli.cnpj))}_${S.comp}.xlsx`;
+  if(await baixar(nome,new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}))) toast(`Transcrição baixada: ${S.doc.emps.length} funcionário(s), ${nd} dia(s). Importe no programa do computador em Arquivos › Planilha.`);
+}
+document.addEventListener("click",ev=>{ if(ev.target.closest("[data-espelho]")) baixarEspelho(); });
+
 async function baixar(nome,blob){
   const dl=await F.use("downloads");
   if(!dl){ toast("Download indisponível nesta visualização. Abra o Flow pelo link do claude.ai."); return false; }
