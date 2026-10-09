@@ -11,7 +11,7 @@ const f={nome:'A',jornada:'padrao',dias:dias({...base,
  2:{m:'07:35 12:00 13:30 17:48'}, 3:{m:'07:45 12:00 13:30 17:48'}, 4:{m:'07:30 12:00 13:30 19:48'},
  5:{m:'08:00 12:00'}, 6:{m:'08:00 12:00'}, 7:{m:'08:00 12:00 13:00 17:00'}, 8:{m:''}, 9:{m:'',oc:'ATESTADO'},
  10:{m:'07:30 12:00 13:30'}, 15:{m:'',oc:'FALTA'}, 16:{m:'22:00 05:00'}, 17:{m:'07:30 12:20 13:00 17:48'}})};
-const ap=P.apurar(f,'2026-09',{});
+const ap=P.apurar(f,'2026-09',{semMarcacao:'falta'});  // regra antiga: dia útil vazio = falta
 const d=k=>ap.dias[k-1];
 eq('normal',[d(1).heUtil,d(1).hfalta,d(1).falta],[0,0,false]);
 eq('tolerancia 5 min',d(2).hfalta,0);
@@ -80,4 +80,38 @@ eq('noturno real 7:00 + reducao 1:00',[tx3.linhas.find(l=>l.slice(18,22)==='0025
 const apPrev=P.apurar({jornada:'padrao',dias:{[D(1)]:{m:'08:00 12:00 13:00 17:45',p:525},[D(5)]:{m:'',p:0}}},'2026-09',{});
 eq('CHPrev 8:45 sem extra nem falta',[apPrev.dias[0].heUtil,apPrev.dias[0].hfalta,apPrev.dias[0].esperado],[0,0,525]);
 eq('CHPrev zero no dia sem jornada',apPrev.dias[4].falta,false);
+
+// ---------- ECO HAM: cálculo por marcação (exemplos do documento de configuração, 05/10/2026) ----------
+const ECO={calc:'marcacao',jornadas:[{id:'eco',nome:'08:00-12:00 13:12-18:00',dias:{1:'08:00-12:00 13:12-18:00',2:'08:00-12:00 13:12-18:00',3:'08:00-12:00 13:12-18:00',4:'08:00-12:00 13:12-18:00',5:'08:00-12:00 13:12-18:00',6:'',0:''}}],
+  he:{faixas:[{ate:null,pct:50,rub:150}],domFer:{pct:100,rub:200},limite:'mes',sab100:true},hfalta:{rub:8069},falta:{rub:40,min:440},dsr:{rub:42,min:440,gerar:true,meio:264}};
+const eco1=(dia,m,oc,extra)=>P.apurar({jornada:'eco',dias:{[D(dia)]:{m,oc:oc||''}}},'2026-09',{...ECO,...(extra||{})}).dias[dia-1];
+const LEG={tolRegra:'porMarcacao'};
+let x=eco1(2,'08:50 12:00 13:07 18:09');
+eq('Mateus 02/09 Súmula 366: atraso 0:50 e extra 0:14',[N(x.hfalta),N(x.heUtil)],['0:50','0:14']);
+x=eco1(2,'08:50 12:00 13:07 18:09','',LEG);
+eq('Mateus 02/09 regra antiga: atraso 0:50 e extra 0:09',[N(x.hfalta),N(x.heUtil)],['0:50','0:09']);
+x=eco1(24,'07:56 12:01 13:07 18:01');
+eq('Mateus 24/09 Súmula 366: soma 11 min = 0:11 extra',[N(x.hfalta),N(x.heUtil)],['0:00','0:11']);
+x=eco1(24,'07:56 12:01 13:07 18:01','',LEG);
+eq('Mateus 24/09 regra antiga: zerado',[x.hfalta,x.heUtil],[0,0]);
+x=eco1(3,'08:08 12:00 13:12 18:00');
+eq('8 min de atraso numa batida (Súmula 366) conta',N(x.hfalta),'0:08');
+eq('8 min de atraso numa batida (regra antiga) some',eco1(3,'08:08 12:00 13:12 18:00','',LEG).hfalta,0);
+x=eco1(3,'08:03 11:58 13:12 18:01');
+eq('variações pequenas (3+2+0+1) toleradas',[x.hfalta,x.heUtil],[0,0]);
+x=eco1(3,'08:00 12:00 13:12 18:00','',{calc:'saldo'});
+eq('modo saldo continua disponível',[x.hfalta,x.heUtil],[0,0]);
+x=eco1(8,'13:09 18:54','ATESTADO');
+eq('atestado parcial: abona e paga o que passou do horário',[x.hfalta,N(x.heUtil),x.parcial],[0,'0:57',true]);
+x=eco1(9,'');
+eq('dia útil vazio fica pendente',[x.falta,x.pendente,x.alertas.some(a=>a.nivel==='alta')],[false,true,true]);
+const fer=P.apurar({jornada:'eco',dias:{[D(8)]:{m:'',oc:'FALTA'}}},'2026-09',ECO);
+eq('falta em semana com feriado avisa (Lei 605, art. 6)',fer.dias.some(d=>d.alertas.some(a=>/feriado/.test(a.t)&&/605/.test(a.t))),true);
+const fc=P.apurar({jornada:'eco',dias:{[D(1)]:{m:'08:00 12:01 13:09 18:02',fc:1}}},'2026-09',ECO).dias[0];
+eq('marcação antes da admissão avisa',fc.alertas.some(a=>/admissão/.test(a.t)),true);
+x=eco1(5,'08:00 12:00 13:00 15:00');
+eq('sábado a 100% no modo marcação',[N(x.he100),x.heUtil],['6:00',0]);
+const txtEco=P.linhasTxt({empresa:310,comp:'2026-09',processo:11,formato:'SEXAGESIMAL',regras:{...P.REGRAS_PADRAO,...ECO},
+  funcionarios:[{cod:24,nome:'MATEUS',apur:{tot:{heFaixas:[{pct:50,rub:150,min:0}],he100:746,hfalta:0,noturnoLancar:0,reducaoNoturna:0,faltas:[],semanasDsr:[]}}}]});
+eq('TXT igual ao exemplo real da ECO HAM (Mateus, HE 100% 12:26)',txtEco.linhas,['1000000000242026090200110000012260000000310']);
 console.log(`${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);

@@ -290,7 +290,11 @@ dialog::backdrop{background:var(--scrim)}
       <div class="rgrid">
         <div class="card"><h3>Horas extras e faltas</h3>
           <div class="form">
+            <label>Forma de cálculo<select id="r-calc"><option value="saldo">Saldo do dia (trabalhado − previsto)</option><option value="marcacao">Por marcação: atraso e extra não se compensam</option></select></label>
             <label>Tolerância diária (min)<input id="r-tol" inputmode="numeric"></label>
+            <label>Tolerância por marcação (min)<input id="r-tolm" inputmode="numeric" placeholder="5"></label>
+            <label>Passou da tolerância<select id="r-tolr"><option value="sumula366">Conta o tempo todo (Súmula 366 TST)</option><option value="porMarcacao">Conta só as marcações acima do limite (regra antiga)</option></select></label>
+            <label>Dia útil sem marcação<select id="r-sem"><option value="pendente">Fica pendente: perguntar ao cliente</option><option value="falta">Vira falta automaticamente</option></select></label>
             <label>HE dia útil: % faixa 1<input id="r-p1" inputmode="numeric"></label>
             <label>Faixa 1 até (h:mm, vazio = sem limite)<input id="r-a1" placeholder="sem limite"></label>
             <label>Limite da faixa 1 conta<select id="r-lim"><option value="mes">no mês (ex.: 30h a 70%)</option><option value="dia">em cada dia (ex.: 2h a 50%)</option></select></label>
@@ -479,7 +483,7 @@ function mesclar(lista,origem){ // [{nome,codigo,dias:[{dia,marcacoes[],ocorrenc
 const ordenar=()=>S.doc.emps.sort((a,b)=>(parseInt(a.cod)||1e9)-(parseInt(b.cod)||1e9)||a.nome.localeCompare(b.nome,"pt-BR"));
 
 // ---------- leitura de planilha ----------
-const OCRX=[[/atest/i,"ATESTADO"],[/f[eé]rias/i,"FERIAS"],[/abon|justif/i,"ABONO"],[/falta/i,"FALTA"],[/folga|compens|dsr|descanso/i,"FOLGA"],[/feriado/i,"FERIADO"],[/afast|inss|aux[ií]lio/i,"AFASTAMENTO"],[/licen/i,"LICENCA"],[/admi|demi|deslig/i,"NAOADM"]];
+const OCRX=[[/atest/i,"ATESTADO"],[/f[eé]rias/i,"FERIAS"],[/injustif/i,"FALTA"],[/justif/i,"FALTAJUST"],[/abon/i,"ABONO"],[/falta/i,"FALTA"],[/folga|compens|dsr|descanso/i,"FOLGA"],[/feriado/i,"FERIADO"],[/afast|inss|aux[ií]lio/i,"AFASTAMENTO"],[/licen/i,"LICENCA"],[/admi|demi|deslig/i,"NAOADM"]];
 const ocDe=t=>{ for(const [r,c] of OCRX) if(r.test(t||"")) return c; return ""; };
 function horaCel(v){
   if(v==null||v==="") return null;
@@ -546,6 +550,7 @@ function lerEspelho(wb){
     const pcols=shifted?[1,2,3,4,5,6,7,8,9,10,11,12]:[1,2,4,5];   // colunas de marcação (base 0)
     const merges={}; (ws["!merges"]||[]).forEach(m=>{ const v=(L[m.s.r]||[])[m.s.c]; for(let r=m.s.r;r<=m.e.r;r++) merges[r]=v; });
     const sw={extras:0,faltas:0,atraso:0,adnot:0,exsab:0,exdom:0};
+    const iConf=H.findIndex(x=>/^Conferir/i.test(x));   // dúvidas da leitura das fotos (automação ECO HAM)
     const f={nome:nome.trim().toUpperCase(),codigo:"",dias:[],sw};
     for(let r=2;r<L.length;r++){
       const row=L[r], dd=diaCel(row[0]); if(!dd||!dd.data) continue;
@@ -562,12 +567,10 @@ function lerEspelho(wb){
       const g=k=>{ const i=col(k); return i<0?null:minCel(row[i]); };
       const prev=g("CHPrev");
       for(const [k,h] of [["extras","Extras"],["faltas","Faltas"],["atraso","Atraso"],["adnot","Ad Not"],["exsab","ExSab"],["exdom","ExDom"]]) sw[k]+=g(h)||0;
-      let oc=ocDe(nota), p=prev;
-      if(oc==="ATESTADO"&&marc.length){ // atestado parcial: as horas não trabalhadas do dia ficam abonadas
-        let t=0; for(let i=0;i+1<marc.length;i+=2) t+=(marc[i+1]>=marc[i]?marc[i+1]-marc[i]:marc[i+1]+1440-marc[i]);
-        oc=""; p=prev!=null?Math.min(prev,t):t; nota="Atestado parcial";
-      }
-      f.dias.push({data:dd.data,marcacoes:marc.map(P.fmt2),ocorrencia:oc,prev:p,nota});
+      const oc=ocDe(nota);
+      if((oc==="ATESTADO"||oc==="ABONO")&&marc.length) nota=(oc==="ATESTADO"?"Atestado":"Abono")+" parcial";  // o cálculo abona só o que faltou
+      const cf=iConf>=0?String(row[iConf]??"").trim():"";
+      f.dias.push({data:dd.data,marcacoes:marc.map(P.fmt2),ocorrencia:oc,prev,nota:cf?(nota?nota+" · ":"")+cf:nota,incerto:!!cf});
     }
     if(f.dias.length) out.push(f);
   }
@@ -578,11 +581,12 @@ const PROMPT_BASE=`Você vai ler o controle de ponto de funcionários de uma emp
 Regras:
 - Cada funcionário tem as marcações de cada dia do mês (entradas e saídas), em ordem cronológica, no formato HH:MM de 24 horas.
 - Copie somente o que está escrito. Nunca invente nem complete horários. Dia sem nenhuma marcação = lista vazia.
-- Palavras escritas no lugar das marcações viram "ocorrencia": FALTA, ATESTADO, FERIAS, FOLGA (também DSR, compensação, descanso), FERIADO, AFASTAMENTO, ABONO. Senão "".
-- Marque "incerto": true no dia em que algum número estiver ilegível, rasurado ou ambíguo (dê a leitura mais provável).
+- Palavras escritas no dia viram "ocorrencia": FALTA (falta sem justificativa), FALTAJUST (falta justificada: casamento, óbito, doação de sangue), ATESTADO, FERIAS, FOLGA (também DSR, compensação, descanso), FERIADO, AFASTAMENTO, ABONO. Senão "". Se o dia tiver ocorrência e também marcações (ex.: atestado só à tarde), mande as duas.
+- Marque "incerto": true e explique em "nota" quando algum número estiver ilegível, rasurado ou ambíguo (dê a leitura mais provável), quando a marcação estiver escrita à mão em vez de carimbada pelo relógio, ou impressa fora da linha do dia.
+- Cartão em duas fotos (frente = dias 1 a 15, verso = dias 16 a 31): use o mesmo nome do funcionário nas duas.
 - "codigo" é o número de registro/matrícula do funcionário se aparecer; senão "".
 Responda só com JSON neste formato:
-{"competencia":"MM/AAAA ou vazio","funcionarios":[{"nome":"NOME COMPLETO","codigo":"","dias":[{"dia":1,"marcacoes":["07:30","12:00","13:30","17:48"],"ocorrencia":"","incerto":false}]}],"observacoes":"o que não deu para ler ou precisa de atenção"}`;
+{"competencia":"MM/AAAA ou vazio","funcionarios":[{"nome":"NOME COMPLETO","codigo":"","dias":[{"dia":1,"marcacoes":["07:30","12:00","13:30","17:48"],"ocorrencia":"","incerto":false,"nota":""}]}],"observacoes":"o que não deu para ler ou precisa de atenção"}`;
 
 async function arquivosX(files){
   for(const f of files){
@@ -720,7 +724,7 @@ function comDominio(e){
     if((x.admissao&&d.data<x.admissao)||(x.rescisao&&d.data>x.rescisao)) oc="NAOADM";
     else { const a=aus.find(a=>em(d.data,a.ini,a.fim||"9999")); if(a){ oc=a.tipo; o=a.origem==="manual"?"ausencia":"dominio"; } }
     if(!oc) continue;
-    if(v&&v.m){ if(oc!=="NAOADM") out[d.data]={...v,oc,o}; continue; }  // marcação em dia de férias/afastamento: o cálculo avisa
+    if(v&&v.m){ out[d.data]=oc==="NAOADM"?{...v,fc:1}:{...v,oc,o}; continue; }  // marcação em dia de férias/afastamento: o cálculo avisa
     out[d.data]={m:"",oc,o};
   }
   return out;
@@ -1024,7 +1028,7 @@ function renderDet(){
         <td class="n ${d.hfalta?"":"z"}">${d.falta?'<span class="pill p-er">Falta</span>':(N(d.hfalta)||"–")}</td><td class="n ${d.noturno?"":"z"}">${N(d.noturno)||"–"}</td>
         <td><div class="al">${d.alertas.map(al=>`<span class="${al.nivel}">${esc(al.t)}</span>`).join("")}</div></td></tr>`;}).join("")}</tbody>
   </table></div>
-  <p class="note">Período ${esc(rotuloPeriodo())}. Marcações separadas por espaço, na ordem (entrada saída entrada saída). Virada de meia-noite é reconhecida sozinha. Tolerância de ${S.regras.tolDia} min por dia (art. 58, § 1º, CLT).</p>`;
+  <p class="note">Período ${esc(rotuloPeriodo())}. Marcações separadas por espaço, na ordem (entrada saída entrada saída). Virada de meia-noite é reconhecida sozinha. Tolerância de ${S.regras.tolMarc??5} min por marcação e ${S.regras.tolDia} min no dia (art. 58, § 1º, CLT)${S.regras.calc==="marcacao"?". Cálculo por marcação: atraso e hora extra do mesmo dia não se compensam":""}.</p>`;
 }
 
 function renderTxt(){
@@ -1039,7 +1043,7 @@ function renderTxt(){
   it.push(S.doc.emps.length?["ok",`${S.doc.emps.length} funcionário(s) na apuração`]:["er","Nenhum funcionário na apuração"]);
   it.push(empresa?["ok",`Código da empresa no Domínio: ${empresa}`]:["er","Cliente sem código do Domínio no cadastro (módulo Clientes)"]);
   it.push(semCod.length?["er",`${semCod.length} funcionário(s) sem código do Domínio: ${semCod.slice(0,4).map(e=>e.nome).join(", ")}${semCod.length>4?"…":""}`]:["ok","Todos os funcionários com código do Domínio"]);
-  it.push(alt?["er",`${alt} dia(s) com marcação a corrigir (ímpar, ilegível ou em ocorrência)`]:["ok","Nenhuma marcação a corrigir"]);
+  it.push(alt?["er",`${alt} dia(s) a resolver (sem marcação, ímpar, leitura incerta ou em ocorrência)`]:["ok","Nenhuma marcação a corrigir"]);
   const reg=S.reg||[];
   if(!S.regras.dominio) it.push(["at","Rubricas ainda não conferidas com o Domínio: envie o Extrato Mensal na aba Arquivos."]);
   if(!reg.length) it.push(["at","Cliente sem cadastro de funcionários: envie as Fichas de Empregado (aqui na aba Arquivos ou na ficha do cliente, no módulo Clientes)."]);
@@ -1075,7 +1079,7 @@ function renderTxt(){
 function preencherRegras(){
   const R=S.regras, f1=R.he.faixas[0]||{}, f2=R.he.faixas[1]||{};
   const set=(id,v)=>{$(id).value=v??"";};
-  set("r-tol",R.tolDia); set("r-p1",f1.pct); set("r-a1",f1.ate!=null&&R.he.faixas.length>1?P.fmt(f1.ate):""); set("r-r1",f1.rub);
+  set("r-tol",R.tolDia); set("r-tolm",R.tolMarc??5); $("r-calc").value=R.calc||"saldo"; $("r-tolr").value=R.tolRegra||"sumula366"; $("r-sem").value=R.semMarcacao||"pendente"; set("r-p1",f1.pct); set("r-a1",f1.ate!=null&&R.he.faixas.length>1?P.fmt(f1.ate):""); set("r-r1",f1.rub);
   set("r-p2",R.he.faixas.length>1?f2.pct:""); set("r-r2",R.he.faixas.length>1?f2.rub:"");
   set("r-p100",R.he.domFer.pct); set("r-r100",R.he.domFer.rub); set("r-rhf",R.hfalta.rub); set("r-rf",R.falta.rub); set("r-rd",R.dsr.rub); $("r-gd").checked=!!R.dsr.gerar;
   $("r-lim").value=R.he.limite||"mes"; $("r-sab").checked=!!R.he.sab100; $("r-iv").value=String(R.interv.modo||2);
@@ -1086,7 +1090,8 @@ function preencherRegras(){
 }
 function lerRegras(){
   const R=S.regras, n=id=>{const v=String($(id).value).trim();return v===""?"":Number(v.replace(",","."));};
-  R.tolDia=n("r-tol")===""?10:n("r-tol");
+  R.tolDia=n("r-tol")===""?10:n("r-tol"); R.tolMarc=n("r-tolm")===""?5:n("r-tolm");
+  R.calc=$("r-calc").value; R.tolRegra=$("r-tolr").value; R.semMarcacao=$("r-sem").value;
   const a1=P.hm($("r-a1").value), p2=n("r-p2");
   R.he.faixas=[{ate:p2!==""&&a1!=null?a1:null,pct:n("r-p1")||50,rub:n("r-r1")}];
   if(p2!==""&&a1!=null) R.he.faixas.push({ate:null,pct:p2,rub:n("r-r2")});

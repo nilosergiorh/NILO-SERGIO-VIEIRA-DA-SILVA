@@ -84,6 +84,16 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 
 **Uma vez por cliente:** ficha da empresa, fichas dos funcionários e Extrato Mensal (rubricas). **Todo mês:** só o ponto (Excel ou foto) → conferência → TXT.
 
+**Formas de cálculo** (aba Regras):
+
+- **Saldo do dia:** trabalhado − previsto, com tolerância diária.
+- **Por marcação** (mesma regra das automações Eletrotak e ECO HAM): em dia útil com as 4 batidas, cada uma é comparada ao horário da jornada. Atraso e hora extra do mesmo dia não se compensam. Dias com outro número de batidas, sábados, domingos e feriados usam o saldo.
+- **Tolerância** (art. 58, § 1º, CLT): 5 min por marcação e 10 min no dia. Passou de um dos dois, conta o tempo todo (Súmula 366 do TST). A opção "regra antiga" conta só as batidas acima de 5 min, como as planilhas faziam.
+- **Dia útil sem marcação e sem ocorrência** fica pendente (perguntar ao cliente) e bloqueia o TXT até a ocorrência ser lançada. Pode ser trocado para "vira falta".
+- **Atestado ou abono parcial** (ocorrência + marcações no mesmo dia): abona o que faltou e paga como extra o trabalho fora do horário.
+- **Avisos:** marcação antes da admissão ou depois da rescisão; falta injustificada em semana com feriado (Lei 605/49, art. 6º, não lançado).
+- O espelho gerado pelo `cartoes_para_espelho.py` da ECO HAM é lido direto; a coluna **Conferir** vira dia de leitura incerta.
+
 - Com o cliente configurado, a aba Arquivos abre direto no "Ponto do mês", e a configuração vira uma linha "✓ Cliente configurado", com o botão "Atualizar configuração" para admissões ou mudança de rubrica.
 - **Férias e afastamentos** (quadro na aba Arquivos):
   - Informados à mão por funcionário: tipo (férias, afastamento INSS/acidente, atestado, licença, folga/compensação, falta abonada), de/até e observação.
