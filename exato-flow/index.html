@@ -1,236 +1,389 @@
 <title>EXATO FLOW</title>
 <meta name="apple-mobile-web-app-title" content="Exato Flow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
 <style>
-/* Layout: trilho escuro de módulos à esquerda (barra inferior no celular) + área do módulo; a tela Início mostra o fluxo da competência CCT → Ponto → Folha → Guias */
+/* Layout: sala de controle do DP. Barra lateral fixa com os 3 módulos + cadastro; à direita, painel em grade de 12 colunas:
+   indicadores → gráficos (prazos, convenções) → listas de ação (clientes, prazos, alertas) → barra de status da competência. */
 :root{
-  --rail:#111111; --rail-ink:#f2f2f3; --rail-mute:#8d8d94; --rail-hover:#1f1f22;
-  --red:#C00000; --red-hi:#e01515;
-  --bg:#f3f3f5; --surf:#ffffff; --ink:#16171a; --mute:#5f626b; --line:#e2e3e8;
-  --ok:#14804f; --ok-bg:#e2f4ea; --er:#b00000; --wip:#9a5b00; --wip-bg:#fff1d6; --ext:#4a4d55; --ext-bg:#ececf0;
+  color-scheme:dark;
+  --bg:#0a0b0e; --side:#0d0e12; --panel:#13151a; --panel-2:#191c22; --line:#232731; --line-2:#2f3440;
+  --ink:#eef0f4; --ink-2:#c4c8d1; --mute:#8b919d; --dim:#5d636f;
+  --brand:#e3161b; --brand-hi:#ff3b3b; --brand-soft:rgba(227,22,27,.14);
+  --ok:#2fbf71; --warn:#f5b02e; --crit:#ff5468; --info:#7aa7ff;
+  --ok-bg:rgba(47,191,113,.13); --warn-bg:rgba(245,176,46,.13); --crit-bg:rgba(255,84,104,.13); --info-bg:rgba(122,167,255,.12); --nt-bg:rgba(255,255,255,.07);
+  /* séries dos gráficos (validadas para leitura com daltonismo no fundo escuro) */
+  --s1:#3987e5; --s2:#199e70; --s3:#9085e9; --s4:#5b6270;
   --f-disp:"Sora","Segoe UI",system-ui,sans-serif;
   --f-body:"Manrope","Segoe UI",system-ui,sans-serif;
   --f-mono:"JetBrains Mono",Consolas,ui-monospace,monospace;
-  --railw:92px; --tabh:64px;
+  --sidew:236px; --r:14px;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#141416; --surf:#1d1d20; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34;
-  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --er:#ff6b6b; --wip:#e8a531; --wip-bg:rgba(232,165,49,.14); --ext:#c3c5cc; --ext-bg:rgba(255,255,255,.08);
-  --red-hi:#ff3b3b; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#141416; --surf:#1d1d20; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34;
-  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --er:#ff6b6b; --wip:#e8a531; --wip-bg:rgba(232,165,49,.14); --ext:#c3c5cc; --ext-bg:rgba(255,255,255,.08);
-  --red-hi:#ff3b3b; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);overflow:hidden}
-button{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--red-hi);outline-offset:2px}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--f-body);overflow:hidden}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand-hi);outline-offset:2px}
 
-.app{display:grid;grid-template-columns:var(--railw) minmax(0,1fr);height:100%}
-/* trilho */
-.rail{background:var(--rail);color:var(--rail-ink);display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:14px 8px;border-right:1px solid #000}
-.mark{display:grid;place-items:center;gap:2px;padding:6px 0 14px;margin-bottom:6px;border-bottom:1px solid #26262a;background:none;border-left:0;border-right:0;border-top:0;cursor:pointer}
-.mark b{font:800 15px/1 var(--f-disp);letter-spacing:.04em;color:#fff}
-.mark i{font:700 10px/1 var(--f-disp);letter-spacing:.32em;color:var(--red-hi);font-style:normal;padding-left:.32em}
-.tab{display:grid;justify-items:center;gap:5px;padding:10px 4px;border:0;border-radius:12px;background:none;color:var(--rail-mute);cursor:pointer;position:relative;text-align:center}
-.tab svg{width:22px;height:22px}
-.tab span{font:600 10.5px/1.15 var(--f-disp);letter-spacing:.02em}
-.tab:hover{background:var(--rail-hover);color:var(--rail-ink)}
-.tab[aria-current="page"]{color:#fff;background:var(--rail-hover)}
-.tab[aria-current="page"]::before{content:"";position:absolute;left:-8px;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--red-hi)}
-.tab[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
-.tab[aria-disabled="true"]:hover{background:none;color:var(--rail-mute)}
-.tab small{font:500 8.5px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--rail-mute)}
-.rail .by{margin-top:auto;text-align:center;font:600 8.5px/1.35 var(--f-disp);letter-spacing:.12em;text-transform:uppercase;color:#5c5c63}
+.app{display:grid;grid-template-columns:var(--sidew) minmax(0,1fr);height:100%}
 
-/* área */
+/* ---------- barra lateral ---------- */
+.side{background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:18px;padding:18px 14px 14px;min-height:0;overflow:auto}
+.logo{display:grid;gap:3px;padding:2px 8px 16px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer}
+.logo b{font:800 21px/1 var(--f-disp);letter-spacing:.02em;color:#fff}
+.logo b em{font-style:normal;color:var(--brand-hi)}
+.logo span{font:600 10px/1.35 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.navg{display:grid;gap:4px}
+.navg h6{margin:0 0 4px;padding:0 10px;font:600 10px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.nav{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:11px;padding:10px 10px;border:0;border-radius:10px;background:none;color:var(--ink-2);cursor:pointer;text-align:left;position:relative}
+.nav svg{width:19px;height:19px}
+.nav .t{display:grid;min-width:0}
+.nav .t b{font:600 13.5px/1.25 var(--f-disp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav .t small{font-size:11px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav:hover{background:var(--panel-2);color:var(--ink)}
+.nav[aria-current="page"]{background:linear-gradient(135deg,var(--brand),#a30c10);color:#fff;box-shadow:0 10px 24px -14px rgba(227,22,27,.9)}
+.nav[aria-current="page"] .t small{color:rgba(255,255,255,.75)}
+.badge{min-width:22px;height:20px;padding:0 7px;border-radius:999px;display:inline-grid;place-items:center;font:600 11px var(--f-mono);background:var(--crit-bg);color:var(--crit)}
+.badge.w{background:var(--warn-bg);color:var(--warn)}
+.nav[aria-current="page"] .badge{background:rgba(0,0,0,.28);color:#fff}
+.goal{margin-top:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:14px;display:grid;gap:10px}
+.goal h6{margin:0;font:600 10px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.goal .gt{font:700 15px var(--f-disp)}
+.gbar{display:grid;gap:5px}
+.gbar .l{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--ink-2)}
+.gbar .l b{font:600 12px var(--f-mono);font-variant-numeric:tabular-nums}
+.track{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.track i{display:block;height:100%;border-radius:99px;background:var(--brand-hi);width:0;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.by{font:600 9.5px/1.4 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding:0 8px}
+
+/* ---------- área ---------- */
 .stage{position:relative;min-width:0;height:100%}
 .view{position:absolute;inset:0}
-.view[hidden]{display:none!important}
 .view iframe{width:100%;height:100%;border:0;display:block;background:var(--bg)}
 .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--mute);font-size:13px;pointer-events:none}
-
-/* início */
 #v-inicio{overflow:auto}
-.home{max-width:1080px;margin:0 auto;padding-block:36px 56px;padding-inline:28px;display:grid;gap:34px}
-.brand{display:grid;gap:10px}
-.brand .eyebrow{font:600 11px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
-.brand h1{margin:0;font:800 clamp(2.2rem,6vw,3.6rem)/1 var(--f-disp);letter-spacing:-.03em}
-.brand h1 em{font-style:normal;color:var(--red-hi)}
-.brand p{margin:0;font:600 clamp(1.02rem,2.2vw,1.25rem)/1.4 var(--f-disp);color:var(--ink);max-width:40ch;text-wrap:balance}
-.brand p span{display:block;color:var(--mute);font-weight:500}
+.dash{padding-block:22px 28px;padding-inline:24px;display:grid;gap:16px;max-width:1680px;margin:0 auto}
 
-h2{margin:0 0 4px;font:700 1.1rem var(--f-disp);letter-spacing:-.01em}
-.lead{margin:0 0 16px;color:var(--mute);font-size:.92rem;max-width:68ch}
+/* topo */
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+.top h1{margin:0;font:800 clamp(1.25rem,2.2vw,1.6rem)/1.15 var(--f-disp);letter-spacing:-.01em;text-wrap:balance}
+.top p{margin:3px 0 0;color:var(--mute);font-size:12.5px}
+.top p b{color:var(--ink-2);font-weight:600}
+.acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.sel{display:flex;align-items:center;gap:8px;height:38px;padding:0 6px 0 12px;border:1px solid var(--line-2);border-radius:10px;background:var(--panel)}
+.sel span{font:600 10px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.sel select{background:transparent;border:0;height:100%;font-weight:600;cursor:pointer;padding-right:4px}
+.sel select option{background:var(--panel)}
+.btn{height:38px;display:inline-flex;align-items:center;gap:8px;padding:0 15px;border-radius:10px;border:1px solid var(--line-2);background:var(--panel);font:700 13px var(--f-disp);cursor:pointer}
+.btn:hover{border-color:var(--mute)}
+.btn svg{width:16px;height:16px}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.pri:hover{background:var(--brand-hi);border-color:var(--brand-hi)}
 
-/* fluxo da competência */
-.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:16px;background:var(--surf);overflow:hidden}
-.step{position:relative;padding:18px 20px 18px;display:grid;gap:6px;align-content:start;min-width:0;border-left:1px solid var(--line)}
-.step:first-child{border-left:0}
-.step:not(:last-child)::after{content:"";position:absolute;right:-7px;top:26px;width:12px;height:12px;background:var(--surf);border-top:1px solid var(--line);border-right:1px solid var(--line);transform:rotate(45deg);z-index:1}
-.step .n{font:500 11px var(--f-mono);color:var(--mute);letter-spacing:.06em}
-.step b{font:700 15px/1.25 var(--f-disp)}
-.step p{margin:0;font-size:.84rem;color:var(--mute)}
-.pill{justify-self:start;font:500 10px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;white-space:nowrap}
-.pill.ok{background:var(--ok-bg);color:var(--ok)}
-.pill.wip{background:var(--wip-bg);color:var(--wip)}
-.pill.ext{background:var(--ext-bg);color:var(--ext)}
+/* indicadores */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 13px;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto 1fr auto;column-gap:12px;row-gap:8px;min-width:0}
+.kpi h3{grid-column:1/-1;margin:0;font:600 10px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ring{width:54px;height:54px;position:relative;display:grid;place-items:center}
+.ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.ring b{font:700 12px var(--f-mono);font-variant-numeric:tabular-nums}
+.ring .bg{stroke:var(--line-2)}
+.kpi .ic{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand-hi)}
+.kpi .ic svg{width:24px;height:24px}
+.kpi .v{align-self:center;min-width:0}
+.kpi .v b{display:block;font:800 1.65rem/1.05 var(--f-disp);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.kpi .v span{display:block;font-size:11.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .d{grid-column:1/-1;font-size:11.5px;color:var(--mute);display:flex;align-items:center;gap:6px;min-width:0}
+.kpi .d i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--dim)}
+.kpi .d.ok i{background:var(--ok)} .kpi .d.warn i{background:var(--warn)} .kpi .d.crit i{background:var(--crit)}
+.kpi .d em{font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* cadastro */
-.cad{display:grid;gap:14px}
-.cad-h{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
-.cad-h .lead{margin:0}
-.nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:16px;background:var(--surf);overflow:hidden}
-.num{display:grid;gap:2px;padding:16px 20px;border-left:1px solid var(--line);min-width:0}
-.num:first-child{border-left:0}
-.num b{font:800 1.9rem/1.1 var(--f-disp);font-variant-numeric:tabular-nums}
-.num span{font-size:.82rem;color:var(--mute)}
-.num.er b{color:var(--er)} .num.at b{color:var(--wip)}
+/* painéis */
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}
+.pn{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0;position:relative}
+.pn-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.pn-h h2{margin:0;font:700 12.5px/1.3 var(--f-disp);letter-spacing:.06em;text-transform:uppercase}
+.pn-h p{margin:2px 0 0;font-size:12px;color:var(--mute)}
+.lnk{border:0;background:none;padding:2px 0;color:var(--info);font:600 12px var(--f-body);cursor:pointer;white-space:nowrap}
+.lnk:hover{text-decoration:underline}
+.a5{grid-column:span 5}.a4{grid-column:span 4}.a3{grid-column:span 3}
+.foot{font-size:11.5px;color:var(--mute);margin-top:auto}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;flex:none}
+.vazio{display:grid;place-items:center;text-align:center;gap:6px;padding:22px 10px;color:var(--mute);font-size:12.5px;border:1px dashed var(--line-2);border-radius:10px}
+.vazio b{color:var(--ink-2);font:600 13px var(--f-disp)}
 
-/* módulos */
-.mods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
-.mod{display:grid;grid-template-rows:auto auto 1fr auto;gap:10px;padding:20px;border-radius:16px;background:var(--surf);border:1px solid var(--line);min-width:0}
-.mod .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.mod .ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--rail);color:#fff}
-.mod .ic svg{width:21px;height:21px}
-.mod h3{margin:0;font:700 1.05rem/1.25 var(--f-disp)}
-.mod ul{margin:0;padding-left:18px;font-size:.88rem;color:var(--mute);display:grid;gap:3px}
-.go{justify-self:start;display:inline-flex;align-items:center;gap:8px;border:0;border-radius:10px;padding:9px 16px;font:700 .86rem var(--f-disp);cursor:pointer;background:var(--red);color:#fff}
-.go:hover{background:var(--red-hi)}
-.go:disabled{background:var(--ext-bg);color:var(--mute);cursor:not-allowed}
-.note{font-size:.8rem;color:var(--mute);max-width:90ch;margin:0}
+/* gráfico de colunas */
+.chart{position:relative;flex:1;min-height:230px}
+.chart svg{position:absolute;inset:0;display:block;width:100%;height:100%;overflow:visible}
+.chart .vazio{position:absolute;inset:0}
+.chart text{font:500 10.5px var(--f-mono);fill:var(--mute)}
+.chart .tot{font:600 11px var(--f-mono);fill:var(--ink)}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .hit{fill:transparent;cursor:default}
+.chart .col.dim{opacity:.35}
+.tip{position:absolute;z-index:5;pointer-events:none;min-width:150px;background:#0b0c10;border:1px solid var(--line-2);border-radius:10px;padding:9px 11px;font-size:12px;box-shadow:0 14px 30px -10px rgba(0,0,0,.8)}
+.tip b{font:700 12.5px var(--f-disp);display:block;margin-bottom:4px}
+.tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ink-2)}
+.tip .r span{display:inline-flex;align-items:center;gap:6px}
+.tip .r i{width:8px;height:8px;border-radius:2px}
+.tip .r em{font-style:normal;font-family:var(--f-mono);color:var(--ink)}
 
-@media (max-width:980px){.flow{grid-template-columns:1fr 1fr}.step:nth-child(3){border-left:0}.step:nth-child(n+3){border-top:1px solid var(--line)}.step:nth-child(2)::after{display:none}.mods{grid-template-columns:1fr 1fr}.nums{grid-template-columns:1fr 1fr}.num:nth-child(3){border-left:0}.num:nth-child(n+3){border-top:1px solid var(--line)}}
+/* barras horizontais */
+.hb{display:grid;gap:9px}
+.hb .row{display:grid;grid-template-columns:minmax(0,1fr) 38px;gap:4px 10px;align-items:center}
+.hb .nm{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--ink-2);min-width:0}
+.hb .nm span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb .nm small{font:500 10.5px var(--f-mono);color:var(--mute);white-space:nowrap}
+.hb .bar{height:10px;border-radius:0 4px 4px 0;background:var(--s1);min-width:3px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.hb .val{font:600 12px var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.st-ok{background:var(--ok)!important}.st-warn{background:var(--warn)!important}.st-crit{background:var(--crit)!important}.st-nt{background:var(--s4)!important}
+
+/* situação das convenções */
+.stack{display:flex;height:14px;border-radius:5px;overflow:hidden;gap:2px;background:var(--panel)}
+.stack i{display:block;height:100%;min-width:3px}
+.share{display:grid;gap:7px}
+.share .r{display:grid;grid-template-columns:12px minmax(0,1fr) auto 44px;align-items:center;gap:9px;font-size:12.5px}
+.share .r i{width:10px;height:10px;border-radius:3px}
+.share .r b{font:600 12px var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.share .r small{font:500 11px var(--f-mono);color:var(--mute);text-align:right}
+.sub-h{margin:4px 0 0;padding-top:12px;border-top:1px solid var(--line);font:600 10px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.dbase{display:grid;gap:8px}
+.dbase .r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;font-size:12.5px}
+.dbase .r span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dbase .r small{grid-column:1;color:var(--mute);font-size:11px}
+.dbase .r b{grid-row:1/3;grid-column:2;align-self:center;font:600 11.5px var(--f-mono)}
+
+/* pílulas */
+.pill{display:inline-flex;align-items:center;gap:5px;font:600 10.5px var(--f-mono);letter-spacing:.03em;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.crit{background:var(--crit-bg);color:var(--crit)}.pill.nt{background:var(--nt-bg);color:var(--ink-2)}
+
+/* tabela */
+.tbl{overflow-x:auto;margin:0 -4px}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:440px}
+th{font:600 10px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);text-align:left;padding:0 8px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--panel-2)}
+tbody tr:last-child td{border-bottom:0}
+td.cod{font:600 12px var(--f-mono);color:var(--brand-hi);white-space:nowrap}
+td.cod.sem{color:var(--dim)}
+td.cli{max-width:220px}
+td.cli b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td.cli small{display:block;color:var(--mute);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td.pd{color:var(--ink-2);font-size:12px;max-width:220px}
+td.pd span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
+
+/* prazos */
+.prz{display:grid;gap:2px}
+.prz .r{display:grid;grid-template-columns:48px minmax(0,1fr);gap:11px;align-items:center;padding:8px 6px;border-radius:9px}
+.prz .r:hover{background:var(--panel-2)}
+.dt{display:grid;place-items:center;height:46px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line-2);line-height:1}
+.dt b{font:800 17px var(--f-disp)}
+.dt small{font:600 9px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-top:3px}
+.dt.hoje{border-color:var(--warn)}
+.prz .x{min-width:0}
+.prz .x span{display:block;font-size:12.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.prz .x small{display:block;color:var(--mute);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.atraso{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:var(--crit-bg);color:var(--crit);font-size:12.5px}
+.atraso b{font-family:var(--f-disp)}
+
+/* alertas */
+.pn-h.ex{justify-content:flex-start;align-items:center;gap:11px}
+.ex img{width:40px;height:40px;border-radius:50%;object-fit:cover;object-position:50% 20%;background:var(--panel-2);border:1px solid var(--line-2)}
+.ex div{min-width:0}
+.alr{display:grid;gap:8px;max-height:430px;overflow:auto;padding-right:2px}
+.al{display:grid;grid-template-columns:3px minmax(0,1fr);gap:11px;padding:10px 12px 10px 0;border-radius:10px;background:var(--panel-2);border:1px solid var(--line)}
+.al::before{content:"";border-radius:3px 0 0 3px;background:var(--dim)}
+.al.crit::before{background:var(--crit)}.al.warn::before{background:var(--warn)}.al.info::before{background:var(--info)}
+.al h4{margin:0;display:flex;align-items:center;gap:7px;font:700 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase}
+.al.crit h4{color:var(--crit)}.al.warn h4{color:var(--warn)}.al.info h4{color:var(--info)}
+.al h4 svg{width:14px;height:14px;flex:none}
+.al p{margin:3px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.4}
+.al p b{color:var(--ink)}
+.al button{margin-top:5px}
+
+/* barra de status */
+.status{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;padding:11px 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel);font-size:12px;color:var(--mute)}
+.status b{color:var(--ink);font:600 12px var(--f-mono);font-variant-numeric:tabular-nums}
+.status .tt{font:700 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+.status .sp{margin-left:auto}
+
+.ent{animation:sobe .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes sobe{from{opacity:.001;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- responsivo ---------- */
+@media (max-width:1360px){
+  .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .a5.chartA{grid-column:span 12}.a4.chartB{grid-column:span 7}.a3.chartC{grid-column:span 5}
+  .a5.tblD{grid-column:span 12}.a3.przE{grid-column:span 6}.a4.alF{grid-column:span 6}
+}
+@media (max-width:980px){
+  :root{--sidew:76px}
+  .side{padding:14px 8px;gap:12px;align-items:stretch}
+  .logo{padding:2px 0 12px;justify-items:center}.logo b{font-size:13px}.logo span,.navg h6,.nav .t,.by,.goal{display:none}
+  .nav{grid-template-columns:1fr;justify-items:center;padding:12px 0}
+  .nav .badge{position:absolute;top:3px;right:5px;min-width:18px;height:16px;padding:0 4px;font-size:9.5px}
+  .a4.chartB,.a3.chartC,.a3.przE,.a4.alF{grid-column:span 12}
+}
 @media (max-width:720px){
   .app{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
   .stage{grid-row:1}
-  .rail{grid-row:2;flex-direction:row;justify-content:space-around;gap:2px;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));border-right:0;border-top:1px solid #000}
-  .mark,.rail .by{display:none}
-  .tab{flex:1;padding:6px 2px;border-radius:10px}
-  .tab[aria-current="page"]::before{left:22%;right:22%;top:-6px;bottom:auto;width:auto;height:3px;border-radius:0 0 3px 3px}
-  .home{padding-inline:16px;padding-block:24px 40px;gap:28px}
-  .flow,.mods{grid-template-columns:1fr}
-  .num b{font-size:1.5rem}
-  .num{padding:12px 14px}
-  .step{border-left:0;border-top:1px solid var(--line)}
-  .step:first-child{border-top:0}
-  .step:not(:last-child)::after{display:none}
+  .side{grid-row:2;flex-direction:row;overflow:visible;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));border-right:0;border-top:1px solid var(--line);gap:2px}
+  .logo{display:none}
+  .navg{display:contents}
+  .nav{flex:1;padding:9px 0}
+  .nav .badge{right:calc(50% - 22px)}
+  .dash{padding-inline:16px;padding-block:16px 24px;gap:12px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .kpi{padding:12px}
+  .kpi .v b{font-size:1.35rem}
+  .ring,.kpi .ic{width:46px;height:46px}
+  .acts{width:100%}.acts .btn{flex:1;justify-content:center}.sel{flex:1 1 100%}
+  .sel select{flex:1}
+  .status .sp{margin-left:0}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
-<link rel="stylesheet" href="nucleo/tema-exato.css">
 
 <div class="app">
-  <nav class="rail" aria-label="Módulos do Exato Flow">
-    <button class="mark" type="button" data-go="inicio" aria-label="Início do Exato Flow"><b>EXATO</b><i>FLOW</i></button>
-    <button class="tab" type="button" data-go="inicio" id="t-inicio">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/></svg>
-      <span>Início</span>
-    </button>
-    <button class="tab" type="button" data-go="clientes" id="t-clientes">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6"/><path d="M17.5 14.3c1.6.6 2.7 2.2 3 4.7"/></svg>
-      <span>Clientes</span>
-    </button>
-    <button class="tab" type="button" data-go="sindical" id="t-sindical">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/><path d="M4 21h16"/></svg>
-      <span>Sindical</span>
-    </button>
-    <button class="tab" type="button" data-go="guias" id="t-guias">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="m10 14 2 2 4-4"/></svg>
-      <span>Guias</span>
-    </button>
-    <button class="tab" type="button" data-go="ponto" id="t-ponto">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
-      <span>Ponto</span>
-    </button>
-    <div class="by">por Exato<br>Soluções<br>Contábeis</div>
+  <nav class="side" aria-label="Módulos do Exato Flow">
+    <button class="logo" type="button" data-go="inicio" aria-label="Painel do Exato Flow"><b>EXATO <em>FLOW</em></b><span>Processos conectados</span></button>
+
+    <div class="navg">
+      <h6>Visão geral</h6>
+      <button class="nav" type="button" data-go="inicio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="8" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="14.5" width="7" height="6" rx="1.5"/></svg>
+        <span class="t"><b>Painel</b><small>Visão geral</small></span><span></span>
+      </button>
+    </div>
+
+    <div class="navg">
+      <h6>Módulos</h6>
+      <button class="nav" type="button" data-go="sindical">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/><path d="M4 21h16"/></svg>
+        <span class="t"><b>Painel Sindical</b><small>CCTs e prazos</small></span><span class="badge" id="b-sindical" hidden></span>
+      </button>
+      <button class="nav" type="button" data-go="ponto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+        <span class="t"><b>Cálculo de Ponto</b><small>Apuração e TXT</small></span><span class="badge w" id="b-ponto" hidden></span>
+      </button>
+      <button class="nav" type="button" data-go="guias">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="m10 14 2 2 4-4"/></svg>
+        <span class="t"><b>Auditoria</b><small>Guias e folha</small></span><span class="badge" id="b-guias" hidden></span>
+      </button>
+    </div>
+
+    <div class="navg">
+      <h6>Cadastro</h6>
+      <button class="nav" type="button" data-go="clientes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6"/><path d="M17.5 14.3c1.6.6 2.7 2.2 3 4.7"/></svg>
+        <span class="t"><b>Clientes</b><small>Cadastro único</small></span><span class="badge" id="b-clientes" hidden></span>
+      </button>
+    </div>
+
+    <div class="goal" aria-label="Fechamento da competência">
+      <h6>Fechamento</h6>
+      <div class="gt" id="g-comp">—</div>
+      <div class="gbar"><div class="l"><span>Ponto conferido</span><b id="g-pto">—</b></div><div class="track"><i id="g-pto-b"></i></div></div>
+      <div class="gbar"><div class="l"><span>Guias auditadas</span><b id="g-gui">—</b></div><div class="track"><i id="g-gui-b"></i></div></div>
+    </div>
+    <div class="by">por Exato Soluções Contábeis</div>
   </nav>
 
   <main class="stage">
-    <section class="view" id="v-inicio" aria-label="Início">
-      <div class="home">
-        <header class="brand">
-          <span class="eyebrow">Departamento Pessoal · Exato Soluções Contábeis</span>
-          <h1>EXATO <em>FLOW</em></h1>
-          <p>Processos conectados.<span>Departamento Pessoal mais simples.</span></p>
+    <section class="view" id="v-inicio" aria-label="Painel">
+      <div class="dash">
+        <header class="top ent">
+          <div>
+            <h1>Painel do Departamento Pessoal</h1>
+            <p id="topInfo">Exato Soluções Contábeis · carregando a base…</p>
+          </div>
+          <div class="acts">
+            <label class="sel" for="comp"><span>Competência</span><select id="comp"></select></label>
+            <button class="btn" type="button" data-go="guias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="m10 14 2 2 4-4"/></svg>Auditar guias</button>
+            <button class="btn pri" type="button" data-go="ponto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Conferir ponto</button>
+          </div>
         </header>
 
-        <section class="cad" aria-labelledby="h-cad">
-          <div class="cad-h"><div><h2 id="h-cad">Cadastro único de clientes</h2><p class="lead">A mesma base de clientes alimenta todos os módulos.</p></div>
-            <button class="go" type="button" data-go="clientes">Abrir Clientes</button></div>
-          <div class="nums" id="cadNums">
-            <div class="num"><b id="c-ativos">–</b><span>clientes ativos</span></div>
-            <div class="num er"><b id="c-pend">–</b><span>com pendência grave no cadastro</span></div>
-            <div class="num at"><b id="c-cct">–</b><span>com CCT vencida ou vencendo</span></div>
-            <div class="num er"><b id="c-aud">–</b><span>com erro na última auditoria</span></div>
-          </div>
-          <p class="note" id="cadNota" hidden></p>
+        <section class="kpis ent" aria-label="Indicadores">
+          <article class="kpi"><h3>Clientes ativos</h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6"/><path d="M17.5 14.3c1.6.6 2.7 2.2 3 4.7"/></svg></span><div class="v"><b id="k-cli">–</b><span id="k-cli-s">no cadastro</span></div><div class="d" id="k-cli-d"><i></i><em>—</em></div></article>
+          <article class="kpi"><h3>CCT em dia</h3><div class="ring" id="r-cct"></div><div class="v"><b id="k-cct">–</b><span>dos ativos</span></div><div class="d" id="k-cct-d"><i></i><em>—</em></div></article>
+          <article class="kpi"><h3>Enquadramento</h3><div class="ring" id="r-enq"></div><div class="v"><b id="k-enq">–</b><span>confirmados</span></div><div class="d" id="k-enq-d"><i></i><em>—</em></div></article>
+          <article class="kpi"><h3>Cadastro completo</h3><div class="ring" id="r-cad"></div><div class="v"><b id="k-cad">–</b><span>sem pendência</span></div><div class="d" id="k-cad-d"><i></i><em>—</em></div></article>
+          <article class="kpi"><h3>Ponto conferido</h3><div class="ring" id="r-pto"></div><div class="v"><b id="k-pto">–</b><span id="k-pto-s">configurados</span></div><div class="d" id="k-pto-d"><i></i><em>—</em></div></article>
+          <article class="kpi"><h3>Guias auditadas</h3><div class="ring" id="r-gui"></div><div class="v"><b id="k-gui">–</b><span id="k-gui-s">auditados</span></div><div class="d" id="k-gui-d"><i></i><em>—</em></div></article>
         </section>
 
-        <section aria-labelledby="h-flow">
-          <h2 id="h-flow">O fluxo de cada competência</h2>
-          <p class="lead">Cada etapa usa o resultado da anterior. Um piso ou percentual de hora extra errado na convenção aparece lá na guia. Por isso os módulos ficam no mesmo programa.</p>
-          <div class="flow">
-            <div class="step"><span class="n">1 · CCT</span><b>Regras do sindicato</b><p>Piso, reajuste, adicionais e jornada de cada cliente.</p><span class="pill ok">Painel Sindical</span></div>
-            <div class="step"><span class="n">2 · Ponto</span><b>Apuração da jornada</b><p>Ponto em Excel ou foto do cartão: horas extras, faltas, DSR e noturno, com TXT para o Domínio.</p><span class="pill ok">Ponto</span></div>
-            <div class="step"><span class="n">3 · Folha</span><b>Cálculo no Domínio</b><p>Lançamentos importados e folha calculada.</p><span class="pill ext">Sistema Domínio</span></div>
-            <div class="step"><span class="n">4 · Guias</span><b>Conferência antes de pagar</b><p>Extrato da folha contra as DARFs da DCTFWeb.</p><span class="pill ok">Auditoria de Guias</span></div>
-          </div>
+        <section class="grid ent" aria-label="Gráficos">
+          <article class="pn a5 chartA">
+            <div class="pn-h"><div><h2>Agenda de obrigações sindicais</h2><p>Prazos em aberto por mês de vencimento</p></div><button class="lnk" type="button" data-go="sindical">Abrir prazos</button></div>
+            <div class="legend" id="legA"></div>
+            <div class="chart" id="chA"></div>
+            <p class="foot" id="footA"></p>
+          </article>
+          <article class="pn a4 chartB">
+            <div class="pn-h"><div><h2>Clientes por convenção</h2><p>Clientes ativos em cada CCT, na cor da situação</p></div><button class="lnk" type="button" data-go="sindical">Ver CCTs</button></div>
+            <div class="legend"><span><i class="st-ok"></i>Vigente</span><span><i class="st-warn"></i>Vence em 90 dias</span><span><i class="st-crit"></i>Vencida</span><span><i class="st-nt"></i>Sem vigência</span></div>
+            <div class="hb" id="chB"></div>
+          </article>
+          <article class="pn a3 chartC">
+            <div class="pn-h"><div><h2>Situação das CCTs</h2><p id="subC">Convenções no Painel Sindical</p></div></div>
+            <div class="stack" id="stC" role="img" aria-label="Distribuição das convenções por situação"></div>
+            <div class="share" id="shC"></div>
+            <h5 class="sub-h">Próximas datas-base</h5>
+            <div class="dbase" id="dbC"></div>
+          </article>
         </section>
 
-        <section aria-labelledby="h-mods">
-          <h2 id="h-mods">Módulos</h2>
-          <p class="lead">Abra pelo trilho lateral ou pelos botões abaixo. Cada módulo continua aberto quando você troca de tela.</p>
-          <div class="mods">
-            <article class="mod">
-              <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6"/></svg></span><span class="pill ok">Ativo</span></div>
-              <h3>Clientes</h3>
-              <ul><li>Cadastro único com CNPJ e código do Domínio</li><li>Dados de DP: regime, funcionários, ponto</li><li>Pendências e resultado das auditorias</li></ul>
-              <button class="go" type="button" data-go="clientes">Abrir Clientes</button>
-            </article>
-            <article class="mod">
-              <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg></span><span class="pill ok">Ativo</span></div>
-              <h3>Painel Sindical</h3>
-              <ul><li>Clientes enquadrados por sindicato e CCT</li><li>Pisos, prazos e alertas de vencimento</li><li>PDFs das convenções e pedidos de análise</li></ul>
-              <button class="go" type="button" data-go="sindical">Abrir Painel Sindical</button>
-            </article>
-            <article class="mod">
-              <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="m10 14 2 2 4-4"/></svg></span><span class="pill ok">Ativo</span></div>
-              <h3>Auditoria de Guias</h3>
-              <ul><li>INSS 1082 · 1099 · 1138 e IRRF 0561</li><li>Recálculo por funcionário</li><li>Lote das guias prontas para impressão</li></ul>
-              <button class="go" type="button" data-go="guias">Abrir Auditoria de Guias</button>
-            </article>
-            <article class="mod">
-              <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><span class="pill ok">Ativo</span></div>
-              <h3>Ponto</h3>
-              <ul><li>Ponto em Excel ou foto do cartão</li><li>Horas extras, faltas, DSR e adicional noturno</li><li>TXT para o Domínio Folha</li></ul>
-              <button class="go" type="button" data-go="ponto">Abrir Ponto</button>
-            </article>
-          </div>
+        <section class="grid ent" aria-label="Ações">
+          <article class="pn a5 tblD">
+            <div class="pn-h"><div><h2>Clientes que pedem atenção</h2><p>Ordenados pela gravidade das pendências</p></div><button class="lnk" type="button" data-go="clientes">Ver todos</button></div>
+            <div class="tbl"><table><thead><tr><th>Cód.</th><th>Cliente</th><th>Convenção</th><th>Pendência</th></tr></thead><tbody id="tbD"></tbody></table></div>
+          </article>
+          <article class="pn a3 przE">
+            <div class="pn-h"><div><h2>Próximos prazos</h2><p>Obrigações das convenções</p></div><button class="lnk" type="button" data-go="sindical">Agenda</button></div>
+            <div id="atrE"></div>
+            <div class="prz" id="lsE"></div>
+          </article>
+          <article class="pn a4 alF">
+            <div class="pn-h ex"><img src="nucleo/mascote-rosto.png" alt="E-exato"><div><h2>Alertas do E-exato</h2><p id="subF">Analisando a base…</p></div></div>
+            <div class="alr" id="lsF"></div>
+          </article>
         </section>
 
-        <p class="note">O cadastro de clientes é o mesmo que o Painel Sindical já usava: nada foi copiado nem duplicado. A Auditoria de Guias lê os PDFs só neste computador e não envia nada para a internet.</p>
+        <footer class="status ent" id="stat" aria-label="Situação da competência">
+          <span class="tt" id="st-comp">Competência</span>
+          <span>Ponto conferido <b id="st-pto">—</b></span>
+          <span>TXT gerado <b id="st-txt">—</b></span>
+          <span>Guias auditadas <b id="st-gui">—</b></span>
+          <span>Prazos atrasados <b id="st-atr">—</b></span>
+          <span class="sp pill nt" id="st-base">Conectando</span>
+        </footer>
       </div>
     </section>
 
     <section class="view" id="v-clientes" aria-label="Clientes" hidden></section>
     <section class="view" id="v-sindical" aria-label="Painel Sindical" hidden></section>
-    <section class="view" id="v-ponto" aria-label="Conferência de ponto" hidden></section>
-    <section class="view" id="v-guias" aria-label="Auditoria de Guias" hidden></section>
+    <section class="view" id="v-ponto" aria-label="Cálculo de Ponto" hidden></section>
+    <section class="view" id="v-guias" aria-label="Auditoria de guias e folha" hidden></section>
   </main>
 </div>
 
 <script src="nucleo/flow-dados.js" charset="utf-8"></script>
 <script>
+// ---------- navegação ----------
 const MODS={
   clientes:{src:"modulos/clientes.html",title:"Clientes"},
   sindical:{src:"modulos/painel-sindical.html",title:"Painel Sindical"},
-  ponto:{src:"modulos/ponto.html",title:"Conferência de ponto"},
-  guias:{src:"modulos/auditoria-guias.html",title:"Auditoria de Guias"}
+  ponto:{src:"modulos/ponto.html",title:"Cálculo de Ponto"},
+  guias:{src:"modulos/auditoria-guias.html",title:"Auditoria de guias e folha"}
 };
-const VIEWS=["inicio","clientes","sindical","ponto","guias"];
+const VIEWS=["inicio","sindical","ponto","guias","clientes"];
 function abrir(v){
   if(!VIEWS.includes(v)) v="inicio";
   const m=MODS[v], box=document.getElementById("v-"+v);
@@ -241,9 +394,10 @@ function abrir(v){
     box.append(ld,f);
   }
   VIEWS.forEach(x=>{document.getElementById("v-"+x).hidden = x!==v});
-  document.querySelectorAll(".tab[data-go]").forEach(t=>t.setAttribute("aria-current", t.dataset.go===v?"page":"false"));
+  document.querySelectorAll(".nav[data-go]").forEach(t=>t.setAttribute("aria-current", t.dataset.go===v?"page":"false"));
   try{history.replaceState(null,"","#"+v)}catch(e){}
   try{localStorage.setItem("exatoflow.tela",v)}catch(e){}
+  if(v==="inicio") agendar();
 }
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-go]"); if(!b) return;
@@ -255,23 +409,277 @@ window.addEventListener("message",e=>{
   if(e.origin!==location.origin||!e.data||e.data.flow!=="abrir") return;
   abrir(String(e.data.tela||""));
 });
-// Resumo do cadastro na tela Início
-if(window.FlowDados){
-  const F=window.FlowDados, n=(id,v)=>{document.getElementById(id).textContent=v};
-  F.assinar(E=>{
-    if(E.erro==="sem_base"){ const p=document.getElementById("cadNota"); p.hidden=false; p.textContent="Os números do cadastro aparecem quando o Flow é aberto pelo link do claude.ai."; return; }
-    if(!E.pronto.clientes) return;
-    const I=F.indices(E.clientes,E.ccts), A=Object.fromEntries(E.auditorias.map(a=>[a._id,a]));
-    const at=E.clientes.filter(F.ativo);
-    n("c-ativos",at.length);
-    n("c-pend",E.clientes.filter(c=>F.pendencias(c,I).some(p=>p.nivel==="alta")).length);
-    n("c-cct",at.filter(c=>{const s=F.statusCct(I.cctPorRamo[c.cct]);return s==="VENCIDA"||s==="VENCE"}).length);
-    n("c-aud",E.clientes.filter(c=>{const a=A[F.digitos(c.cnpj)];return a&&a.ultima&&a.ultima.st==="erro"}).length);
+
+// ---------- painel ----------
+const F=window.FlowDados;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const MESES=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const pad=n=>String(n).padStart(2,"0");
+const isoHoje=()=>{const d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());};
+const rotComp=c=>{const [a,m]=String(c).split("-");return MESES[+m-1]+"/"+a;};
+const somaMes=(c,n)=>{const [a,m]=c.split("-").map(Number);const d=new Date(a,m-1+n,1);return d.getFullYear()+"-"+pad(d.getMonth()+1);};
+const pct=(a,b)=>b?Math.round(a/b*100):null;
+const IC={
+  crit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>'
+};
+
+let quadro=0;
+function agendar(){ if(quadro) return; quadro=requestAnimationFrame(()=>{quadro=0; try{ render(); }catch(e){ console.error(e); }}); }
+
+// competência de trabalho: o mês anterior (a folha de setembro é fechada em outubro)
+const S={comp:"",base:"wait",prazos:[],alertas:[],regras:[],ponto:[],pararPonto:null,db:null};
+(function(){
+  const hoje=isoHoje().slice(0,7), sel=$("comp");
+  for(let i=0;i<7;i++){ const c=somaMes(hoje,-i); sel.add(new Option(rotComp(c),c)); }
+  let c=somaMes(hoje,-1); try{ const s=localStorage.getItem("exatoflow.comp"); if(s&&[...sel.options].some(o=>o.value===s)) c=s; }catch(e){}
+  sel.value=c; S.comp=c;
+  sel.addEventListener("change",()=>{ S.comp=sel.value; try{localStorage.setItem("exatoflow.comp",S.comp)}catch(e){} assinarPonto(); agendar(); });
+})();
+
+function assinarPonto(){
+  if(S.pararPonto){ try{S.pararPonto()}catch(e){} S.pararPonto=null; }
+  S.ponto=[];
+  if(!S.db) return;
+  try{ S.pararPonto=S.db.collection("ponto").where("comp","==",S.comp).onSnapshot(sn=>{ S.ponto=sn.docs.map(d=>({_id:d.id,status:(d.data()||{}).status,cnpj:(d.data()||{}).cnpj})); agendar(); },()=>{}); }catch(e){}
+}
+if(F){
+  F.assinar(()=>agendar());
+  F.conectar().then(db=>{
+    if(!db){ S.base="off"; agendar(); return; }
+    S.db=db; S.base="on";
+    const ouvir=(col,k,map)=>db.collection(col).onSnapshot(sn=>{ S[k]=sn.docs.map(d=>map?map(d):({...d.data(),_id:d.id})); agendar(); },()=>{});
+    ouvir("prazos","prazos"); ouvir("alertas","alertas");
+    ouvir("ponto_regras","regras",d=>({_id:d.id}));
+    assinarPonto(); agendar();
   });
 }
+
+
+function ring(el,p,cor){
+  const r=23,c=2*Math.PI*r, v=p==null?0:Math.max(0,Math.min(100,p));
+  el.innerHTML=`<svg viewBox="0 0 54 54" aria-hidden="true"><circle class="bg" cx="27" cy="27" r="${r}" fill="none" stroke-width="6"/>${v>0?`<circle cx="27" cy="27" r="${r}" fill="none" stroke="${cor}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(c*v/100).toFixed(2)} ${c.toFixed(2)}"/>`:""}</svg><b>${p==null?"—":p+"%"}</b>`;
+}
+const corQual=p=>p==null?"var(--dim)":p>=80?"var(--ok)":p>=50?"var(--warn)":"var(--crit)";
+const nivQual=p=>p==null?"":p>=80?"ok":p>=50?"warn":"crit";
+function linha(id,niv,txt){ const el=$(id); el.className="d "+(niv||""); el.querySelector("em").textContent=txt; }
+function badge(id,n){ const b=$(id); b.hidden=!n; b.textContent=n>99?"99+":n; }
+function barra(id,a,b){ $(id).style.width=(b?Math.round(a/b*100):0)+"%"; }
+
+const tipoDe=t=>/^guia/i.test(t||"")?"Guia":/^folha/i.test(t||"")?"Folha":/^mensal/i.test(t||"")?"Mensal":"Outros";
+const TIPOS=[["Guia","var(--s1)"],["Folha","var(--s2)"],["Mensal","var(--s3)"],["Outros","var(--s4)"]];
+const ST_CCT={VIGENTE:["ok","Vigente"],VENCE:["warn","Vence em 90 dias"],VENCIDA:["crit","Vencida"],SEM:["nt","Sem vigência"]};
+const fmtD=s=>{const m=String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]:"—";};
+
+function render(){
+  if($("v-inicio").hidden) return;
+  const E=F?F.estado:null, on=S.base==="on"&&E&&E.pronto&&E.pronto.clientes;
+  const hoje=isoHoje(), comp=S.comp;
+  $("g-comp").textContent=rotComp(comp); $("st-comp").textContent="Competência "+rotComp(comp);
+  const sb=$("st-base");
+  if(S.base==="off"){ sb.className="sp pill crit"; sb.textContent="Base não conectada"; $("topInfo").textContent="Os números aparecem quando o Flow é aberto pelo link do claude.ai."; $("subF").textContent="Sem base conectada"; return; }
+  if(!on){ sb.className="sp pill nt"; sb.textContent="Conectando"; return; }
+  sb.className="sp pill ok"; sb.textContent="Base conectada";
+
+  const cli=E.clientes, ccts=E.ccts||[], I=F.indices(cli,ccts);
+  const at=cli.filter(F.ativo);
+  const stDe=c=>c.cct?F.statusCct(I.cctPorRamo[c.cct]):"NENHUMA";
+  const A=Object.fromEntries((E.auditorias||[]).map(a=>[a._id,a]));
+  const audComp=c=>{ const a=A[F.digitos(c.cnpj)]; if(!a) return null; if(a.ultima&&a.ultima.chave===comp) return a.ultima.st; const h=(a.hist||[]).find(h=>h.chave===comp); return h?h.st:null; };
+  const pend=new Map(cli.map(c=>[c,F.pendencias(c,I)]));
+  const muns=new Set(at.map(c=>(c.mun||"").trim()).filter(Boolean)).size;
+
+  // topo
+  $("topInfo").innerHTML=`Exato Soluções Contábeis · <b>${at.length}</b> clientes ativos · <b>${ccts.length}</b> convenções acompanhadas · ${muns} municípios`;
+
+  // KPI clientes
+  $("k-cli").textContent=at.length;
+  const inat=cli.length-at.length;
+  linha("k-cli-d","",inat?`${inat} inativos no cadastro`:`em ${muns} municípios`);
+
+  // KPI CCT em dia
+  const comCct=at.filter(c=>c.cct), emDia=at.filter(c=>["VIGENTE","VENCE"].includes(stDe(c)));
+  const venc=at.filter(c=>stDe(c)==="VENCIDA").length, semCct=at.length-comCct.length;
+  const pC=pct(emDia.length,at.length); ring($("r-cct"),pC,corQual(pC)); $("k-cct").textContent=emDia.length;
+  linha("k-cct-d",venc?"crit":semCct?"warn":"ok",venc?`${venc} com CCT vencida`:semCct?`${semCct} sem convenção`:"Todas vigentes");
+
+  // KPI enquadramento
+  const conf=comCct.filter(c=>c.confirmado==="Sim").length, pE=pct(conf,comCct.length);
+  ring($("r-enq"),pE,corQual(pE)); $("k-enq").textContent=conf;
+  linha("k-enq-d",nivQual(pE),comCct.length-conf?`${comCct.length-conf} a confirmar`:"Todos confirmados");
+
+  // KPI cadastro
+  const graves=cli.filter(c=>pend.get(c).some(p=>p.nivel==="alta")).length, okCad=cli.length-graves, pK=pct(okCad,cli.length);
+  ring($("r-cad"),pK,corQual(pK)); $("k-cad").textContent=okCad;
+  const medias=cli.filter(c=>!pend.get(c).some(p=>p.nivel==="alta")&&pend.get(c).some(p=>p.nivel==="media")).length;
+  linha("k-cad-d",graves?"crit":medias?"warn":"ok",graves?`${graves} com pendência grave`:medias?`${medias} com dado faltando`:"Cadastro em ordem");
+
+  // KPI ponto
+  const nReg=S.regras.length, conferidos=S.ponto.filter(p=>p.status==="conferido"||p.status==="exportado").length, txt=S.ponto.filter(p=>p.status==="exportado").length, rasc=S.ponto.filter(p=>p.status==="rascunho").length;
+  const pP=pct(conferidos,nReg); ring($("r-pto"),pP,"var(--brand-hi)");
+  $("k-pto").textContent=nReg?`${conferidos}/${nReg}`:"0"; $("k-pto-s").textContent=nReg?"configurados":"sem cliente";
+  linha("k-pto-d",rasc?"warn":"",nReg?(rasc?`${rasc} em conferência`:`${txt} TXT gerados`):"Configure no Cálculo de Ponto");
+
+  // KPI guias
+  const auditados=at.filter(c=>audComp(c)), erros=at.filter(c=>audComp(c)==="erro").length, atenc=at.filter(c=>audComp(c)==="atencao").length;
+  const pG=pct(auditados.length,at.length); ring($("r-gui"),pG,"var(--brand-hi)");
+  $("k-gui").textContent=`${auditados.length}/${at.length}`;
+  linha("k-gui-d",erros?"crit":atenc?"warn":auditados.length?"ok":"",erros?`${erros} com divergência`:atenc?`${atenc} para conferir`:auditados.length?"Sem divergência":`Nenhuma auditoria em ${rotComp(comp)}`);
+
+  // barra lateral e status
+  $("g-pto").textContent=nReg?`${conferidos} de ${nReg}`:"—"; barra("g-pto-b",conferidos,nReg);
+  $("g-gui").textContent=`${auditados.length} de ${at.length}`; barra("g-gui-b",auditados.length,at.length);
+  $("st-pto").textContent=nReg?`${conferidos}/${nReg}`:"—"; $("st-txt").textContent=nReg?`${txt}/${nReg}`:"—"; $("st-gui").textContent=`${auditados.length}/${at.length}`;
+
+  // prazos
+  const abertos=S.prazos.filter(p=>!p.feito);
+  const datados=abertos.filter(p=>/^\d{4}-\d{2}-\d{2}/.test(p.data||""));
+  const atrasados=datados.filter(p=>p.data<hoje);
+  $("st-atr").textContent=atrasados.length;
+  const alertasAbertos=S.alertas.filter(a=>!a.feito);
+  badge("b-sindical",alertasAbertos.filter(a=>a.prio==="ALTA").length+atrasados.length);
+  badge("b-clientes",graves); badge("b-guias",erros); badge("b-ponto",rasc);
+
+  graficoPrazos(datados,abertos.length-datados.length,hoje);
+  graficoConvencoes(at,stDe,I);
+  situacaoCcts(ccts,at,hoje);
+  tabelaClientes(cli,pend,stDe,audComp);
+  listaPrazos(datados,atrasados,hoje);
+  listaAlertas({at,venc,graves,erros,atenc,stDe,atrasados,alertasAbertos,I,comCct,conf,comp,rasc,nReg,auditados});
+}
+
+// ---------- gráfico A: colunas empilhadas por mês ----------
+function graficoPrazos(datados,semData,hoje){
+  const box=$("chA"), mesHoje=hoje.slice(0,7);
+  $("legA").innerHTML=TIPOS.map(([n,c])=>`<span><i style="background:${c}"></i>${n}</span>`).join("")+`<span><i style="background:repeating-linear-gradient(135deg,var(--crit) 0 2px,transparent 2px 5px)"></i>Mês já vencido</span>`;
+  if(!datados.length){ box.innerHTML=`<div class="vazio"><b>Nenhum prazo em aberto</b>Cadastre os prazos das convenções no Painel Sindical.</div>`; $("footA").textContent=""; return; }
+  const meses=[...new Set(datados.map(p=>p.data.slice(0,7)))].sort();
+  let ini=meses[0]; const minIni=somaMes(mesHoje,-4); if(ini<minIni) ini=minIni;
+  let fim=meses[meses.length-1]; const maxFim=somaMes(mesHoje,5); if(fim>maxFim) fim=maxFim; if(fim<somaMes(mesHoje,2)) fim=somaMes(mesHoje,2);
+  const cols=[]; for(let c=ini;c<=fim;c=somaMes(c,1)) cols.push({m:c,t:{Guia:0,Folha:0,Mensal:0,Outros:0},tot:0,atr:0});
+  const idx=Object.fromEntries(cols.map((c,i)=>[c.m,i]));
+  let antes=0, depois=0;
+  for(const p of datados){
+    let m=p.data.slice(0,7);
+    if(m<ini){ antes++; m=ini; } if(m>fim){ depois++; continue; }
+    const c=cols[idx[m]]; c.t[tipoDe(p.tipo)]++; c.tot++; if(p.data<hoje) c.atr++;
+  }
+  const W=Math.max(280,box.clientWidth||520), H=Math.max(220,box.clientHeight||230), ml=30, mr=6, mt=18, mb=30, iw=W-ml-mr, ih=H-mt-mb;
+  const max=Math.max(1,...cols.map(c=>c.tot)), step=Math.max(1,Math.ceil(max/4)), top=step*Math.ceil(max/step);
+  const y=v=>mt+ih-(v/top)*ih, band=iw/cols.length, bw=Math.min(38,band*.56);
+  let s=`<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="transparent"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--crit)" stroke-opacity=".22" stroke-width="2"/></pattern></defs>`;
+  const nPass=cols.filter(c=>c.m<mesHoje).length;
+  if(nPass) s+=`<rect x="${ml}" y="${mt-10}" width="${band*nPass}" height="${ih+10}" fill="url(#hatch)" rx="6"/>`;
+  for(let v=0;v<=top;v+=step){ s+=`<line class="gl" x1="${ml}" x2="${W-mr}" y1="${y(v)}" y2="${y(v)}"/><text x="${ml-8}" y="${y(v)+3.5}" text-anchor="end">${v}</text>`; }
+  cols.forEach((c,i)=>{
+    const cx=ml+band*i+band/2, x=cx-bw/2; let acc=0; const segs=TIPOS.filter(([n])=>c.t[n]);
+    s+=`<g class="col" data-i="${i}">`;
+    segs.forEach(([n,cor],k)=>{
+      const v=c.t[n], y1=y(acc+v), y0=y(acc), h=Math.max(0,y0-y1-(k?2:0)), yy=y1; acc+=v;
+      if(k===segs.length-1){ const r=Math.min(4,h); s+=`<path d="M${x},${yy+h} V${yy+r} Q${x},${yy} ${x+r},${yy} H${x+bw-r} Q${x+bw},${yy} ${x+bw},${yy+r} V${yy+h} Z" fill="${cor}"/>`; }
+      else s+=`<rect x="${x}" y="${yy}" width="${bw}" height="${h}" fill="${cor}"/>`;
+    });
+    if(c.tot) s+=`<text class="tot" x="${cx}" y="${y(c.tot)-6}" text-anchor="middle">${c.tot}</text>`;
+    const [a,m]=c.m.split("-"); const atual=c.m===mesHoje;
+    s+=`<text x="${cx}" y="${H-12}" text-anchor="middle" style="${atual?"fill:var(--ink);font-weight:600":""}">${MESES[+m-1]}</text>`;
+    if(m==="01"||i===0) s+=`<text x="${cx}" y="${H-1}" text-anchor="middle" style="font-size:9px;fill:var(--dim)">${a}</text>`;
+    s+=`<rect class="hit" x="${ml+band*i}" y="${mt}" width="${band}" height="${ih}"/></g>`;
+  });
+  s+=`<line x1="${ml}" x2="${W-mr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line-2)"/>`;
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Prazos em aberto por mês">${s}</svg><div class="tip" hidden></div>`;
+  const tip=box.querySelector(".tip");
+  box.querySelectorAll(".col").forEach(g=>{
+    g.addEventListener("pointerenter",()=>{
+      const c=cols[+g.dataset.i]; box.querySelectorAll(".col").forEach(o=>o.classList.toggle("dim",o!==g));
+      tip.innerHTML=`<b>${rotComp(c.m)}</b>`+TIPOS.map(([n,cor])=>`<div class="r"><span><i style="background:${cor}"></i>${n}</span><em>${c.t[n]}</em></div>`).join("")+`<div class="r" style="margin-top:4px;border-top:1px solid var(--line);padding-top:4px"><span>Total</span><em>${c.tot}</em></div>`+(c.atr?`<div class="r" style="color:var(--crit)"><span>Já vencidos</span><em>${c.atr}</em></div>`:"");
+      tip.hidden=false;
+      const bx=ml+band*(+g.dataset.i)+band/2, sc=box.clientWidth/W; let L=bx*sc+14; if(L+170>box.clientWidth) L=bx*sc-170;
+      tip.style.left=Math.max(0,L)+"px"; tip.style.top="8px";
+    });
+    g.addEventListener("pointerleave",()=>{ tip.hidden=true; box.querySelectorAll(".col").forEach(o=>o.classList.remove("dim")); });
+  });
+  const extra=[]; if(antes) extra.push(`${antes} prazo${antes>1?"s":""} anterior${antes>1?"es":""} somado${antes>1?"s":""} ao primeiro mês`); if(depois) extra.push(`${depois} depois de ${rotComp(fim)}`); if(semData) extra.push(`${semData} sem data`);
+  $("footA").textContent=`${datados.length} prazos datados em aberto`+(extra.length?" · "+extra.join(" · "):"");
+}
+
+// ---------- gráfico B: clientes por convenção ----------
+function graficoConvencoes(at,stDe,I){
+  const cont={}; at.forEach(c=>{ const k=c.cct||"(sem convenção)"; cont[k]=(cont[k]||0)+1; });
+  let lin=Object.entries(cont).sort((a,b)=>b[1]-a[1]);
+  const top=lin.slice(0,7), resto=lin.slice(7);
+  if(resto.length) top.push([`Outras ${resto.length} convenções`,resto.reduce((s,x)=>s+x[1],0),true]);
+  const max=Math.max(1,...top.map(x=>x[1]));
+  $("chB").innerHTML=top.length?top.map(([nm,n,outras])=>{
+    const k=I.cctPorRamo[nm], st=outras?null:nm==="(sem convenção)"?"NENHUMA":F.statusCct(k);
+    const cls=st==null?"":st==="NENHUMA"?"st-crit":"st-"+ST_CCT[st][0];
+    const info=st==null?"várias":st==="NENHUMA"?"definir CCT":k&&k.fim?"até "+fmtD(k.fim):"sem vigência";
+    return `<div class="row" title="${esc(nm)}"><div class="nm"><span>${esc(nm)}</span><small>${info}</small></div><div class="bar ${cls}" style="width:${(n/max*100).toFixed(1)}%;${st==null?"background:var(--s1)":""}"></div><div class="val">${n}</div></div>`;
+  }).join(""):`<div class="vazio"><b>Sem clientes ativos</b>Cadastre clientes em Clientes.</div>`;
+}
+
+// ---------- painel C: situação das CCTs ----------
+function situacaoCcts(ccts,at,hoje){
+  const g={VIGENTE:[],VENCE:[],VENCIDA:[],SEM:[]}; ccts.forEach(k=>g[F.statusCct(k)].push(k));
+  const tot=ccts.length||1, cor={VIGENTE:"var(--ok)",VENCE:"var(--warn)",VENCIDA:"var(--crit)",SEM:"var(--s4)"};
+  $("subC").textContent=`${ccts.length} convenções no Painel Sindical`;
+  $("stC").innerHTML=Object.keys(g).filter(k=>g[k].length).map(k=>`<i style="width:${g[k].length/tot*100}%;background:${cor[k]}" title="${ST_CCT[k][1]}: ${g[k].length}"></i>`).join("");
+  $("shC").innerHTML=Object.keys(g).map(k=>`<div class="r"><i style="background:${cor[k]}"></i><span>${ST_CCT[k][1]}</span><b>${g[k].length}</b><small>${Math.round(g[k].length/tot*100)}%</small></div>`).join("");
+  const porRamo={}; at.forEach(c=>{ if(c.cct) porRamo[c.cct]=(porRamo[c.cct]||0)+1; });
+  const prox=ccts.filter(k=>k.fim&&k.fim>=hoje).sort((a,b)=>a.fim.localeCompare(b.fim)).slice(0,4);
+  $("dbC").innerHTML=prox.length?prox.map(k=>{ const d=Math.round((F.isoData(k.fim)-F.hoje())/864e5); return `<div class="r"><span title="${esc(k.ramo)}">${esc(k.ramo)}</span><small>${porRamo[k.ramo]||0} cliente${(porRamo[k.ramo]||0)===1?"":"s"} · vence ${fmtD(k.fim)}</small><b style="color:${d<=90?"var(--warn)":"var(--ink-2)"}">${d}d</b></div>`; }).join(""):`<p class="foot">Nenhuma data-base futura cadastrada.</p>`;
+}
+
+// ---------- tabela D ----------
+function tabelaClientes(cli,pend,stDe,audComp){
+  const peso={alta:3,media:1,baixa:0};
+  const lin=cli.filter(F.ativo).map(c=>{ const p=pend.get(c); const st=stDe(c); const au=audComp(c);
+    const sc=p.reduce((s,x)=>s+peso[x.nivel],0)+(au==="erro"?4:au==="atencao"?1:0); return {c,p,st,au,sc}; })
+    .filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc||String(a.c.nome).localeCompare(b.c.nome,"pt-BR")).slice(0,8);
+  if(!lin.length){ $("tbD").innerHTML=`<tr><td colspan="4"><div class="vazio"><b>Nenhum cliente com pendência</b>O cadastro está em ordem.</div></td></tr>`; return; }
+  $("tbD").innerHTML=lin.map(({c,p,st,au})=>{
+    const sp=st==="NENHUMA"?`<span class="pill crit">Sem CCT</span>`:`<span class="pill ${ST_CCT[st][0]}">${st==="VENCE"?"Vence":ST_CCT[st][1]}</span>`;
+    const pr=[...p].sort((a,b)=>peso[b.nivel]-peso[a.nivel]);
+    if(au==="erro") pr.unshift({texto:"Divergência nas guias de "+rotComp(S.comp)}); else if(au==="atencao") pr.push({texto:"Guias com ponto de atenção"});
+    return `<tr data-go="${au==="erro"?"guias":"clientes"}"><td class="cod${c.cod?"":" sem"}">${esc(c.cod||"—")}</td><td class="cli"><b>${esc(c.fant||c.nome||"Sem nome")}</b><small>${esc(c.mun||"")}</small></td><td>${sp}</td><td class="pd"><span>${esc(pr[0]?pr[0].texto:"—")}</span>${pr.length>1?`<small>+${pr.length-1} outra${pr.length>2?"s":""}</small>`:""}</td></tr>`;
+  }).join("");
+}
+
+// ---------- lista E: próximos prazos ----------
+function listaPrazos(datados,atrasados,hoje){
+  $("atrE").innerHTML=atrasados.length?`<div class="atraso"><span><b>${atrasados.length}</b> prazo${atrasados.length>1?"s":""} vencido${atrasados.length>1?"s":""} sem baixa</span><button class="lnk" type="button" data-go="sindical" style="color:inherit">Resolver</button></div>`:"";
+  const prox=datados.filter(p=>p.data>=hoje).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,5);
+  $("lsE").innerHTML=prox.length?prox.map(p=>{ const [a,m,d]=p.data.slice(0,10).split("-");
+    return `<div class="r"><div class="dt${p.data.slice(0,10)===hoje?" hoje":""}"><b>${d}</b><small>${MESES[+m-1]}</small></div><div class="x"><span>${esc(p.obr||"Obrigação")}</span><small>${esc(p.cct||"")}${p.tipo?" · "+esc(p.tipo):""}</small></div></div>`; }).join(""):`<div class="vazio"><b>Sem prazos futuros</b>Nada vence nos próximos meses.</div>`;
+}
+
+// ---------- lista F: alertas ----------
+function listaAlertas(x){
+  const L=[];
+  const add=(niv,tit,txt,go,rot)=>L.push({niv,tit,txt,go,rot});
+  if(x.venc){ const nomes=[...new Set(x.at.filter(c=>x.stDe(c)==="VENCIDA").map(c=>c.cct))]; add("crit","CCT vencida",`<b>${x.venc} cliente${x.venc>1?"s":""}</b> em convenção vencida: ${esc(nomes.slice(0,3).join("; "))}${nomes.length>3?"…":""}. Confira se já saiu a nova antes de fechar a folha.`,"sindical","Abrir Painel Sindical"); }
+  if(x.erros) add("crit","Divergência nas guias",`A auditoria de ${rotComp(x.comp)} achou divergência em <b>${x.erros} cliente${x.erros>1?"s":""}</b>. Corrija antes de pagar.`,"guias","Abrir Auditoria");
+  if(x.atrasados.length) add("crit","Prazos vencidos",`<b>${x.atrasados.length}</b> obrigação${x.atrasados.length>1?"ões":""} sindical${x.atrasados.length>1?"is":""} passou${x.atrasados.length>1?"aram":""} da data sem baixa. Dê baixa no que já foi feito.`,"sindical","Ver prazos");
+  const vence=[...new Set(x.at.filter(c=>x.stDe(c)==="VENCE").map(c=>c.cct))];
+  if(vence.length) add("warn","Data-base chegando",`${esc(vence.slice(0,3).join("; "))} vence${vence.length>1?"m":""} em até 90 dias. Acompanhe o reajuste.`,"sindical","Ver convenções");
+  if(x.graves) add("warn","Cadastro incompleto",`<b>${x.graves} cliente${x.graves>1?"s":""}</b> com pendência grave (CNPJ, código do Domínio ou CCT).`,"clientes","Ver clientes");
+  if(x.rasc) add("warn","Ponto em conferência",`<b>${x.rasc}</b> apuração${x.rasc>1?"ões":""} de ${rotComp(x.comp)} ainda não foi${x.rasc>1?"ram":""} concluída${x.rasc>1?"s":""}.`,"ponto","Abrir Ponto");
+  if(x.atenc) add("warn","Guias para conferir",`${x.atenc} auditoria${x.atenc>1?"s":""} com ponto de atenção em ${rotComp(x.comp)}.`,"guias","Abrir Auditoria");
+  for(const a of x.alertasAbertos.filter(a=>a.prio!=="BAIXA").sort((a,b)=>(a.prio==="ALTA"?0:1)-(b.prio==="ALTA"?0:1)||(a.ord||0)-(b.ord||0)))
+    add(a.prio==="ALTA"?"crit":"warn",a.tema||"Alerta sindical",esc(String(a.achado||"").slice(0,170))+(String(a.achado||"").length>170?"…":""),"sindical","Ver no Painel Sindical");
+  const naoConf=x.comCct.length-x.conf;
+  if(naoConf) add("info","Enquadramento",`${naoConf} enquadramento${naoConf>1?"s":""} ainda sem confirmação. Confirmar evita passivo trabalhista.`,"sindical","Confirmar");
+  if(!x.nReg) add("info","Cálculo de Ponto",`Nenhum cliente configurado no Ponto. Comece pela ficha da empresa e as fichas dos funcionários.`,"ponto","Configurar");
+  const crit=L.filter(a=>a.niv==="crit").length;
+  $("subF").textContent=L.length?`${L.length} pontos de atenção · ${crit} crítico${crit===1?"":"s"}`:"Nada pendente agora";
+  const rot={crit:"Crítico",warn:"Atenção",info:"Aviso"};
+  $("lsF").innerHTML=L.length?L.map(a=>`<div class="al ${a.niv}"><div><h4>${IC[a.niv]}<span>${rot[a.niv]} · ${esc(a.tit)}</span></h4><p>${a.txt}</p><button class="lnk" type="button" data-go="${a.go}">${a.rot} →</button></div></div>`).join(""):`<div class="vazio"><b>Tudo em ordem</b>Nenhum alerta para esta competência.</div>`;
+}
+
+let rz=0; new ResizeObserver(()=>{ clearTimeout(rz); rz=setTimeout(agendar,120); }).observe($("chA"));
+
 let ini=(location.hash||"").slice(1);
 if(!VIEWS.includes(ini)){ try{ini=localStorage.getItem("exatoflow.tela")||""}catch(e){ini=""} }
 abrir(ini);
 </script>
-
-<script src="nucleo/tema-exato.js" data-mod="inicio"></script>

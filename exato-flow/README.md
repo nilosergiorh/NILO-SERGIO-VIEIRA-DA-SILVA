@@ -21,7 +21,7 @@ Ecossistema dos aplicativos de Departamento Pessoal da Exato. Cada aplicativo é
 
 ```
 exato-flow/
-├── index.html                    # tela principal: trilho de módulos + Início com resumo do cadastro
+├── index.html                    # tela principal: barra lateral (Painel, 3 módulos, Clientes) + painel do DP
 ├── nucleo/
 │   ├── flow-dados.js             # núcleo compartilhado: CNPJ, status da CCT, pendências, conexão com a base
 │   ├── ponto-calculo.js          # motor de apuração do ponto e do TXT do Domínio (sem tela; roda no Node)
@@ -41,6 +41,17 @@ exato-flow/
 - `index.html` é a casca do programa. Ela abre cada módulo numa área própria e mantém o módulo aberto quando você troca de tela.
 - Cada arquivo em `modulos/` é o aplicativo completo e também funciona sozinho.
 - No topo de cada módulo há uma "ponte" (`FLOWCLAUDE`). Quando o módulo roda dentro do Flow, ela usa os recursos do claude.ai da tela principal: base de dados, PDFs anexados, usuário e downloads.
+
+## Painel (tela inicial)
+
+A barra lateral mostra o Painel, os três módulos (Painel Sindical, Cálculo de Ponto, Auditoria de guias e folha) e, separado, o cadastro de Clientes, que é a base de todos eles. Os números ao lado de cada item são o que pede ação: alertas ALTA e prazos vencidos (Sindical), apurações em conferência (Ponto), divergências na competência (Auditoria) e pendências graves (Clientes).
+
+O painel lê a mesma base dos módulos e escolhe a competência no topo (padrão: mês anterior):
+
+- **Indicadores:** clientes ativos, CCT em dia, enquadramento confirmado, cadastro sem pendência grave, ponto conferido (`ponto` com `comp` igual à competência, sobre os clientes com `ponto_regras`) e guias auditadas (`auditorias.hist`).
+- **Agenda de obrigações sindicais:** prazos em aberto (`prazos`) por mês e tipo; os meses já vencidos ficam hachurados.
+- **Clientes por convenção** e **Situação das CCTs**, com as próximas datas-base.
+- **Clientes que pedem atenção**, **Próximos prazos** e **Alertas do E-exato** (alertas calculados + `alertas` do Painel Sindical).
 
 ## Cadastro único de clientes
 
