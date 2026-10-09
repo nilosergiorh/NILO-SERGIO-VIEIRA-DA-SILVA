@@ -309,7 +309,7 @@ dialog::backdrop{background:var(--scrim)}
       <div class="rgrid">
         <div class="card"><h3>Horas extras e faltas</h3>
           <div class="form">
-            <label>Fonte dos valores<select id="r-fonte"><option value="calculo">O Flow calcula pelas marcações</option><option value="espelho">Valores do espelho do relógio (o Flow só confere)</option></select></label>
+            <label>Fonte dos valores<select id="r-fonte"><option value="calculo">O Flow calcula pelas marcações</option><option value="espelho">Valores do espelho do relógio (o Flow só confere)</option><option value="lancamentos">Planilha de lançamentos da Exato (HE, faltas e descontos em R$)</option></select></label>
             <label>Forma de cálculo<select id="r-calc"><option value="saldo">Saldo do dia (trabalhado − previsto)</option><option value="marcacao">Por marcação: atraso e extra não se compensam</option></select></label>
             <label>Tolerância diária (min)<input id="r-tol" inputmode="numeric"></label>
             <label>Tolerância por marcação (min)<input id="r-tolm" inputmode="numeric" placeholder="5"></label>
@@ -559,6 +559,69 @@ function lerPlanilha(wb){
   }
   return {funcionarios:Object.values(out),fora:fora.n};
 }
+// ---------- planilha de lançamentos da Exato (skill planilha-lancamentos-folha) ----------
+// Aba LANÇAMENTOS: linha de títulos (Cód. | Funcionário | Horas extras 50% | ... | (R$)) e logo abaixo a linha "Rubrica Domínio".
+function abaLancamentos(wb){
+  for(const n of wb.SheetNames){
+    const L=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:""});
+    for(let i=0;i<Math.min(L.length,30);i++){ const t=L[i].map(x=>String(x).toLowerCase());
+      if(t.some(x=>/funcion/.test(x))&&t.some(x=>/extras?\s*50/.test(x))&&t.some(x=>/dia inteiro/.test(x))) return {L,hi:i,nome:n}; }
+  }
+  return null;
+}
+const ehLancamentos=wb=>!!abaLancamentos(wb);
+function minHoras(v){   // "10:30" ou hora do Excel (fração do dia: 0,4375 = 10:30)
+  if(v==null||v==="") return 0;
+  if(typeof v==="number"){ const m=Math.round(v*1440); return m<0||m>3600?NaN:m; }   // acima de 60h: provavelmente digitado como número (10.30)
+  const m=String(v).trim().match(/^(\d{1,3})[:h](\d{2})$/); return m?+m[1]*60+ +m[2]:NaN;
+}
+function lerLancamentos(wb){
+  const {L,hi}=abaLancamentos(wb), H=L[hi].map(x=>String(x).replace(/\s+/g," ").trim()), RB=L[hi+1]||[];
+  const col=re=>H.findIndex(x=>re.test(x));
+  const cC=col(/^c[oó]d/i), cN=col(/funcion/i), c50=col(/extras?\s*50/i), c100=col(/extras?\s*100/i), cHf=col(/faltas?\s*parcial|horas?\s*falta/i), cF=col(/dia inteiro/i);
+  const cV=H.map((x,i)=>/\(R\$\)/.test(x)?i:-1).filter(i=>i>=0).map(i=>({i,rub:parseInt(RB[i])||null,desc:H[i].replace(/\(R\$\)/,"").replace(/\s*\/\s*/g,"/").trim()}));
+  let comp="";   // "Competência (mês/ano):" ... "09/2026"
+  for(let i=0;i<hi;i++){ const r=L[i]; const j=r.findIndex(x=>/compet/i.test(String(x))); if(j>=0){ const v=r.slice(j+1).find(x=>String(x).trim()); if(v!=null){ if(typeof v==="number"){ const d=new Date(Math.round((v-25569)*864e5)); comp=d.toISOString().slice(0,7); } else { const m=String(v).match(/(\d{1,2})\/(\d{4})/); if(m) comp=m[2]+"-"+m[1].padStart(2,"0"); } } } }
+  const [ano,mes]=S.comp.split("-").map(Number), ult=new Date(ano,mes,0).getDate();
+  const out=[], avisos=[];
+  if(cV.some(v=>!v.rub)) avisos.push("Coluna em R$ sem rubrica na linha \"Rubrica Domínio\": não será exportada.");
+  for(let i=hi+2;i<L.length;i++){
+    const r=L[i], nome=String(r[cN]||"").trim(), cod=String(r[cC]??"").trim();
+    if(!nome||/^\(|^totais/i.test(nome)||/^totais/i.test(cod)) continue;
+    const lanc={he50:0,he100:0,hfalta:0,valores:[],avisos:[]}, dias=[];
+    [["he50",c50,"HE 50%"],["he100",c100,"HE 100%"],["hfalta",cHf,"Horas faltas parcial"]].forEach(([k,c,rot])=>{ if(c<0) return; const v=minHoras(r[c]); if(Number.isNaN(v)) lanc.avisos.push(`${rot}: "${r[c]}" não está no formato horas:minutos. Corrija na planilha e importe de novo.`); else lanc[k]=v; });
+    const ft=cF>=0?String(r[cF]??"").toUpperCase().replace(/[,;\-.E]/g," ").trim():"";
+    if(ft){ const vistos=new Set(), ruins=[];
+      for(const tk of ft.split(/\s+/)){ const m=tk.match(/^(\d{1,2})(?:\/(\d{1,2}))?$/), d=m&&+m[1];
+        if(!m||d<1||d>ult||(m[2]&&+m[2]!==mes)){ ruins.push(tk); continue; }
+        vistos.add(`${ano}-${String(mes).padStart(2,"0")}-${String(d).padStart(2,"0")}`); }
+      if(ruins.length) lanc.avisos.push(`Faltas dia inteiro: "${ruins.join(", ")}" não é dia de ${S.comp.split("-").reverse().join("/")}. Nenhuma falta deste funcionário foi lançada: corrija e importe de novo.`);
+      else [...vistos].sort().forEach(data=>dias.push({data,ocorrencia:"FALTA"}));
+      if(vistos.size>15) lanc.avisos.push("Mais de 15 dias de falta: confira (o Domínio aceita até 15 datas por funcionário no registro 11).");
+    }
+    for(const v of cV){ const x=r[v.i]; if(x==null||x==="") continue; const n=typeof x==="number"?x:parseFloat(String(x).replace(/[R$\s.]/g,"").replace(",","."));
+      if(!(n>0)){ lanc.avisos.push(`${v.desc}: valor "${x}" não reconhecido.`); continue; }
+      if(v.rub) lanc.valores.push({rub:v.rub,desc:v.desc,centavos:Math.round(n*100)}); }
+    out.push({nome,codigo:cod,dias,lanc});
+  }
+  return {funcionarios:out,comp,avisos};
+}
+async function arquivoLancamentos(f,wb){
+  const item=registrar(f.name,"Lançamentos","Lendo…");
+  const r=lerLancamentos(wb);
+  if(r.comp&&r.comp!==S.comp){ atualizar(item,"er",`A planilha é da competência ${r.comp.split("-").reverse().join("/")} e a tela está em ${S.comp.split("-").reverse().join("/")}. Troque a competência e envie de novo.`); return; }
+  const preenchidos=r.funcionarios.filter(x=>x.dias.length||x.lanc.he50||x.lanc.he100||x.lanc.hfalta||x.lanc.valores.length||x.lanc.avisos.length);
+  for(const fx of r.funcionarios){ const e=acharEmp(fx.nome,fx.codigo); if(e) for(const k of Object.keys(e.dias)) if(e.dias[k].o==="lancamentos") delete e.dias[k]; }   // reimportar substitui
+  const m=mesclar(r.funcionarios,"lancamentos");
+  for(const fx of r.funcionarios){ const e=acharEmp(fx.nome,fx.codigo); if(e) e.lanc=fx.lanc; }
+  const nAv=r.funcionarios.reduce((t,x)=>t+x.lanc.avisos.length,0);
+  const avisos=[...r.avisos]; if(S.regras.fonte!=="lancamentos") avisos.unshift("Este cliente não está em Regras › Fonte dos valores = Planilha de lançamentos: as horas da planilha só entram no TXT nesse modo.");
+  if(nAv) avisos.push(`${nAv} valor(es) com erro na planilha: veja os alertas em vermelho na Conferência.`);
+  if(!r.comp) avisos.push("Competência não preenchida na planilha: confira se é do mês certo.");
+  atualizar(item,avisos.length?"at":"ok",`${m.nf} funcionário(s), ${preenchidos.length} com lançamento · planilha de lançamentos${avisos.length?" · "+avisos.join(" "):""}`);
+  S.doc.arquivos=[...(S.doc.arquivos||[]),{nome:f.name,tipo:"planilha",em:new Date().toISOString()}];
+  sujo(); render();
+}
 // ---------- espelho do relógio (uma aba por funcionário, colunas Ent./Saí., CHPrev, Tipo de Cálculo) ----------
 // Mesmo formato lido pelo sistema ponto-dominio (leitores.ler_espelho).
 const minCel=v=>{ if(v==null||v==="") return null; if(typeof v==="number") return v>-1&&v<2?Math.round(v*1440):null; const m=String(v).trim().match(/^(\d{1,3}):(\d{2})(?::\d{2})?$/); return m?+m[1]*60+ +m[2]:null; };
@@ -693,6 +756,7 @@ async function arquivosX(files){
     const item=registrar(f.name,"Planilha","Lendo…");
     try{
       const wb=XLSX.read(await f.arrayBuffer(),{type:"array",cellDates:false});
+      if(ehLancamentos(wb)){ S.arquivos.splice(item,1); await arquivoLancamentos(f,wb); continue; }
       let r, via="leitura direta";
       if(ehEspelho(wb)){ r=lerEspelho(wb); via="espelho do relógio";
         if(!r.funcionarios.length&&r.fora){ const L=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:""}); r.dica=`As datas do espelho não caem em ${rotuloPeriodo()}. Confira a competência escolhida ou o período do ponto em Regras (ex.: 21 a 20).`; } }
@@ -1153,8 +1217,8 @@ function renderDet(){
     <thead><tr><th>Dia</th><th>Marcações</th><th>Ocorrência</th><th class="n">Trab.</th><th class="n">Prev.</th><th class="n">HE útil</th><th class="n">HE 100%</th><th class="n">H. falta</th><th class="n">Not.</th><th>Alertas</th></tr></thead>
     <tbody>${a.dias.map(d=>{const k=d.data, dd=br(k).slice(0,5), x=(e._dv||e.dias)[k]||{};
       return `<tr class="${d.feriado?"fer":(d.dow===0||d.dow===6)?"we":""}" data-k="${k}">
-        <td class="d">${dd} ${DOW[d.dow]}<small>${esc(x.n||d.feriado||(x.o?({foto:"foto",excel:"planilha",dominio:"Domínio",ausencia:"férias/afast."}[x.o]||"manual"):""))}</small></td>
-        <td><input class="m" data-k="${k}" value="${esc(x.m||"")}" placeholder="${d.esperado?"sem marcação":""}" aria-label="Marcações do dia ${dd}"></td>
+        <td class="d">${dd} ${DOW[d.dow]}<small>${esc(x.n||d.feriado||(x.o?({foto:"foto",excel:"planilha",espelho:"espelho",lancamentos:"lançamentos",dominio:"Domínio",ausencia:"férias/afast."}[x.o]||"manual"):""))}</small></td>
+        <td><input class="m" data-k="${k}" value="${esc(x.m||"")}" placeholder="${d.esperado&&S.regras.fonte!=="lancamentos"?"sem marcação":""}" aria-label="Marcações do dia ${dd}"></td>
         <td><select data-oc="${k}" aria-label="Ocorrência do dia ${dd}">${ocOpts(x.oc||"")}</select></td>
         <td class="n ${d.trab?"":"z"}">${N(d.trab)||"–"}</td><td class="n ${d.esperado?"":"z"}">${N(d.esperado)||"–"}</td>
         <td class="n ${d.heUtil?"":"z"}">${N(d.heUtil)||"–"}</td><td class="n ${d.he100?"":"z"}">${N(d.he100)||"–"}</td>
@@ -1203,8 +1267,11 @@ function renderTxt(){
   $("confMeta").textContent=S.doc.status==="rascunho"?(bloqueia?"Resolva os itens em vermelho para concluir.":"Tudo certo para concluir a conferência."):`Conferido${S.doc.conf_em?" em "+new Date(S.doc.conf_em).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):""}${S.doc.status==="exportado"?" · TXT gerado":""}.`;
   $("btnBaixar").disabled=$("btnCopiar").disabled=bloqueia||S.doc.status==="rascunho";
   const cols=["he","he100","hf","not","fal","dsr"];
-  $("tRes").innerHTML=`<thead><tr><th>Cód.</th><th>Funcionário</th>${S.regras.he.faixas.map(f=>`<th class="n">HE ${f.pct}%<br><span class="mono">${esc(f.rub)}</span></th>`).join("")}<th class="n">HE ${R.he.domFer.pct}%<br><span class="mono">${esc(R.he.domFer.rub)}</span></th><th class="n">H. faltas<br><span class="mono">${esc(R.hfalta.rub)}</span></th><th class="n">Noturno<br><span class="mono">${esc(R.not.rub||"?")}</span></th>${R.not.rubRed?`<th class="n">Redução<br><span class="mono">${esc(R.not.rubRed)}</span></th>`:""}<th class="n">Faltas<br><span class="mono">${esc(R.falta.rub)}</span></th><th class="n">DSR<br><span class="mono">${esc(R.dsr.rub)}</span></th></tr></thead>
-   <tbody>${S.doc.emps.map(e=>{const t=e._ap.tot, md=minDia(jornadaDe(e)); return `<tr><td class="mono">${esc(e.cod||"—")}</td><td>${esc(e.nome)}</td>${t.heFaixas.map(x=>`<td class="n">${N(x.min)||"–"}</td>`).join("")}<td class="n">${N(t.he100)||"–"}</td><td class="n">${N(t.hfalta)||"–"}</td><td class="n">${N(t.noturnoLancar)||"–"}</td>${R.not.rubRed?`<td class="n">${N(t.reducaoNoturna)||"–"}</td>`:""}<td class="n">${t.faltas.length?`${t.faltas.length} = ${N(t.faltas.length*md)}`:"–"}</td><td class="n">${t.semanasDsr.length?`${t.semanasDsr.length} = ${N(t.semanasDsr.length*md)}`:"–"}</td></tr>`;}).join("")}</tbody>`;
+  const vRub=[]; S.doc.emps.forEach(e=>(e._ap.tot.valores||[]).forEach(v=>{ if(!vRub.some(x=>x.rub===String(v.rub))) vRub.push({rub:String(v.rub),desc:v.desc||"R$"}); }));
+  const rs=c=>(c/100).toLocaleString("pt-BR",{minimumFractionDigits:2});
+  const semNot=R.fonte==="lancamentos"&&!R.not.rub;   // a planilha de lançamentos não tem noturno
+  $("tRes").innerHTML=`<thead><tr><th>Cód.</th><th>Funcionário</th>${S.regras.he.faixas.map(f=>`<th class="n">HE ${f.pct}%<br><span class="mono">${esc(f.rub)}</span></th>`).join("")}<th class="n">HE ${R.he.domFer.pct}%<br><span class="mono">${esc(R.he.domFer.rub)}</span></th><th class="n">H. faltas<br><span class="mono">${esc(R.hfalta.rub)}</span></th>${semNot?"":`<th class="n">Noturno<br><span class="mono">${esc(R.not.rub||"?")}</span></th>`}${R.not.rubRed?`<th class="n">Redução<br><span class="mono">${esc(R.not.rubRed)}</span></th>`:""}<th class="n">Faltas<br><span class="mono">${esc(R.falta.rub)}</span></th><th class="n">DSR<br><span class="mono">${esc(R.dsr.rub)}</span></th>${vRub.map(v=>`<th class="n">${esc(v.desc)}<br><span class="mono">${esc(v.rub)}</span></th>`).join("")}</tr></thead>
+   <tbody>${S.doc.emps.map(e=>{const t=e._ap.tot, md=minDia(jornadaDe(e)); return `<tr><td class="mono">${esc(e.cod||"—")}</td><td>${esc(e.nome)}</td>${t.heFaixas.map(x=>`<td class="n">${N(x.min)||"–"}</td>`).join("")}<td class="n">${N(t.he100)||"–"}</td><td class="n">${N(t.hfalta)||"–"}</td>${semNot?"":`<td class="n">${N(t.noturnoLancar)||"–"}</td>`}${R.not.rubRed?`<td class="n">${N(t.reducaoNoturna)||"–"}</td>`:""}<td class="n">${t.faltas.length?`${t.faltas.length} = ${N(t.faltas.length*md)}`:"–"}</td><td class="n">${t.semanasDsr.length?`${t.semanasDsr.length} = ${N(t.semanasDsr.length*md)}`:"–"}</td>${vRub.map(v=>{const x=(t.valores||[]).filter(y=>String(y.rub)===v.rub).reduce((s,y)=>s+y.centavos,0);return `<td class="n">${x?rs(x):"–"}</td>`;}).join("")}</tr>`;}).join("")}</tbody>`;
   $("txt").textContent=g.linhas.length?g.linhas.join("\n"):"Nenhum lançamento a importar.";
   $("fmtNota").textContent=R.formato;
 }

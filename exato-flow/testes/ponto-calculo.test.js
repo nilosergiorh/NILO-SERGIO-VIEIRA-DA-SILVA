@@ -129,4 +129,21 @@ eq('espelho: HE 50/100 e falta vêm do relógio',[N(apAf.tot.heFaixas[0].min),N(
 eq('espelho: diverge das marcações vira pendência',apAf.dias[16].alertas.some(a=>a.nivel==='alta'&&/diverge/.test(a.t)),true);
 const txtAf=P.linhasTxt({empresa:189,comp:'2026-09',processo:11,formato:'SEXAGESIMAL',regras:{...P.REGRAS_PADRAO,...AF},funcionarios:[{cod:10,nome:'MATEUS',apur:apAf}]});
 eq('falta em DIAS (1 = 100) com registro 11',txtAf.linhas.filter(l=>/0040110/.test(l)||l.startsWith('11')),['1000000000102026090040110000001000000000189','11202609151']);
+
+// ---------- OLIVER: planilha de lançamentos (HE, horas falta, dias de falta e valores em R$) ----------
+const OL={fonte:'lancamentos',jornadas:[{id:'padrao',dias:{1:'07:30-12:00 13:30-17:48',2:'07:30-12:00 13:30-17:48',3:'07:30-12:00 13:30-17:48',4:'07:30-12:00 13:30-17:48',5:'07:30-12:00 13:30-17:48',6:'',0:''}},{id:'meio',dias:{1:'13:30-17:48',2:'13:30-17:48',3:'13:30-17:48',4:'13:30-17:48',5:'13:30-17:48',6:'',0:''}}]};
+const RO={...P.REGRAS_PADRAO,...OL};
+const fal=(...d)=>Object.fromEntries(d.map(x=>[D(x),{m:'',oc:'FALTA'}]));
+const apLe=P.apurar({jornada:'padrao',dias:fal(3,10,17),lanc:{}},'2026-09',OL);
+eq('lançamentos: dias vazios não ficam pendentes',[apLe.tot.pendentes.length,apLe.tot.alertasAltos],[0,0]);
+const txtLe=P.linhasTxt({empresa:206,comp:'2026-09',processo:11,formato:'SEXAGESIMAL',regras:RO,funcionarios:[{cod:5,nome:'LEANDRO',apur:apLe,minFalta:440,minDsr:440}]});
+eq('TXT igual ao exemplo real da Oliver (Leandro, 3 faltas)',txtLe.linhas,['1000000000052026090040110000022000000000206','11202609031','11202609101','11202609171','1000000000052026090042110000022000000000206']);
+const apX=P.apurar({jornada:'padrao',dias:fal(8,9),lanc:{he50:390,he100:480,hfalta:30,valores:[{rub:981,desc:'Vales',centavos:150000},{rub:8111,desc:'Plano',centavos:26204}]}},'2026-09',OL);
+const txtX=P.linhasTxt({empresa:206,comp:'2026-09',processo:11,formato:'SEXAGESIMAL',regras:RO,funcionarios:[{cod:24,nome:'PAULO',apur:apX,minFalta:440,minDsr:440}]});
+eq('ordem e valores como a planilha (150, 200, 8069, 40+reg.11, 42, 981, 8111)',txtX.linhas,['1000000000242026090150110000006300000000206','1000000000242026090200110000008000000000206','1000000000242026098069110000000300000000206','1000000000242026090040110000014400000000206','11202609081','11202609091','1000000000242026090042110000007200000000206','1000000000242026090981110001500000000000206','1000000000242026098111110000262040000000206']);
+const apLv=P.apurar({jornada:'meio',dias:fal(1,14),lanc:{}},'2026-09',OL);
+const txtLv=P.linhasTxt({empresa:206,comp:'2026-09',processo:11,formato:'SEXAGESIMAL',regras:RO,funcionarios:[{cod:50,nome:'LEVIR',apur:apLv,minFalta:215,minDsr:215}]});
+eq('jornada de meio período (Levir): 3:35 por falta e por DSR, 2 semanas',txtLv.linhas.filter(l=>l.startsWith('10')),['1000000000502026090040110000007100000000206','1000000000502026090042110000007100000000206']);
+const apDom=P.apurar({jornada:'padrao',dias:fal(6),lanc:{avisos:['Faltas dia inteiro: "31" não é dia de 09/2026']}},'2026-09',OL);
+eq('falta em domingo e dia inválido da planilha viram pendência',[apDom.dias[5].alertas.some(a=>/sem expediente/.test(a.t)),apDom.tot.alertasAltos],[true,2]);
 console.log(`${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);

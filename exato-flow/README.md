@@ -106,6 +106,12 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 - Funcionário marcado no cadastro com `ponto: "nao"` (não bate cartão) não entra no aviso de "sem ponto no período". O cadastro aceita só o primeiro nome (como nas automações).
 - **Fonte dos valores = espelho do relógio** (ex.: AF Móveis): o PDF **Apuração do Ponto** do Ponto System Web é lido por posição das colunas (marcações e Normal, Falta, F.Parcial, Ex50, Ex100, Ad.Not, Desc.DSR). O TXT usa os valores do relógio; o Flow recalcula pelas marcações só para conferir (diferença acima da tolerância vira pendência). Soma dos dias diferente do TOTAL do PDF gera aviso.
 - **Falta de dia inteiro em dias** (1 falta = 1,00 no TXT) ou em horas (7:20), por cliente.
+- **Fonte dos valores = planilha de lançamentos** (ex.: Oliver): o cliente preenche a planilha da Exato (skill `planilha-lancamentos-folha`) e o Flow lê a aba LANÇAMENTOS pelos títulos e pela linha "Rubrica Domínio":
+  - HE 50%, HE 100% (domingos/feriados) e horas faltas parcial em horas:minutos;
+  - faltas de dia inteiro pelos dias digitados (`5, 12, 20` ou `5/09`), em horas por dia da jornada do funcionário, com registro 11 por data e DSR por semana (segunda a domingo);
+  - colunas em R$ (vales, plano de saúde) com a rubrica da planilha, em centavos (1.500,00 → 150000).
+  - Competência da planilha diferente da tela é recusada. Dia que não existe no mês ou hora digitada como número bloqueia o TXT do funcionário até corrigir. Importar de novo substitui a leitura anterior.
+  - Falta em domingo, feriado ou folga da jornada vira pendência; menor de 18 anos com hora extra entra no aviso da aba TXT.
 - **Baixar transcrição em Excel** (abas Conferência e TXT): baixa as marcações conferidas no formato do espelho (uma aba por funcionário, `código - nome`). Serve para ler as fotos no app do Claude e calcular no programa do computador sem chave da API.
 
 - Com o cliente configurado, a aba Arquivos abre direto no "Ponto do mês", e a configuração vira uma linha "✓ Cliente configurado", com o botão "Atualizar configuração" para admissões ou mudança de rubrica.
