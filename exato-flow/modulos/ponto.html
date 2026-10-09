@@ -331,6 +331,7 @@ dialog::backdrop{background:var(--scrim)}
             <label>Rubrica horas faltas (atrasos)<input id="r-rhf" inputmode="numeric"></label>
             <label>Rubrica falta dia inteiro<input id="r-rf" inputmode="numeric"></label>
             <label>Falta dia inteiro no TXT em<select id="r-fu"><option value="horas">Horas (7:20 por dia)</option><option value="dias">Dias (1 falta = 1,00)</option></select></label>
+            <label>Horas por dia de falta e de DSR<select id="r-fmin"><option value="jornada">Pela jornada de cada funcionário (horas semanais × 5 ÷ 30)</option><option value="fixo">Fixo 7:20 (220 h ÷ 30) para todos</option></select></label>
             <label>Rubrica DSR sobre faltas<input id="r-rd" inputmode="numeric"></label>
             <label class="chk"><input type="checkbox" id="r-gd"> Descontar DSR da semana com falta</label>
             <label>Falta parcial que também tira o DSR (h:mm)<input id="r-meio" placeholder="só falta inteira"></label>
@@ -408,6 +409,9 @@ function regrasCom(r){
 }
 const semanal=j=>[0,1,2,3,4,5,6].reduce((t,d)=>t+P.intervalosJornada(j.dias[d]).reduce((a,[b,c])=>a+c-b,0),0);
 const minDia=j=>j?Math.round(semanal(j)*5/30):440;   // horas mensais / 30 (44h → 7:20)
+// minutos de um dia de falta e de DSR do funcionário: fixo da regra (ex.: Dunga, 220 h ÷ 30) ou pela jornada (ex.: Levir, meio período)
+const minFaltaDe=e=>S.regras.falta&&S.regras.falta.fixo?(S.regras.falta.min||440):minDia(jornadaDe(e));
+const minDsrDe=e=>S.regras.falta&&S.regras.falta.fixo?((S.regras.dsr&&S.regras.dsr.min)||440):minDia(jornadaDe(e));
 const jornadaDe=e=>S.regras.jornadas.find(j=>j.id===e.jornada)||S.regras.jornadas.find(j=>{const x=S.reg&&S.reg.length?infoFunc(e):null;return x&&j.id===x.jornada;})||S.regras.jornadas[0];
 const diaIni=()=>(S.regras&&S.regras.periodo&&S.regras.periodo.diaIni)||1;
 const periodo=()=>P.diasDoMes(S.comp,diaIni());
@@ -1363,7 +1367,7 @@ function renderDet(){
 function renderTxt(){
   if(!S.cli) return;
   const R=S.regras, empresa=S.cli.cod;
-  const funcs=S.doc.emps.map(e=>({cod:e.cod,nome:e.nome,apur:e._ap,minFalta:minDia(jornadaDe(e)),minDsr:minDia(jornadaDe(e))}));
+  const funcs=S.doc.emps.map(e=>({cod:e.cod,nome:e.nome,apur:e._ap,minFalta:minFaltaDe(e),minDsr:minDsrDe(e)}));
   const g=P.linhasTxt({empresa,comp:S.comp,processo:R.processo,formato:R.formato,regras:R,funcionarios:funcs});
   S.txt=g;
   const alt=S.doc.emps.reduce((t,e)=>t+e._ap.tot.alertasAltos,0), med=S.doc.emps.reduce((t,e)=>t+e._ap.tot.alertas-e._ap.tot.alertasAltos,0);
@@ -1403,7 +1407,7 @@ function renderTxt(){
   const rs=c=>(c/100).toLocaleString("pt-BR",{minimumFractionDigits:2});
   const semNot=R.fonte==="lancamentos"&&!R.not.rub;   // a planilha de lançamentos não tem noturno
   $("tRes").innerHTML=`<thead><tr><th>Cód.</th><th>Funcionário</th>${S.regras.he.faixas.map(f=>`<th class="n">HE ${f.pct}%<br><span class="mono">${esc(f.rub)}</span></th>`).join("")}<th class="n">HE ${R.he.domFer.pct}%<br><span class="mono">${esc(R.he.domFer.rub)}</span></th><th class="n">H. faltas<br><span class="mono">${esc(R.hfalta.rub)}</span></th>${semNot?"":`<th class="n">Noturno<br><span class="mono">${esc(R.not.rub||"?")}</span></th>`}${R.not.rubRed?`<th class="n">Redução<br><span class="mono">${esc(R.not.rubRed)}</span></th>`:""}<th class="n">Faltas<br><span class="mono">${esc(R.falta.rub)}</span></th><th class="n">DSR<br><span class="mono">${esc(R.dsr.rub)}</span></th>${vRub.map(v=>`<th class="n">${esc(v.desc)}<br><span class="mono">${esc(v.rub)}</span></th>`).join("")}</tr></thead>
-   <tbody>${S.doc.emps.map(e=>{const t=e._ap.tot, md=minDia(jornadaDe(e)); return `<tr><td class="mono">${esc(e.cod||"—")}</td><td>${esc(e.nome)}</td>${t.heFaixas.map(x=>`<td class="n">${N(x.min)||"–"}</td>`).join("")}<td class="n">${N(t.he100)||"–"}</td><td class="n">${N(t.hfalta)||"–"}</td>${semNot?"":`<td class="n">${N(t.noturnoLancar)||"–"}</td>`}${R.not.rubRed?`<td class="n">${N(t.reducaoNoturna)||"–"}</td>`:""}<td class="n">${t.faltas.length?(R.falta.unidade==="dias"?`${t.faltas.length} dia${t.faltas.length>1?"s":""}`:`${t.faltas.length} = ${N(t.faltas.length*md)}`):"–"}</td><td class="n">${t.semanasDsr.length?`${t.semanasDsr.length} = ${N(t.semanasDsr.length*md)}`:"–"}</td>${vRub.map(v=>{const x=(t.valores||[]).filter(y=>String(y.rub)===v.rub).reduce((s,y)=>s+y.centavos,0);return `<td class="n">${x?rs(x):"–"}</td>`;}).join("")}</tr>`;}).join("")}</tbody>`;
+   <tbody>${S.doc.emps.map(e=>{const t=e._ap.tot, md=minFaltaDe(e), mdsr=minDsrDe(e); return `<tr><td class="mono">${esc(e.cod||"—")}</td><td>${esc(e.nome)}</td>${t.heFaixas.map(x=>`<td class="n">${N(x.min)||"–"}</td>`).join("")}<td class="n">${N(t.he100)||"–"}</td><td class="n">${N(t.hfalta)||"–"}</td>${semNot?"":`<td class="n">${N(t.noturnoLancar)||"–"}</td>`}${R.not.rubRed?`<td class="n">${N(t.reducaoNoturna)||"–"}</td>`:""}<td class="n">${t.faltas.length?(R.falta.unidade==="dias"?`${t.faltas.length} dia${t.faltas.length>1?"s":""}`:`${t.faltas.length} = ${N(t.faltas.length*md)}`):"–"}</td><td class="n">${t.semanasDsr.length?`${t.semanasDsr.length} = ${N(t.semanasDsr.length*mdsr)}`:"–"}</td>${vRub.map(v=>{const x=(t.valores||[]).filter(y=>String(y.rub)===v.rub).reduce((s,y)=>s+y.centavos,0);return `<td class="n">${x?rs(x):"–"}</td>`;}).join("")}</tr>`;}).join("")}</tbody>`;
   $("txt").textContent=g.linhas.length?g.linhas.join("\n"):"Nenhum lançamento a importar.";
   $("fmtNota").textContent=R.formato;
 }
@@ -1412,7 +1416,7 @@ function renderTxt(){
 function preencherRegras(){
   const R=S.regras, f1=R.he.faixas[0]||{}, f2=R.he.faixas[1]||{};
   const set=(id,v)=>{$(id).value=v??"";};
-  set("r-tol",R.tolDia); set("r-tolm",R.tolMarc??5); $("r-calc").value=R.calc||"saldo"; $("r-tolr").value=R.tolRegra||"sumula366"; $("r-sem").value=R.semMarcacao||"pendente"; $("r-fonte").value=R.fonte||"calculo"; $("r-fu").value=(R.falta&&R.falta.unidade)||"horas"; set("r-p1",f1.pct); set("r-a1",f1.ate!=null&&R.he.faixas.length>1?P.fmt(f1.ate):""); set("r-r1",f1.rub);
+  set("r-tol",R.tolDia); set("r-tolm",R.tolMarc??5); $("r-calc").value=R.calc||"saldo"; $("r-tolr").value=R.tolRegra||"sumula366"; $("r-sem").value=R.semMarcacao||"pendente"; $("r-fonte").value=R.fonte||"calculo"; $("r-fu").value=(R.falta&&R.falta.unidade)||"horas"; $("r-fmin").value=R.falta&&R.falta.fixo?"fixo":"jornada"; set("r-p1",f1.pct); set("r-a1",f1.ate!=null&&R.he.faixas.length>1?P.fmt(f1.ate):""); set("r-r1",f1.rub);
   const f3=R.he.faixas[2]||{};
   set("r-p2",R.he.faixas.length>1?f2.pct:""); set("r-r2",R.he.faixas.length>1?f2.rub:""); set("r-a2",R.he.faixas.length>2&&f2.ate!=null?P.fmt(f2.ate):"");
   set("r-p3",R.he.faixas.length>2?f3.pct:""); set("r-r3",R.he.faixas.length>2?f3.rub:"");
@@ -1435,7 +1439,7 @@ function lerRegras(){
   R.he.faixas=[{ate:p2!==""&&a1!=null?a1:null,pct:n("r-p1")||50,rub:n("r-r1")}];
   if(p2!==""&&a1!=null) R.he.faixas.push({ate:p3!==""&&a2!=null&&a2>a1?a2:null,pct:p2,rub:n("r-r2")});
   if(p2!==""&&a1!=null&&p3!==""&&a2!=null&&a2>a1) R.he.faixas.push({ate:null,pct:p3,rub:n("r-r3")});
-  R.he.domFer={pct:n("r-p100")||100,rub:n("r-r100")}; R.hfalta={rub:n("r-rhf")}; R.falta={...R.falta,rub:n("r-rf"),unidade:$("r-fu").value}; R.dsr={...R.dsr,rub:n("r-rd"),gerar:$("r-gd").checked};
+  R.he.domFer={pct:n("r-p100")||100,rub:n("r-r100")}; R.hfalta={rub:n("r-rhf")}; R.falta={...R.falta,rub:n("r-rf"),unidade:$("r-fu").value,fixo:$("r-fmin").value==="fixo"}; R.dsr={...R.dsr,rub:n("r-rd"),gerar:$("r-gd").checked};
   R.not={ini:$("r-ni").value.trim()||"22:00",fim:$("r-nf").value.trim()||"05:00",pct:n("r-np")||20,rub:n("r-nr"),reduzida:$("r-nred").checked,prorroga:$("r-npr").checked};
   R.formato=$("r-fmt").value; R.processo=+$("r-proc").value;
   R.he.limite=$("r-lim").value; R.he.sab100=$("r-sab").checked; R.interv={...R.interv,modo:+$("r-iv").value};

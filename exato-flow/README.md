@@ -105,7 +105,7 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 - **Horas extras em até 3 faixas** (ex.: Piasseski, 50% até 10h, 60% até 40h e 100% acima no mês). O limite de cada faixa é o total acumulado e aceita mais de 24h (30:00, 40:00).
 - Funcionário marcado no cadastro com `ponto: "nao"` (não bate cartão) não entra no aviso de "sem ponto no período". O cadastro aceita só o primeiro nome (como nas automações).
 - **Fonte dos valores = espelho do relógio** (ex.: AF Móveis): o PDF **Apuração do Ponto** do Ponto System Web é lido por posição das colunas (marcações e Normal, Falta, F.Parcial, Ex50, Ex100, Ad.Not, Desc.DSR). O TXT usa os valores do relógio; o Flow recalcula pelas marcações só para conferir (diferença acima da tolerância vira pendência). Soma dos dias diferente do TOTAL do PDF gera aviso.
-- **Falta de dia inteiro em dias** (1 falta = 1,00 no TXT) ou em horas (7:20), por cliente.
+- **Falta de dia inteiro em dias** (1 falta = 1,00 no TXT) ou em horas (7:20), por cliente. Em horas, o dia de falta e o DSR saem da jornada de cada funcionário (horas semanais × 5 ÷ 30; ex.: meio período do Levir = 3:35) ou fixos em 7:20 (220 h ÷ 30) para todos, quando a ficha não bate com as 220 h do Domínio (ex.: Dunga).
 - **Fonte dos valores = planilha de lançamentos** (ex.: Oliver): o cliente preenche a planilha da Exato (skill `planilha-lancamentos-folha`) e o Flow lê a aba LANÇAMENTOS pelos títulos e pela linha "Rubrica Domínio":
   - HE 50%, HE 100% (domingos/feriados) e horas faltas parcial em horas:minutos;
   - faltas de dia inteiro pelos dias digitados (`5, 12, 20` ou `5/09`), em horas por dia da jornada do funcionário, com registro 11 por data e DSR por semana (segunda a domingo);
