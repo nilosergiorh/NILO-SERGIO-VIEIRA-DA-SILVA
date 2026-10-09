@@ -1371,7 +1371,9 @@ function renderTxt(){
   const g=P.linhasTxt({empresa,comp:S.comp,processo:R.processo,formato:R.formato,regras:R,funcionarios:funcs});
   S.txt=g;
   const alt=S.doc.emps.reduce((t,e)=>t+e._ap.tot.alertasAltos,0), med=S.doc.emps.reduce((t,e)=>t+e._ap.tot.alertas-e._ap.tot.alertasAltos,0);
-  const semCod=S.doc.emps.filter(e=>!e.cod);
+  // sem código só bloqueia quem tem lançamento (ex.: afastado o mês inteiro não entra no TXT)
+  const temLanc=e=>{ const t=e._ap.tot; return t.heFaixas.some(h=>h.min)||t.he100||t.hfalta||t.faltas.length||t.semanasDsr.length||t.noturnoLancar||t.dsrMin||(t.valores||[]).length; };
+  const semCod=S.doc.emps.filter(e=>!e.cod&&temLanc(e));
   const it=[];
   it.push(S.doc.emps.length?["ok",`${S.doc.emps.length} funcionário(s) na apuração`]:["er","Nenhum funcionário na apuração"]);
   it.push(empresa?["ok",`Código da empresa no Domínio: ${empresa}`]:["er","Cliente sem código do Domínio no cadastro (módulo Clientes)"]);

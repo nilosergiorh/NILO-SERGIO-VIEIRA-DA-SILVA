@@ -155,4 +155,15 @@ const txtAl=P.linhasTxt({empresa:166,comp:'2026-10',processo:11,formato:'SEXAGES
 eq('Rodoara: falta em dias (2 = 200), registro 11 e DSR 7:20 como o exemplo real do Alan',txtAl.linhas,['1000000000472026100150110000009360000000166','1000000000472026100040110000002000000000166','11202610131','11202610141','1000000000472026100042110000007200000000166']);
 const apFer=P.apurar({jornada:'padrao',dias:{[D10(12)]:{m:'',oc:'FALTA'}},lanc:{}},'2026-10',RD);
 eq('falta digitada em feriado (12/10) vira pendência',apFer.dias[11].alertas.some(a=>/sem expediente/.test(a.t)),true);
+
+// ---------- ELETROTAK: por marcação, tolerância da planilha aprovada (09/2026) ----------
+const ET={calc:'marcacao',tolDia:10,tolMarc:5,tolRegra:'porMarcacao',he:{faixas:[{ate:1800,pct:70,rub:170},{ate:null,pct:100,rub:200}],domFer:{pct:100,rub:200},limite:'mes',sab100:true},
+  jornadas:[{id:'esc',dias:{1:'07:45-12:00 13:30-18:00',2:'07:45-12:00 13:30-18:00',3:'07:45-12:00 13:30-18:00',4:'07:45-12:00 13:30-18:00',5:'07:45-12:00 13:30-18:00',6:'',0:''}},{id:'ope',dias:{1:'08:00-12:00 13:30-18:15',2:'08:00-12:00 13:30-18:15',3:'08:00-12:00 13:30-18:15',4:'08:00-12:00 13:30-18:15',5:'08:00-12:00 13:30-18:15',6:'',0:''}}]};
+const et=(j,d,m)=>P.apurar({jornada:j,dias:{[D(d)]:{m}}},'2026-09',ET).dias[d-1];
+x=et('ope',11,'08:03 12:12 13:37 18:15');
+eq('Eletrotak: batidas de até 5 min toleradas, as maiores contam (Arthur 11/09)',[N(x.hfalta),N(x.heUtil)],['0:07','0:12']);
+x=et('esc',30,'07:56 12:02 13:31 18:02');
+eq('Eletrotak: atraso de 11 min conta, extras de 2 min não (Erilyn 30/09)',[N(x.hfalta),x.heUtil],['0:11',0]);
+x=et('esc',1,'07:50 12:04 13:30 18:02');
+eq('Eletrotak: batidas todas de até 5 min não contam',[x.hfalta,x.heUtil],[0,0]);
 console.log(`${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);

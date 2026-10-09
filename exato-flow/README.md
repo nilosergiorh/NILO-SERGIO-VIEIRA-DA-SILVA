@@ -102,6 +102,8 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 - **Atestado ou abono parcial** (ocorrência + marcações no mesmo dia): abona o que faltou e paga como extra o trabalho fora do horário.
 - **Avisos:** marcação antes da admissão ou depois da rescisão; falta injustificada em semana com feriado (Lei 605/49, art. 6º, não lançado).
 - O espelho gerado pelo `cartoes_para_espelho.py` da ECO HAM é lido direto; a coluna **Conferir** vira dia de leitura incerta.
+- **Eletrotak (224)**: cálculo por marcação contra o horário do setor (escritório e operacional), tolerância "por marcação" como a planilha aprovada (soma do dia até 10 min não conta; acima, só as batidas com mais de 5 min). Prova de setembro/2026: 29 de 30 linhas iguais ao TXT da automação (a diferença é o atestado parcial, em que o Flow paga o tempo trabalhado fora do horário).
+- Funcionário sem código do Domínio só bloqueia o TXT se tiver lançamento no mês (ex.: afastado o mês inteiro).
 - **Horas extras em até 3 faixas** (ex.: Piasseski, 50% até 10h, 60% até 40h e 100% acima no mês). O limite de cada faixa é o total acumulado e aceita mais de 24h (30:00, 40:00).
 - Funcionário marcado no cadastro com `ponto: "nao"` (não bate cartão) não entra no aviso de "sem ponto no período". O cadastro aceita só o primeiro nome (como nas automações).
 - **Fonte dos valores = espelho do relógio** (ex.: AF Móveis): o PDF **Apuração do Ponto** do Ponto System Web é lido por posição das colunas (marcações e Normal, Falta, F.Parcial, Ex50, Ex100, Ad.Not, Desc.DSR). O TXT usa os valores do relógio; o Flow recalcula pelas marcações só para conferir (diferença acima da tolerância vira pendência). Soma dos dias diferente do TOTAL do PDF gera aviso.
