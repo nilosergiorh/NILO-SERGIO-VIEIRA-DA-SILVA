@@ -84,10 +84,12 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
 
 **Uma vez por cliente:** ficha da empresa, fichas dos funcionários e Extrato Mensal (rubricas). **Todo mês:** só o ponto (Excel ou foto) → conferência → TXT.
 
+**Cada cliente tem as próprias regras**, tiradas da convenção coletiva dele e confirmadas com o RH. O que é comum a todos é a sistemática: configurar uma vez, calcular o ponto do mês, conferir e importar o TXT no Domínio.
+
 **Formas de cálculo** (aba Regras):
 
 - **Saldo do dia:** trabalhado − previsto, com tolerância diária.
-- **Por marcação** (mesma regra das automações Eletrotak e ECO HAM): em dia útil com as 4 batidas, cada uma é comparada ao horário da jornada. Atraso e hora extra do mesmo dia não se compensam. Dias com outro número de batidas, sábados, domingos e feriados usam o saldo.
+- **Por marcação** (opção por cliente; é a regra da ECO HAM): em dia útil com as 4 batidas, cada uma é comparada ao horário da jornada. Atraso e hora extra do mesmo dia não se compensam. Dias com outro número de batidas, sábados, domingos e feriados usam o saldo.
 - **Tolerância** (art. 58, § 1º, CLT): 5 min por marcação e 10 min no dia. Passou de um dos dois, conta o tempo todo (Súmula 366 do TST). A opção "regra antiga" conta só as batidas acima de 5 min, como as planilhas faziam.
 - **Dia útil sem marcação e sem ocorrência** fica pendente (perguntar ao cliente) e bloqueia o TXT até a ocorrência ser lançada. Pode ser trocado para "vira falta".
 - **Atestado ou abono parcial** (ocorrência + marcações no mesmo dia): abona o que faltou e paga como extra o trabalho fora do horário.

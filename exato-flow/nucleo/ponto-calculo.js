@@ -18,7 +18,7 @@
  * por mes ou por dia, sabado a 100%, dia com um so par de marcacoes (paga como extra
  * ou deduz o almoco), perda do DSR por falta de meio periodo, rubrica da reducao da
  * hora noturna, fechamento do periodo (ex.: 21 a 20) e alerta de semana acima de 44h.
- * Modo de calculo "marcacao" (automacoes Eletrotak/ECO HAM): em dia util com as 4 batidas, cada
+ * Modo de calculo "marcacao" (opcao por cliente, conforme a CCT e a pratica da empresa; ex.: ECO HAM): em dia util com as 4 batidas, cada
  * batida e comparada ao horario fixo; atraso e hora extra do mesmo dia nao se compensam.
  * Dia util sem marcacao e sem ocorrencia fica pendente (nao vira falta sozinho).
  * Percentuais e regras de CCT mudam de cliente para cliente: confira na convencao.
