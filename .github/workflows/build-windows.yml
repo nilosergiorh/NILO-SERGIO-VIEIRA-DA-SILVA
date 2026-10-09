@@ -1,0 +1,50 @@
+name: Gerar instalador Windows
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependências
+        run: python -m pip install --upgrade pip pyinstaller -r requirements.txt
+
+      - name: Testes
+        run: python -m unittest discover -s tests -v
+
+      - name: Gerar executável (PyInstaller)
+        run: pyinstaller --noconfirm --windowed --name ExatoFlow --icon installer/icone.ico --add-data "painel_sindical_exato/web;painel_sindical_exato/web" --add-data "exato-flow;exato-flow" main.py
+
+      - name: Gerar instalador (Inno Setup)
+        shell: pwsh
+        run: |
+          $versao = python -c "import painel_sindical_exato as p; print(p.VERSAO)"
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc "/DMyAppVersion=$versao" installer\PainelSindicalExato.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Publicar instalador como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: ExatoFlow-Instalador
+          path: dist/instalador/*.exe
+
+      - name: Publicar versão (somente em tags v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/instalador/*.exe

@@ -615,7 +615,7 @@ async function arquivosX(files){
       if(ehEspelho(wb)){ r=lerEspelho(wb); via="espelho do relógio";
         if(!r.funcionarios.length&&r.fora){ const L=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:""}); r.dica=`As datas do espelho não caem em ${rotuloPeriodo()}. Confira a competência escolhida ou o período do ponto em Regras (ex.: 21 a 20).`; } }
       else r=lerPlanilha(wb);
-      if(!r.funcionarios.length){
+      if(!r.funcionarios.length&&!r.dica){   // espelho de outro mês: avisa, não manda para o Claude
         const sample=await F.use("sample");
         if(!sample){ atualizar(item,"er","Não reconheci as colunas desta planilha. Use o modelo da Exato ou peça ao cliente as colunas Funcionário, Data e Entrada/Saída."); continue; }
         atualizar(item,"at","Formato diferente: o Claude está organizando a leitura…");
