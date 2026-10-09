@@ -310,6 +310,8 @@ dialog::backdrop{background:var(--scrim)}
         <div class="card"><h3>Horas extras e faltas</h3>
           <div class="form">
             <label>Fonte dos valores<select id="r-fonte"><option value="calculo">O Flow calcula pelas marcações</option><option value="espelho">Valores do espelho do relógio (o Flow só confere)</option><option value="lancamentos">Planilha de lançamentos da Exato (HE, faltas e descontos em R$)</option></select></label>
+            <label class="soLanc">Colunas em R$ da planilha do cliente<input id="r-pv" placeholder="981=Vales / adiantamentos; 8111=Desconto plano de saúde"></label>
+            <label class="soLanc">Cliente envia a planilha até o dia<input id="r-pp" inputmode="numeric" placeholder="ex.: 5"></label>
             <label>Forma de cálculo<select id="r-calc"><option value="saldo">Saldo do dia (trabalhado − previsto)</option><option value="marcacao">Por marcação: atraso e extra não se compensam</option></select></label>
             <label>Tolerância diária (min)<input id="r-tol" inputmode="numeric"></label>
             <label>Tolerância por marcação (min)<input id="r-tolm" inputmode="numeric" placeholder="5"></label>
@@ -565,7 +567,7 @@ function abaLancamentos(wb){
   for(const n of wb.SheetNames){
     const L=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:""});
     for(let i=0;i<Math.min(L.length,30);i++){ const t=L[i].map(x=>String(x).toLowerCase());
-      if(t.some(x=>/funcion/.test(x))&&t.some(x=>/extras?\s*50/.test(x))&&t.some(x=>/dia inteiro/.test(x))) return {L,hi:i,nome:n}; }
+      if(t.some(x=>/funcion/.test(x))&&t.some(x=>/extra/.test(x))&&t.some(x=>/dia inteiro/.test(x))) return {L,hi:i,nome:n}; }
   }
   return null;
 }
@@ -578,7 +580,7 @@ function minHoras(v){   // "10:30" ou hora do Excel (fração do dia: 0,4375 = 1
 function lerLancamentos(wb){
   const {L,hi}=abaLancamentos(wb), H=L[hi].map(x=>String(x).replace(/\s+/g," ").trim()), RB=L[hi+1]||[];
   const col=re=>H.findIndex(x=>re.test(x));
-  const cC=col(/^c[oó]d/i), cN=col(/funcion/i), c50=col(/extras?\s*50/i), c100=col(/extras?\s*100/i), cHf=col(/faltas?\s*parcial|horas?\s*falta/i), cF=col(/dia inteiro/i);
+  const cC=col(/^c[oó]d/i), cN=col(/funcion/i), c50=H.findIndex(x=>/extra/i.test(x)&&!/100|domingo|feriado/i.test(x)), c100=col(/extras?\s*100|extra.*(domingo|feriado)/i), cHf=col(/faltas?\s*parcial|horas?\s*falta/i), cF=col(/dia inteiro/i);
   const cV=H.map((x,i)=>/\(R\$\)/.test(x)?i:-1).filter(i=>i>=0).map(i=>({i,rub:parseInt(RB[i])||null,desc:H[i].replace(/\(R\$\)/,"").replace(/\s*\/\s*/g,"/").trim()}));
   let comp="";   // "Competência (mês/ano):" ... "09/2026"
   for(let i=0;i<hi;i++){ const r=L[i]; const j=r.findIndex(x=>/compet/i.test(String(x))); if(j>=0){ const v=r.slice(j+1).find(x=>String(x).trim()); if(v!=null){ if(typeof v==="number"){ const d=new Date(Math.round((v-25569)*864e5)); comp=d.toISOString().slice(0,7); } else { const m=String(v).match(/(\d{1,2})\/(\d{4})/); if(m) comp=m[2]+"-"+m[1].padStart(2,"0"); } } } }
@@ -821,6 +823,7 @@ function renderArquivos(){
 // ---------- modelo Excel ----------
 async function baixarModelo(){
   if(!S.cli) return;
+  if(S.regras.fonte==="lancamentos") return planilhaCliente();
   const dias=periodo(), linhas=[["Código","Funcionário","Data","Entrada 1","Saída 1","Entrada 2","Saída 2","Entrada 3","Saída 3","Ocorrência"]];
   const ini=periodo()[0].data;
   const funcs=S.doc.emps.length?S.doc.emps:(S.reg||[]).filter(f=>F.funcAtivo(f,ini)).map(f=>({cod:f.codigo,nome:f.nome}));
@@ -833,6 +836,134 @@ async function baixarModelo(){
   ins["!cols"]=[{wch:100}]; XLSX.utils.book_append_sheet(wb,ins,"INSTRUÇÕES");
   const blob=new Blob([XLSX.write(wb,{bookType:"xlsx",type:"array"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
   await baixar(`Ponto_${(S.cli.cod||"")}_${S.comp.replace("-","")}.xlsx`,blob);
+}
+
+// ---------- planilha de lançamentos para o cliente (gerada todo mês com os funcionários ativos) ----------
+// Mesmo layout que lerLancamentos lê: títulos, linha "Rubrica Domínio" e um funcionário por linha.
+const EXCELJS_URL="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js";
+function carregarExcelJS(){
+  if(window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  return new Promise((ok,erro)=>{ const sc=document.createElement("script"); sc.src=EXCELJS_URL; sc.onload=()=>ok(window.ExcelJS); sc.onerror=()=>erro(new Error("exceljs")); document.head.appendChild(sc); });
+}
+function soLanc(){ const v=$("r-fonte").value==="lancamentos"; document.querySelectorAll(".soLanc").forEach(x=>x.hidden=!v); }
+// funcionários ativos em algum dia da competência, com a situação do mês
+function ativosDoMes(){
+  const per=periodo(), ini=per[0].data, fim=per[per.length-1].data, b5=d=>br(d).slice(0,5);
+  const cruza=(i,f)=>i&&i<=fim&&(!f||f>=ini);
+  return (S.reg||[]).filter(f=>!(f.admissao&&f.admissao>fim)&&!(f.rescisao&&f.rescisao<ini)&&(f.rescisao||!/demit|rescind|deslig/i.test(f.situacao||"")))
+    .map(f=>{ const sit=[], a=idade(f.nascimento,ini);
+      if(f.admissao&&f.admissao>=ini) sit.push("Admitido em "+b5(f.admissao));
+      if(f.rescisao&&f.rescisao<=fim) sit.push("Desligado em "+b5(f.rescisao));
+      const fer=[]; if(cruza(f.ferias_ini,f.ferias_fim)) fer.push([f.ferias_ini,f.ferias_fim]);
+      (f.ausencias||[]).forEach(x=>{ if(cruza(x.ini,x.fim)) (x.tipo==="FERIAS"?fer:sit).push(x.tipo==="FERIAS"?[x.ini,x.fim]:({AFASTAMENTO:"Afastado",LICENCA:"Licença",ATESTADO:"Atestado"}[x.tipo]||x.tipo)+" "+b5(x.ini)+(x.fim?" a "+b5(x.fim):"")); });
+      fer.forEach(([i,f2])=>sit.push("Férias "+b5(i)+(f2?" a "+b5(f2):"")));
+      if(cruza(f.afast_ini,f.afast_fim)) sit.push((f.afast_tipo?f.afast_tipo.toLowerCase().replace(/^./,c=>c.toUpperCase()):"Afastado")+" desde "+br(f.afast_ini));
+      if(a!=null&&a<18) sit.push("Menor de 18: HE só por compensação ou força maior");
+      return {cod:f.codigo||"",nome:String(f.nome||"").toUpperCase(),cargo:String(f.cargo||"").toUpperCase(),sit:sit.join(" · ")}; })
+    .sort((x,y)=>(parseInt(x.cod)||1e9)-(parseInt(y.cod)||1e9)||x.nome.localeCompare(y.nome,"pt-BR"));
+}
+async function planilhaCliente(){
+  const lista=ativosDoMes();
+  if(!lista.length){ toast("Cliente sem funcionários ativos no cadastro: envie as fichas ou informe as admissões no módulo Clientes."); return; }
+  let EJ; try{ EJ=await carregarExcelJS(); }catch(e){ toast("Não consegui carregar o gerador de Excel. Confira a internet e tente de novo."); return; }
+  const R=S.regras, PL=R.planilha||{}, vals=PL.valores||[], comp=S.comp.split("-").reverse().join("/"), cli=S.cli;
+  const nomeEmp=cli.nome||cli.fant||"", cnpj=F.fmtCnpj?F.fmtCnpj(cli.cnpj):cli.cnpj;
+  const wb=new EJ.Workbook(); wb.creator="Exato Soluções Contábeis"; wb.created=new Date();
+  const VERM="FFC00000", PRETO="FF1A1A1A", CINZA="FFEDEDED", BRANCO="FFFFFFFF", AMAR="FFFFF4CC";
+  const fill=c=>({type:"pattern",pattern:"solid",fgColor:{argb:c}}), borda={top:{style:"thin",color:{argb:"FFBFBFBF"}},left:{style:"thin",color:{argb:"FFBFBFBF"}},bottom:{style:"thin",color:{argb:"FFBFBFBF"}},right:{style:"thin",color:{argb:"FFBFBFBF"}}};
+  const f1=(R.he.faixas[0]||{pct:50,rub:150});
+  // colunas: fixas + valores em R$ + observações
+  const C=[{k:"cod",t:"Cód.",w:7},{k:"nome",t:"Funcionário",w:36},{k:"cargo",t:"Cargo",w:22},{k:"sit",t:"Situação no mês\n(escritório)",w:26},
+    {k:"he50",t:`Horas extras ${f1.pct}%\n(hh:mm)`,w:13,rub:f1.rub,h:1},{k:"he100",t:`Horas extras ${R.he.domFer.pct}%\ndomingos/feriados\n(hh:mm)`,w:15,rub:R.he.domFer.rub,h:1},
+    {k:"hf",t:"Horas Faltas Parcial\n(hh:mm)",w:14,rub:R.hfalta.rub,h:1},{k:"fd",t:"Faltas dia inteiro\n(dias do mês)\nEx.: 5, 12, 20",w:18,rub:R.falta.rub+" + reg. 11"},
+    {k:"qt",t:"Qtd.\nfaltas",w:8,rub:"automático"},...vals.map((v,i)=>({k:"v"+i,t:v.desc+"\n(R$)",w:15,rub:v.rub,rs:1})),{k:"obs",t:"Observações",w:34}];
+  const col=k=>C.findIndex(c=>c.k===k)+1, L=n=>{ let s=""; while(n){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
+  const nC=C.length, R0=10, NRES=5, RT=R0+lista.length+NRES;
+  const ws=wb.addWorksheet("LANÇAMENTOS",{views:[{state:"frozen",xSplit:2,ySplit:R0-1,showGridLines:false}],pageSetup:{orientation:"landscape",fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9}});
+  C.forEach((c,i)=>ws.getColumn(i+1).width=c.w);
+  const cel=(ref,v,o={})=>{ const x=ws.getCell(ref); x.value=v; if(o.f) x.font=o.f; if(o.fill) x.fill=fill(o.fill); if(o.al) x.alignment=o.al; if(o.nf) x.numFmt=o.nf; if(o.b) x.border=borda; if(o.livre) x.protection={locked:false}; return x; };
+  ws.mergeCells(1,1,1,nC); cel("A1","LANÇAMENTOS PARA A FOLHA DE PAGAMENTO",{f:{bold:true,size:15,color:{argb:BRANCO}},fill:VERM,al:{vertical:"middle",horizontal:"left",indent:1}}); ws.getRow(1).height=28;
+  ws.mergeCells(2,1,2,nC); cel("A2",`Empresa: ${nomeEmp}   |   CNPJ: ${cnpj}`,{f:{bold:true,size:11,color:{argb:BRANCO}},fill:PRETO,al:{indent:1}});
+  cel("A4","Competência (mês/ano):",{f:{bold:true}}); ws.mergeCells("A4:B4"); cel("C4",comp,{f:{bold:true,size:12,color:{argb:VERM}},al:{horizontal:"center"},b:1});
+  cel("A5","Preenchido por:",{f:{bold:true}}); ws.mergeCells("A5:B5"); cel("C5","",{livre:1,b:1});
+  cel("A6","Data do envio:",{f:{bold:true}}); ws.mergeCells("A6:B6"); cel("C6",null,{livre:1,b:1,nf:"dd/mm/yyyy"});
+  ws.mergeCells(4,5,6,nC); cel(L(5)+"4",`Preencha somente as células BRANCAS. Horas no formato 10:30 (horas:minutos). Faltas: só os dias, separados por vírgula (5, 12, 20). Faltas com atestado, admissões, demissões e outros: aba OCORRÊNCIAS.${PL.prazo?` Envie ao escritório até o dia ${PL.prazo} do mês seguinte.`:""}`,{f:{size:10,italic:true},fill:AMAR,al:{wrapText:true,vertical:"middle",indent:1}});
+  C.forEach((c,i)=>{ const x=ws.getCell(R0-2,i+1); x.value=c.t; x.font={bold:true,color:{argb:BRANCO},size:10}; x.fill=fill(i<4?PRETO:VERM); x.alignment={wrapText:true,vertical:"middle",horizontal:"center"}; x.border=borda;
+    const y=ws.getCell(R0-1,i+1); y.value=i===0?"Rubrica Domínio →":(c.rub!=null?c.rub:null); y.font={size:9,color:{argb:"FF595959"},bold:i===0}; y.fill=fill(CINZA); y.alignment={horizontal:i===0?"left":"center"}; y.border=borda; });
+  ws.mergeCells(R0-1,1,R0-1,3); ws.getRow(R0-2).height=58;
+  const linhas=[...lista,...Array.from({length:NRES},()=>null)];
+  linhas.forEach((f,j)=>{ const r=R0+j, row=ws.getRow(r); row.height=19;
+    C.forEach((c,i)=>{ const x=row.getCell(i+1); x.border=borda; x.font={size:10};
+      if(i<4){ x.fill=fill(f?CINZA:BRANCO); x.value=f?(c.k==="cod"?(parseInt(f.cod)||f.cod||null):f[c.k]||null):(c.k==="sit"?"Admitido no mês? Escreva o nome":null);
+        if(!f&&(c.k==="nome"||c.k==="cargo")) x.protection={locked:false};
+        if(!f&&c.k==="sit"){ x.font={size:9,italic:true,color:{argb:"FF7F7F7F"}}; x.fill=fill(CINZA); }
+        if(c.k==="sit"&&f&&f.sit){ x.font={size:9,color:{argb:/Menor/.test(f.sit)?VERM:"FF404040"},bold:/Menor/.test(f.sit)}; x.alignment={wrapText:true,vertical:"middle"}; if(/Menor|Férias \d/.test(f.sit)) row.height=30; }
+        return; }
+      if(c.k==="qt"){ const g=L(col("fd"))+r, t=`TRIM(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(UPPER(${g}&""),","," "),";"," ")," E "," "))`;
+        x.value={formula:`IF(${t}="","",LEN(${t})-LEN(SUBSTITUTE(${t}," ",""))+1)`}; x.fill=fill(CINZA); x.alignment={horizontal:"center"}; return; }
+      x.protection={locked:false}; x.fill=fill(BRANCO);
+      if(c.h){ x.numFmt="[h]:mm"; x.alignment={horizontal:"center"}; }
+      else if(c.rs){ x.numFmt="#,##0.00"; }
+      else if(c.k==="fd"){ x.numFmt="@"; x.alignment={horizontal:"center"}; }
+      else if(c.k==="obs"){ x.alignment={wrapText:true}; }
+    }); });
+  const tot=ws.getRow(RT); ws.mergeCells(RT,1,RT,4); tot.getCell(1).value="TOTAIS"; tot.height=20;
+  C.forEach((c,i)=>{ const x=tot.getCell(i+1); x.font={bold:true,color:{argb:BRANCO}}; x.fill=fill(PRETO); x.border=borda;
+    if(c.h||c.rs||c.k==="qt"){ x.value={formula:`SUM(${L(i+1)}${R0}:${L(i+1)}${RT-1})`}; x.numFmt=c.h?"[h]:mm":c.rs?"#,##0.00":"0"; x.alignment={horizontal:"center"}; } });
+  // validações (o Excel só confere o que é digitado)
+  // por intervalo: célula a célula o ExcelJS 4.4 junta intervalos sobrepostos (A10:A34 e A5:A34) e o Excel pede reparo
+  const dv=(cIni,cFim,v)=>ws.dataValidations.add(`${L(cIni)}${R0}:${L(cFim)}${RT-1}`,v);
+  const vH={type:"decimal",operator:"between",formulae:[0,2.5],allowBlank:true,showErrorMessage:true,errorStyle:"stop",errorTitle:"Horas",error:"Digite as horas no formato horas:minutos. Ex.: 10:30 (dez horas e trinta minutos) ou 0:45."};
+  dv(col("he50"),col("hf"),vH);
+  if(vals.length) dv(col("v0"),col("v"+(vals.length-1)),{type:"decimal",operator:"between",formulae:[0,999999],allowBlank:true,showErrorMessage:true,errorStyle:"stop",errorTitle:"Valor em R$",error:"Digite somente o valor em reais. Ex.: 350,00"});
+  dv(col("fd"),col("fd"),{type:"textLength",operator:"lessThanOrEqual",formulae:[120],allowBlank:true,showInputMessage:true,promptTitle:"Faltas dia inteiro",prompt:"Só os dias das faltas SEM atestado, separados por vírgula. Ex.: 5, 12, 20"});
+  await ws.protect("",{selectLockedCells:true,selectUnlockedCells:true,formatColumns:true,formatRows:true});
+  // ocorrências
+  const TIPOS=["Admissão","Demissão","Férias","Atestado médico","Afastamento INSS","Aumento salarial","Mudança de cargo","Outros proventos","Outros descontos","Outros"];
+  const oc=wb.addWorksheet("OCORRÊNCIAS",{views:[{state:"frozen",ySplit:4,showGridLines:false}]});
+  [24,36,13,13,14,50].forEach((w,i)=>oc.getColumn(i+1).width=w);
+  oc.mergeCells("A1:F1"); Object.assign(oc.getCell("A1"),{value:"OCORRÊNCIAS DO MÊS – "+comp,font:{bold:true,size:14,color:{argb:BRANCO}},fill:fill(VERM)}); oc.getRow(1).height=26;
+  oc.mergeCells("A2:F2"); Object.assign(oc.getCell("A2"),{value:"Tudo que não cabe em LANÇAMENTOS (atestados, admissões, demissões, férias, aumentos, prêmios). Envie os documentos junto.",font:{italic:true,size:10},fill:fill(AMAR)});
+  ["Tipo de ocorrência","Funcionário","Data início","Data fim","Valor (R$)","Detalhes / observações"].forEach((t,i)=>{ const x=oc.getCell(4,i+1); x.value=t; x.font={bold:true,color:{argb:BRANCO}}; x.fill=fill(PRETO); x.border=borda; x.alignment={horizontal:"center",vertical:"middle",wrapText:true}; });
+  for(let r=5;r<35;r++) for(let i=1;i<=6;i++){ const x=oc.getCell(r,i); x.border=borda; x.protection={locked:false};
+    if(i===3||i===4) x.numFmt="dd/mm/yyyy"; if(i===5) x.numFmt="#,##0.00"; if(i===6) x.alignment={wrapText:true}; }
+  oc.dataValidations.add("A5:A34",{type:"list",allowBlank:true,formulae:[`LISTAS!$B$1:$B$${TIPOS.length}`],showErrorMessage:true,errorStyle:"warning",error:"Escolha um tipo da lista."});
+  oc.dataValidations.add("B5:B34",{type:"list",allowBlank:true,formulae:[`LISTAS!$A$1:$A$${lista.length}`],showErrorMessage:true,errorStyle:"information",error:"Funcionário fora da lista: se for admissão, escreva o nome completo."});
+  oc.dataValidations.add("C5:D34",{type:"date",operator:"greaterThan",formulae:[new Date(2020,0,1)],allowBlank:true,showErrorMessage:true,errorStyle:"stop",error:"Digite a data como 15/10/2026."});
+  oc.dataValidations.add("E5:E34",{type:"decimal",operator:"greaterThanOrEqual",formulae:[0],allowBlank:true,showErrorMessage:true,errorStyle:"stop",error:"Digite somente o valor em reais."});
+  await oc.protect("",{selectLockedCells:true,selectUnlockedCells:true,formatColumns:true,formatRows:true});
+  // instruções
+  const ins=wb.addWorksheet("INSTRUÇÕES",{views:[{showGridLines:false}]}); ins.getColumn(1).width=3; ins.getColumn(2).width=120;
+  const TX=[["INSTRUÇÕES DE PREENCHIMENTO",1],[nomeEmp+" – competência "+comp,2],["",0],["COMO PREENCHER",3],
+    ["1. Na aba LANÇAMENTOS, preencha seu nome e a data do envio.",0],
+    ["2. Preencha somente as células BRANCAS. Deixe em branco o que não aconteceu no mês.",0],
+    ["3. HORAS sempre no formato horas:minutos → 10:30 (dez horas e trinta minutos), 0:45 (quarenta e cinco minutos).",0],
+    [`4. Horas extras ${f1.pct}%: horas extras feitas em dias normais. Horas extras ${R.he.domFer.pct}%: domingos e feriados trabalhados.`,0],
+    ["5. Horas Faltas Parcial: atrasos, saídas antecipadas e faltas de parte do dia, SEM justificativa (em horas).",0],
+    ["6. Faltas dia inteiro: digite só os DIAS das faltas injustificadas, separados por vírgula. Ex.: 5, 12, 20 (todas as faltas do mês).",0],
+    ["7. A coluna Qtd. faltas conta quantos dias você digitou: confira se bate.",0],
+    ...vals.map((v,i)=>[`${8+i}. ${v.desc}: valor em R$ do mês. Ex.: 350,00`,0]),
+    [`${8+vals.length}. Faltas COM atestado NÃO entram na aba LANÇAMENTOS: registre na aba OCORRÊNCIAS e envie o atestado.`,0],
+    [`${9+vals.length}. Admitiu alguém que não está na lista? Escreva o nome numa linha em branco no fim da lista e registre a admissão em OCORRÊNCIAS.`,0],
+    [`${10+vals.length}. Demissões, férias, afastamentos, aumentos, prêmios e outros descontos: aba OCORRÊNCIAS.`,0],
+    [`${11+vals.length}. A coluna "Situação no mês" é preenchida pelo escritório (férias, admissões, menores de idade).`,0],
+    [`${12+vals.length}. Salve o arquivo e envie ao escritório${PL.prazo?` até o dia ${PL.prazo} do mês seguinte`:""}.`,0],
+    ["",0],["EXEMPLO (apenas ilustrativo – não preencha aqui)",3],
+    [`JOSÉ EXEMPLO  |  HE ${f1.pct}%: 6:30  |  HE ${R.he.domFer.pct}%: 8:00  |  Horas Faltas Parcial: 0:30  |  Faltas dia inteiro: 12, 20  (Qtd. faltas = 2)${vals.map(v=>"  |  "+v.desc+": 100,00").join("")}`,0],
+    ["",0],["Menores de 18 anos: hora extra só é permitida por compensação (até 2h/dia, com acordo ou convenção) ou por força maior (art. 413 da CLT). Em caso de dúvida, fale com o escritório antes.",4]];
+  TX.forEach(([t,k],i)=>{ const x=ins.getCell(i+1,2); x.value=t; x.alignment={wrapText:true,vertical:"middle"};
+    x.font=k===1?{bold:true,size:15,color:{argb:BRANCO}}:k===2?{bold:true,size:11}:k===3?{bold:true,color:{argb:VERM}}:k===4?{bold:true,size:10,color:{argb:VERM}}:{size:10};
+    if(k===1){ x.fill=fill(VERM); ins.getRow(i+1).height=26; } });
+  ins.getCell(TX.length+2,2).value="Exato Soluções Contábeis"; ins.getCell(TX.length+2,2).font={italic:true,size:9,color:{argb:"FF7F7F7F"}};
+  await ins.protect("",{selectLockedCells:true,selectUnlockedCells:true});
+  const LS=wb.addWorksheet("LISTAS",{state:"veryHidden"});   // listas das validações de OCORRÊNCIAS
+  lista.forEach((f,i)=>LS.getCell(i+1,1).value=f.nome);
+  TIPOS.forEach((t,i)=>LS.getCell(i+1,2).value=t);
+  wb.views=[{activeTab:0}];
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const nome=`Lancamentos_Folha_${String(cli.fant||cli.nome||"").split(/\s+/)[0].toUpperCase().normalize("NFD").replace(/[^A-Z0-9]/g,"")}_${cli.cod||""}_${S.comp.replace("-","")}.xlsx`;
+  if(await baixar(nome,blob)) toast(`Planilha de ${comp} com ${lista.length} funcionário(s) ativo(s).`);
 }
 // Transcrição em Excel no formato do espelho (o mesmo que lerEspelho lê): o programa do computador calcula a partir dela.
 const OC_TXT={FALTA:"FALTA INJUSTIFICADA",FALTAJUST:"FALTA JUSTIFICADA",ATESTADO:"ATESTADO",ABONO:"ABONO",FERIAS:"FÉRIAS",FOLGA:"FOLGA",FERIADO:"FERIADO",AFASTAMENTO:"AFASTAMENTO",LICENCA:"LICENÇA",NAOADM:"NÃO ADMITIDO"};
@@ -1168,6 +1299,7 @@ function apurarTodos(){ for(const e of S.doc.emps){
   e._dv=comDominio(e); e._ap=P.apurar({...e,dias:e._dv},S.comp,S.regras); } }
 function render(){
   if(!S.doc) return;
+  $("btnModelo").textContent=S.regras.fonte==="lancamentos"?"Baixar planilha do cliente ("+S.comp.split("-").reverse().join("/")+")":"Baixar modelo Excel";
   apurarTodos(); renderArquivos(); renderAus(); renderLista(); renderDet(); renderTxt(); if(!S.prop) renderStatusDom(); else renderCfg(); guia();
   const st=S.doc.status, map={rascunho:["Em conferência","p-at"],conferido:["Conferido","p-ok"],exportado:["TXT gerado","p-ok"]};
   $("stPill").innerHTML=S.doc.emps.length?`<span class="pill ${map[st][1]}">${map[st][0]}</span>`:"";
@@ -1289,12 +1421,14 @@ function preencherRegras(){
   set("r-meio",R.dsr.meio?P.fmt(R.dsr.meio):""); set("r-nrr",R.not.rubRed); set("r-ini",R.periodo.diaIni>1?R.periodo.diaIni:""); $("r-r11").checked=R.txt.reg11!==false;
   set("r-ni",R.not.ini); set("r-nf",R.not.fim); set("r-np",R.not.pct); set("r-nr",R.not.rub); $("r-nred").checked=!!R.not.reduzida; $("r-npr").checked=!!R.not.prorroga;
   $("r-fmt").value=R.formato; $("r-proc").value=String(R.processo);
+  const PL=R.planilha||{}; set("r-pv",(PL.valores||[]).map(v=>v.rub+"="+v.desc).join("; ")); set("r-pp",PL.prazo||""); soLanc();
   renderJornadas(); renderFeriados();
 }
 function lerRegras(){
   const R=S.regras, n=id=>{const v=String($(id).value).trim();return v===""?"":Number(v.replace(",","."));};
   R.tolDia=n("r-tol")===""?10:n("r-tol"); R.tolMarc=n("r-tolm")===""?5:n("r-tolm");
   R.calc=$("r-calc").value; R.tolRegra=$("r-tolr").value; R.semMarcacao=$("r-sem").value; R.fonte=$("r-fonte").value;
+  R.planilha={valores:String($("r-pv").value).split(/[;\n]/).map(x=>x.match(/^\s*(\d{1,4})\s*[=:-]\s*(.+?)\s*$/)).filter(Boolean).map(m=>({rub:+m[1],desc:m[2]})),prazo:n("r-pp")||""};
   // faixas de HE: "até" é o total acumulado de horas extras (no mês ou no dia) em que a faixa termina
   const hm2=id=>{ const v=String($(id).value).trim(); if(!v) return null; const m=v.match(/^(\d{1,3})(?::(\d{2}))?$/); return m?(+m[1])*60+(+(m[2]||0)):P.hm(v); };
   const a1=hm2("r-a1"), a2=hm2("r-a2"), p2=n("r-p2"), p3=n("r-p3");
@@ -1495,6 +1629,7 @@ for(const [id,fn,re] of [["dropD",lerDominio,/\.(pdf|xlsx|xls|csv|jpe?g|png|webp
   el.addEventListener("drop",e=>{e.preventDefault();el.classList.remove("over"); if(!S.cli) return; const fs=[...e.dataTransfer.files].filter(f=>re.test(f.name)); if(fs.length) fn(fs); else toast("Tipo de arquivo não aceito aqui.");});
 }
 $("btnModelo").onclick=baixarModelo;
+$("r-fonte").addEventListener("change",soLanc);
 $("guiaAcoes").addEventListener("click",e=>{ const b=e.target.closest("[data-g]"); if(b) acaoGuia(b.dataset.g); });
 const minGuia=v=>{ G.min=v; try{ localStorage.setItem("flow.ponto.guiaMin",v?"1":"0"); }catch(e){} guia(); };
 $("guiaMin").onclick=()=>minGuia(true); $("guiaFace").onclick=()=>minGuia(!G.min);

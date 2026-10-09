@@ -112,6 +112,14 @@ A base do Flow tem uma coleção `clientes`, que é a mesma que o Painel Sindica
   - colunas em R$ (vales, plano de saúde) com a rubrica da planilha, em centavos (1.500,00 → 150000).
   - Competência da planilha diferente da tela é recusada. Dia que não existe no mês ou hora digitada como número bloqueia o TXT do funcionário até corrigir. Importar de novo substitui a leitura anterior.
   - Falta em domingo, feriado ou folga da jornada vira pendência; menor de 18 anos com hora extra entra no aviso da aba TXT.
+- **Planilha do cliente todo mês** (aba Arquivos › *Baixar planilha do cliente*, com a fonte = planilha de lançamentos): gera o Excel da competência escolhida com os funcionários **ativos no mês** do cadastro:
+  - entra quem foi admitido até o fim do mês e quem foi desligado dentro do mês; sai quem foi desligado antes;
+  - coluna "Situação no mês" (preenchida pelo escritório): admissão, desligamento, férias, afastamento e menor de 18 anos;
+  - 5 linhas em branco para admitidos que ainda não estão no cadastro;
+  - validações que funcionam na digitação (horas até 60:00, valores em R$, dias de falta), planilha protegida com só as células brancas liberadas;
+  - abas OCORRÊNCIAS (listas de tipo e funcionário) e INSTRUÇÕES;
+  - colunas em R$ e prazo de envio configurados em Regras (ex.: `981=Vales / adiantamentos; 8111=Desconto plano de saúde`).
+- **Admissões e desligamentos à mão** (módulo Clientes › ficha do cliente › Funcionários): *Informar admissão* (código, nome, cargo, admissão, nascimento, horário) e *desligar* (data da rescisão). Valem na hora para a planilha do mês; a ficha do Domínio completa depois.
 - **Baixar transcrição em Excel** (abas Conferência e TXT): baixa as marcações conferidas no formato do espelho (uma aba por funcionário, `código - nome`). Serve para ler as fotos no app do Claude e calcular no programa do computador sem chave da API.
 
 - Com o cliente configurado, a aba Arquivos abre direto no "Ponto do mês", e a configuração vira uma linha "✓ Cliente configurado", com o botão "Atualizar configuração" para admissões ou mudança de rubrica.

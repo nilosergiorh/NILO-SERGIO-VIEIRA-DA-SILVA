@@ -347,11 +347,13 @@ function docsHtml(c){
     <div id="docRev"></div>
     ${L.length?`<div><span class="meta">Anexos:</span> ${L.map(d=>`<a class="link" href="/_blob/${esc(d.id)}" target="_blank" rel="noopener">${esc(d.nome)}</a> <span class="meta">(${esc(d.tipo)}, ${new Date(d.em).toLocaleDateString("pt-BR")})</span>`).join(" · ")}</div>`:""}
   </div>
-  <div class="box"><h3>Funcionários <span id="nFun"></span></h3><div id="funList"><p class="meta" style="margin:0">Carregando…</p></div></div>`;
+  <div class="box"><h3>Funcionários <span id="nFun"></span></h3>
+    ${S.somenteLeitura?"":`<div class="row-b"><button class="btn ghost" type="button" id="btnAdm">+ Informar admissão</button></div>`}
+    <div id="funForm"></div><div id="funList"><p class="meta" style="margin:0">Carregando…</p></div></div>`;
 }
 function abrirFuncionarios(c){
   if(DOC.parar) DOC.parar();
-  DOC.funcs=null; DOC.rev=null; DOC.cnpj=F.digitos(c.cnpj);
+  DOC.funcs=null; DOC.rev=null; DOC.form=null; DOC.cnpj=F.digitos(c.cnpj);
   if(!DOC.cnpj){ $("funList").innerHTML='<p class="meta" style="margin:0">Informe o CNPJ do cliente para cadastrar funcionários.</p>'; return; }
   DOC.parar=F.assinarFuncionarios(DOC.cnpj,lista=>{ DOC.funcs=lista; renderFuncs(); });
 }
@@ -364,7 +366,50 @@ function renderFuncs(){
   el.innerHTML=`<div style="overflow-x:auto"><table class="hist"><thead><tr><th>Cód.</th><th>Nome</th><th>Cargo</th><th>Admissão</th><th>Situação</th><th></th></tr></thead><tbody>${L.map((f,i)=>{
     const a=DR.idade(f.nascimento,hoje()), ativo=F.funcAtivo(f,hoje());
     return `<tr${ativo?"":' style="opacity:.55"'}><td class="mono">${esc(f.codigo||"—")}</td><td>${esc(f.nome)}${a!=null&&a<18?' <span class="pill p-er">menor</span>':""}</td><td>${esc(f.cargo||"")}</td><td>${brD(f.admissao)}</td><td>${esc(f.situacao||"")}${f.rescisao?` · rescisão ${brD(f.rescisao)}`:""}${f.ferias_ini?` · férias ${brD(f.ferias_ini)} a ${brD(f.ferias_fim)}`:""}${f.afast_ini?` · ${esc((f.afast_tipo||"afastamento").toLowerCase())} desde ${brD(f.afast_ini)}`:""}${(f.ausencias||[]).filter(x=>!x.fim||x.fim>=hoje()).map(x=>` · ${esc(({FERIAS:"férias",AFASTAMENTO:"afastamento",ATESTADO:"atestado",LICENCA:"licença",FOLGA:"folga",ABONO:"falta abonada"})[x.tipo]||x.tipo)} ${brD(x.ini)}${x.fim?" a "+brD(x.fim):""}`).join("")}</td>
-      <td>${S.somenteLeitura?"":`<button class="link" type="button" data-fdel="${i}" aria-label="Remover ${esc(f.nome)}">remover</button>`}</td></tr>`; }).join("")}</tbody></table></div>`;
+      <td style="white-space:nowrap">${S.somenteLeitura?"":`${ativo&&!f.rescisao?`<button class="link" type="button" data-fdes="${i}" aria-label="Desligar ${esc(f.nome)}">desligar</button> · `:""}<button class="link" type="button" data-fdel="${i}" aria-label="Remover ${esc(f.nome)}">remover</button>`}</td></tr>`; }).join("")}</tbody></table></div>`;
+}
+// admissão e desligamento informados à mão (sem esperar a ficha do Domínio): entram na planilha de lançamentos do mês
+function renderFunForm(){
+  const el=$("funForm"); if(!el) return; const fm=DOC.form;
+  if(!fm){ el.innerHTML=""; return; }
+  if(fm.tipo==="des"){ const f=(DOC.funcs||[])[fm.i]; if(!f){ DOC.form=null; el.innerHTML=""; return; }
+    el.innerHTML=`<div class="box" style="border-color:var(--red-hi)"><h3>Desligar ${esc(f.nome)}</h3>
+      <div class="form"><label>Data da rescisão (último dia trabalhado)<input id="fd-data" type="date" value="${esc(hoje())}"></label></div>
+      <p class="meta" style="margin:0">Ele continua na planilha de lançamentos do mês da rescisão e sai a partir do mês seguinte.</p>
+      <div class="row-b"><button class="btn" type="button" id="fdSalvar">Desligar</button><button class="btn ghost" type="button" id="fCancelar">Cancelar</button></div></div>`; return; }
+  const at=(DOC.funcs||[]).filter(f=>F.funcAtivo(f,hoje())), cont={};
+  at.forEach(f=>{ const h=f.horario&&f.horario.seg; if(h) cont[h]=(cont[h]||0)+1; });
+  const hPad=Object.entries(cont).sort((a,b)=>b[1]-a[1])[0]?.[0]||"", sPad=(at.find(f=>f.horario&&f.horario.seg===hPad)||{horario:{}}).horario.sab||"";
+  el.innerHTML=`<div class="box" style="border-color:var(--red-hi)"><h3>Informar admissão</h3>
+    <div class="form">
+      <label>Código no Domínio<input id="fa-cod" inputmode="numeric" placeholder="ex.: 53"></label>
+      <label>Data de admissão<input id="fa-adm" type="date"></label>
+      <label class="full">Nome completo<input id="fa-nome" autocomplete="off"></label>
+      <label>Cargo<input id="fa-cargo"></label>
+      <label>Data de nascimento<input id="fa-nasc" type="date"></label>
+      <label>Horário de segunda a sexta<input id="fa-hor" value="${esc(hPad)}" placeholder="07:30-12:00 13:30-17:48"></label>
+      <label>Horário de sábado<input id="fa-sab" value="${esc(sPad)}" placeholder="vazio = não trabalha"></label>
+    </div>
+    <p class="meta" style="margin:0">Sem CPF, endereço ou salário: o cadastro guarda só o que o Ponto usa. A ficha do Domínio, quando chegar, completa o cadastro. A data de nascimento serve para o aviso de menor de 18 anos.</p>
+    <div class="row-b"><button class="btn" type="button" id="faSalvar">Salvar admissão</button><button class="btn ghost" type="button" id="fCancelar">Cancelar</button></div></div>`;
+  $("fa-cod").focus();
+}
+async function salvarAdmissao(){
+  const v=id=>String($(id).value||"").trim();
+  const nome=v("fa-nome").toUpperCase().replace(/\s+/g," "), adm=v("fa-adm"), cod=v("fa-cod").replace(/\D/g,""), hor=v("fa-hor"), sab=v("fa-sab");
+  if(!nome||!adm){ toast("Informe o nome e a data de admissão."); return; }
+  if(cod&&(DOC.funcs||[]).some(f=>String(f.codigo)===cod&&F.chaveNome(f.nome)!==F.chaveNome(nome))){ toast(`O código ${cod} já é de outro funcionário.`); return; }
+  const hv=h=>!h||/^(\d{1,2}:\d{2}-\d{1,2}:\d{2})(\s+\d{1,2}:\d{2}-\d{1,2}:\d{2})*$/.test(h);
+  if(!hv(hor)||!hv(sab)){ toast("Horário no formato 07:30-12:00 13:30-17:48."); return; }
+  const novo={codigo:cod,nome,cargo:v("fa-cargo").toUpperCase(),admissao:adm,nascimento:v("fa-nasc"),situacao:"Trabalhando",origem:"manual",horario:{seg:hor,ter:hor,qua:hor,qui:hor,sex:hor,sab,dom:""}};
+  const lista=F.mesclarFuncionarios(DOC.funcs||[],[novo]);
+  try{ await F.salvarFuncionarios(DOC.cnpj,lista); DOC.funcs=lista; DOC.form=null; renderFunForm(); renderFuncs(); toast(cod?"Admissão salva: já entra na planilha de lançamentos do mês.":"Admissão salva. Falta o código do Domínio: sem ele o TXT fica bloqueado."); }
+  catch(x){ toast("Não foi possível salvar."); }
+}
+async function salvarDesligamento(){
+  const f=(DOC.funcs||[])[DOC.form.i], d=$("fd-data").value; if(!f||!d){ toast("Informe a data."); return; }
+  const lista=(DOC.funcs||[]).map((x,i)=>i===DOC.form.i?{...x,rescisao:d,situacao:"Demitido",atualizado:new Date().toISOString()}:x);
+  try{ await F.salvarFuncionarios(DOC.cnpj,lista); DOC.funcs=lista; DOC.form=null; renderFunForm(); renderFuncs(); toast("Desligamento salvo."); }catch(x){ toast("Não foi possível salvar."); }
 }
 function docSt(t){ const p=$("docSt"); if(p) p.textContent=t; }
 async function lerEmpresa(c,files){
@@ -449,6 +494,11 @@ $("drawer").addEventListener("change",e=>{
 $("drawer").addEventListener("click",async e=>{
   if(e.target.id==="revAplicar"){ aplicarRev(); return; }
   if(e.target.id==="revDesc"){ DOC.rev=null; renderRev(); docSt(""); return; }
+  if(e.target.id==="btnAdm"){ DOC.form={tipo:"adm"}; renderFunForm(); return; }
+  if(e.target.id==="fCancelar"){ DOC.form=null; renderFunForm(); return; }
+  if(e.target.id==="faSalvar"){ salvarAdmissao(); return; }
+  if(e.target.id==="fdSalvar"){ salvarDesligamento(); return; }
+  const des=e.target.closest("[data-fdes]"); if(des){ DOC.form={tipo:"des",i:+des.dataset.fdes}; renderFunForm(); $("funForm").scrollIntoView({behavior:"smooth",block:"center"}); return; }
   const del=e.target.closest("[data-fdel]");
   if(del){ if(!del.dataset.arm){ del.dataset.arm=1; del.textContent="confirmar?"; setTimeout(()=>{ if(del.isConnected){ delete del.dataset.arm; del.textContent="remover"; } },3500); return; }
     const L=(DOC.funcs||[]).filter((_,i)=>i!==+del.dataset.fdel); try{ await F.salvarFuncionarios(DOC.cnpj,L); DOC.funcs=L; renderFuncs(); toast("Funcionário removido do cadastro."); }catch(x){ toast("Não foi possível remover."); } return; }

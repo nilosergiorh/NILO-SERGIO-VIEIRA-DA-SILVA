@@ -65,7 +65,7 @@ painel_sindical_exato/
   ia.py                              leitura com o Claude (texto e fotos)
   config.py                          pasta de dados e preferências
   web/local.js                       adaptador: liga os módulos ao banco local
-  web/vendor/                        pdf.js, pdf-lib, JSZip, SheetJS (offline)
+  web/vendor/                        pdf.js, pdf-lib, JSZip, SheetJS, ExcelJS (offline)
 installer/PainelSindicalExato.iss    instalador (Inno Setup)
 .github/workflows/build-windows.yml  gera o .exe e o instalador a cada envio
 tests/                               testes automatizados
