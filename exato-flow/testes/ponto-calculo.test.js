@@ -146,4 +146,13 @@ const txtLv=P.linhasTxt({empresa:206,comp:'2026-09',processo:11,formato:'SEXAGES
 eq('jornada de meio período (Levir): 3:35 por falta e por DSR, 2 semanas',txtLv.linhas.filter(l=>l.startsWith('10')),['1000000000502026090040110000007100000000206','1000000000502026090042110000007100000000206']);
 const apDom=P.apurar({jornada:'padrao',dias:fal(6),lanc:{avisos:['Faltas dia inteiro: "31" não é dia de 09/2026']}},'2026-09',OL);
 eq('falta em domingo e dia inválido da planilha viram pendência',[apDom.dias[5].alertas.some(a=>/sem expediente/.test(a.t)),apDom.tot.alertasAltos],[true,2]);
+
+// ---------- RODOARA: planilha de lançamentos com falta em DIAS ----------
+const RD={...OL,falta:{rub:40,min:528,unidade:'dias'}};
+const D10=d=>'2026-10-'+String(d).padStart(2,'0');
+const apAl=P.apurar({jornada:'padrao',dias:{[D10(13)]:{m:'',oc:'FALTA'},[D10(14)]:{m:'',oc:'FALTA'}},lanc:{he50:576}},'2026-10',RD);
+const txtAl=P.linhasTxt({empresa:166,comp:'2026-10',processo:11,formato:'SEXAGESIMAL',regras:{...P.REGRAS_PADRAO,...RD},funcionarios:[{cod:47,nome:'ALAN',apur:apAl,minFalta:528,minDsr:440}]});
+eq('Rodoara: falta em dias (2 = 200), registro 11 e DSR 7:20 como o exemplo real do Alan',txtAl.linhas,['1000000000472026100150110000009360000000166','1000000000472026100040110000002000000000166','11202610131','11202610141','1000000000472026100042110000007200000000166']);
+const apFer=P.apurar({jornada:'padrao',dias:{[D10(12)]:{m:'',oc:'FALTA'}},lanc:{}},'2026-10',RD);
+eq('falta digitada em feriado (12/10) vira pendência',apFer.dias[11].alertas.some(a=>/sem expediente/.test(a.t)),true);
 console.log(`${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);
