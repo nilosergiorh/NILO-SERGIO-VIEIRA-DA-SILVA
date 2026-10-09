@@ -319,7 +319,10 @@ dialog::backdrop{background:var(--scrim)}
             <label>Limite da faixa 1 conta<select id="r-lim"><option value="mes">no mês (ex.: 30h a 70%)</option><option value="dia">em cada dia (ex.: 2h a 50%)</option></select></label>
             <label>Rubrica faixa 1<input id="r-r1" inputmode="numeric"></label>
             <label>HE dia útil: % faixa 2<input id="r-p2" inputmode="numeric" placeholder="não usa"></label>
+            <label>Faixa 2 até (h:mm, total acumulado)<input id="r-a2" placeholder="sem limite"></label>
             <label>Rubrica faixa 2<input id="r-r2" inputmode="numeric"></label>
+            <label>HE dia útil: % faixa 3<input id="r-p3" inputmode="numeric" placeholder="não usa"></label>
+            <label>Rubrica faixa 3<input id="r-r3" inputmode="numeric"></label>
             <label>HE domingo/feriado/folga %<input id="r-p100" inputmode="numeric"></label>
             <label>Rubrica domingo/feriado<input id="r-r100" inputmode="numeric"></label>
             <label>Rubrica horas faltas (atrasos)<input id="r-rhf" inputmode="numeric"></label>
@@ -742,7 +745,9 @@ function regDe(e){
   const k=chave(e.nome); let x=L.find(f=>chave(f.nome)===k); if(x) return x;
   const b=k.split(" "); if(b.length<2) return null;
   const c=L.filter(f=>{ const a=chave(f.nome).split(" "); return a.length>1&&a[0]===b[0]&&a[a.length-1]===b[b.length-1]; });
-  return c.length===1?c[0]:null;
+  if(c.length===1) return c[0];
+  const p=L.filter(f=>chave(f.nome)===b[0]);   // cadastro só com o primeiro nome
+  return p.length===1?p[0]:null;
 }
 // jornada a partir do horário da ficha: id fixo pelo horário, criada nas regras na primeira vez que aparece
 function jornadaDoHorario(h){
@@ -1103,7 +1108,7 @@ function renderTxt(){
     const ini=periodo()[0].data, fim=periodo()[periodo().length-1].data;
     const ativos=reg.filter(f=>F.funcAtivo(f,ini)&&!(f.admissao&&f.admissao>fim));
     const cobre=(i,f2)=>i&&i<=ini&&(!f2||f2>=fim);  // férias ou afastamento no período inteiro
-    const semPonto=ativos.filter(f=>!S.doc.emps.some(e=>regDe(e)===f)&&!cobre(f.ferias_ini,f.ferias_fim)&&!cobre(f.afast_ini,f.afast_fim));
+    const semPonto=ativos.filter(f=>f.ponto!=="nao"&&!S.doc.emps.some(e=>regDe(e)===f)&&!cobre(f.ferias_ini,f.ferias_fim)&&!cobre(f.afast_ini,f.afast_fim));
     if(semPonto.length) it.push(["at",`${semPonto.length} funcionário(s) do Domínio sem ponto no período: ${semPonto.slice(0,4).map(f=>f.nome).join(", ")}${semPonto.length>4?"…":""}. Confira se estão de férias, afastados ou se o cliente esqueceu de enviar.`]);
     const fora=S.doc.emps.filter(e=>!regDe(e));
     if(fora.length) it.push(["at",`${fora.length} funcionário(s) do ponto fora do cadastro de funcionários: ${fora.slice(0,4).map(e=>e.nome).join(", ")}${fora.length>4?"…":""}. Confira o nome e o código ou envie a ficha.`]);
@@ -1133,7 +1138,9 @@ function preencherRegras(){
   const R=S.regras, f1=R.he.faixas[0]||{}, f2=R.he.faixas[1]||{};
   const set=(id,v)=>{$(id).value=v??"";};
   set("r-tol",R.tolDia); set("r-tolm",R.tolMarc??5); $("r-calc").value=R.calc||"saldo"; $("r-tolr").value=R.tolRegra||"sumula366"; $("r-sem").value=R.semMarcacao||"pendente"; set("r-p1",f1.pct); set("r-a1",f1.ate!=null&&R.he.faixas.length>1?P.fmt(f1.ate):""); set("r-r1",f1.rub);
-  set("r-p2",R.he.faixas.length>1?f2.pct:""); set("r-r2",R.he.faixas.length>1?f2.rub:"");
+  const f3=R.he.faixas[2]||{};
+  set("r-p2",R.he.faixas.length>1?f2.pct:""); set("r-r2",R.he.faixas.length>1?f2.rub:""); set("r-a2",R.he.faixas.length>2&&f2.ate!=null?P.fmt(f2.ate):"");
+  set("r-p3",R.he.faixas.length>2?f3.pct:""); set("r-r3",R.he.faixas.length>2?f3.rub:"");
   set("r-p100",R.he.domFer.pct); set("r-r100",R.he.domFer.rub); set("r-rhf",R.hfalta.rub); set("r-rf",R.falta.rub); set("r-rd",R.dsr.rub); $("r-gd").checked=!!R.dsr.gerar;
   $("r-lim").value=R.he.limite||"mes"; $("r-sab").checked=!!R.he.sab100; $("r-iv").value=String(R.interv.modo||2);
   set("r-meio",R.dsr.meio?P.fmt(R.dsr.meio):""); set("r-nrr",R.not.rubRed); set("r-ini",R.periodo.diaIni>1?R.periodo.diaIni:""); $("r-r11").checked=R.txt.reg11!==false;
@@ -1145,9 +1152,12 @@ function lerRegras(){
   const R=S.regras, n=id=>{const v=String($(id).value).trim();return v===""?"":Number(v.replace(",","."));};
   R.tolDia=n("r-tol")===""?10:n("r-tol"); R.tolMarc=n("r-tolm")===""?5:n("r-tolm");
   R.calc=$("r-calc").value; R.tolRegra=$("r-tolr").value; R.semMarcacao=$("r-sem").value;
-  const a1=P.hm($("r-a1").value), p2=n("r-p2");
+  // faixas de HE: "até" é o total acumulado de horas extras (no mês ou no dia) em que a faixa termina
+  const hm2=id=>{ const v=String($(id).value).trim(); if(!v) return null; const m=v.match(/^(\d{1,3})(?::(\d{2}))?$/); return m?(+m[1])*60+(+(m[2]||0)):P.hm(v); };
+  const a1=hm2("r-a1"), a2=hm2("r-a2"), p2=n("r-p2"), p3=n("r-p3");
   R.he.faixas=[{ate:p2!==""&&a1!=null?a1:null,pct:n("r-p1")||50,rub:n("r-r1")}];
-  if(p2!==""&&a1!=null) R.he.faixas.push({ate:null,pct:p2,rub:n("r-r2")});
+  if(p2!==""&&a1!=null) R.he.faixas.push({ate:p3!==""&&a2!=null&&a2>a1?a2:null,pct:p2,rub:n("r-r2")});
+  if(p2!==""&&a1!=null&&p3!==""&&a2!=null&&a2>a1) R.he.faixas.push({ate:null,pct:p3,rub:n("r-r3")});
   R.he.domFer={pct:n("r-p100")||100,rub:n("r-r100")}; R.hfalta={rub:n("r-rhf")}; R.falta={...R.falta,rub:n("r-rf")}; R.dsr={...R.dsr,rub:n("r-rd"),gerar:$("r-gd").checked};
   R.not={ini:$("r-ni").value.trim()||"22:00",fim:$("r-nf").value.trim()||"05:00",pct:n("r-np")||20,rub:n("r-nr"),reduzida:$("r-nred").checked,prorroga:$("r-npr").checked};
   R.formato=$("r-fmt").value; R.processo=+$("r-proc").value;

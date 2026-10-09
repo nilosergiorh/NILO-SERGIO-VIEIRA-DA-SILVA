@@ -114,4 +114,9 @@ eq('sábado a 100% no modo marcação',[N(x.he100),x.heUtil],['6:00',0]);
 const txtEco=P.linhasTxt({empresa:310,comp:'2026-09',processo:11,formato:'SEXAGESIMAL',regras:{...P.REGRAS_PADRAO,...ECO},
   funcionarios:[{cod:24,nome:'MATEUS',apur:{tot:{heFaixas:[{pct:50,rub:150,min:0}],he100:746,hfalta:0,noturnoLancar:0,reducaoNoturna:0,faltas:[],semanasDsr:[]}}}]});
 eq('TXT igual ao exemplo real da ECO HAM (Mateus, HE 100% 12:26)',txtEco.linhas,['1000000000242026090200110000012260000000310']);
+
+// ---------- PIASSESKI: 3 faixas mensais (50% até 10h, 60% até 40h, 100% acima) ----------
+const muito3={}; for(let d=1;d<=30;d++){ const w=new Date(Date.UTC(2026,8,d)).getUTCDay(); if(w>=1&&w<=5&&d!==7) muito3[D(d)]={m:'07:30 12:00 13:30 20:48'}; }
+const ap5=P.apurar({jornada:'padrao',dias:muito3},'2026-09',{he:{faixas:[{ate:600,pct:50,rub:150},{ate:2400,pct:60,rub:201},{ate:null,pct:100,rub:200}],domFer:{pct:100,rub:200},limite:'mes'}});
+eq('3 faixas no mês (21 dias x 3h = 63h -> 10h + 30h + 23h)',ap5.tot.heFaixas.map(x=>N(x.min)),['10:00','30:00','23:00']);
 console.log(`${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);
