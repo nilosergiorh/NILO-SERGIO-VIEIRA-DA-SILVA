@@ -169,7 +169,7 @@
       if(dec==="rescindir") return {...o,fase:"rescindir",periodo:n,fim,nivel:difDias(fim,ref)>=0?"warn":"info",dias:difDias(fim,ref),texto:`Rescisão no fim da experiência em ${fmtData(fim)}`};
       if(dec==="efetivar") return {...o,fase:"efetivado",periodo:n,fim,nivel:null,texto:`Efetivado após a experiência (${fmtData(fim)})`};
       const dias=difDias(fim,ref);
-      if(dias<0) return {...o,fase:"vencido",periodo:n,fim,dias,opcoes:opc,nivel:"crit",
+      if(dias<0) return {...o,fase:"vencido",periodo:n,fim,dias,opcoes:opc.filter(a=>a!=="prorrogar"),nivel:"crit",   // prorrogar depois do vencimento n\u00e3o vale (art. 451)
         texto:n===1&&d2?`1º período venceu em ${fmtData(fim)} sem decisão registrada. Se não houve prorrogação assinada antes do vencimento e ele continuou trabalhando, o contrato virou por prazo indeterminado (art. 451 da CLT)`
                                  :`Experiência terminou em ${fmtData(fim)} sem decisão registrada. Se ele continuou trabalhando, o contrato já é por prazo indeterminado: registre como efetivado`};
       if(dias<=EXP_AVISO) return {...o,fase:"decidir",periodo:n,fim,dias,opcoes:opc,nivel:dias<=2?"crit":"warn",

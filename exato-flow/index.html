@@ -403,7 +403,7 @@ function abrir(v){
   if(m && !box.querySelector("iframe")){
     const ld=document.createElement("div"); ld.className="loading"; ld.textContent="Abrindo "+m.title+"…";
     const f=document.createElement("iframe"); f.src=m.src; f.title=m.title;
-    f.addEventListener("load",()=>ld.remove(),{once:true});
+    f.addEventListener("load",()=>{ ld.remove(); f.dataset.ok="1"; },{once:true});
     box.append(ld,f);
   }
   VIEWS.forEach(x=>{document.getElementById("v-"+x).hidden = x!==v});
@@ -426,7 +426,11 @@ document.addEventListener("click",e=>{
 // Um módulo pede para abrir outro (ex.: ficha do cliente → Painel Sindical)
 window.addEventListener("message",e=>{
   if(e.origin!==location.origin||!e.data||e.data.flow!=="abrir") return;
-  abrir(String(e.data.tela||""));
+  const tela=String(e.data.tela||""); abrir(tela);
+  // um módulo pede para abrir outro já preenchido (ex.: Clientes → Contratos com o termo de prorrogação)
+  if(e.data.dados){ const f=document.querySelector("#v-"+tela+" iframe"); if(!f) return;
+    const enviar=()=>{ try{ f.contentWindow.postMessage({flow:"dados",...e.data.dados},location.origin); }catch(x){} };
+    if(f.dataset.ok) enviar(); else f.addEventListener("load",enviar,{once:true}); }
 });
 
 // ---------- painel ----------

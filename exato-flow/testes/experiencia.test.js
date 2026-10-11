@@ -8,6 +8,7 @@ eq('45+45: fim do 1º período conta o dia da admissão',[x.fim1,x.fim2,x.fase],
 x=F.experiencia(f,'2026-11-07'); eq('7 dias antes: pede decisão com prorrogar',[x.fase,x.nivel,x.dias,x.opcoes],['decidir','warn',7,['prorrogar','efetivar','rescindir']]);
 x=F.experiencia(f,'2026-11-13'); eq('a 1 dia: urgente',[x.nivel,/amanhã/.test(x.texto)],['crit',true]);
 x=F.experiencia(f,'2026-11-16'); eq('venceu sem decisão: alerta art. 451',[x.fase,x.nivel,/451/.test(x.texto)],['vencido','crit',true]);
+eq('vencido: prorrogar não é mais opção (art. 451)',F.experiencia(f,'2026-11-16').opcoes,['efetivar','rescindir']);
 x=F.experiencia({...f,exp_dec1:'prorrogar'},'2026-12-23'); eq('prorrogado: acompanha o 2º período',[x.periodo,x.fase,x.opcoes],[2,'decidir',['efetivar','rescindir']]);
 x=F.experiencia({...f,exp_dec1:'prorrogar',exp_dec2:'efetivar'},'2026-12-23'); eq('efetivado: sem alerta',[x.fase,x.nivel],['efetivado',null]);
 x=F.experiencia({...f,exp_dec1:'rescindir',rescisao:'2026-11-14'},'2026-11-10'); eq('rescisão registrada no fim do 1º período',[x.fase,x.fim],['rescindir','2026-11-14']);

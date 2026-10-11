@@ -435,7 +435,8 @@ function expCell(f,i){
   const cor={crit:"p-er",warn:"p-at",info:"p-nt"}[x.nivel]||"p-ok";
   const rot={curso:"em curso",decidir:"decidir",vencido:"vencido",efetivado:"efetivado",rescindir:"rescisão"}[x.fase]||x.fase;
   const bt=(a,t)=>`<button class="link" type="button" data-expac="${i}|${a}">${t}</button>`;
-  const acoes=S.somenteLeitura?"":`<button class="link" type="button" data-expedit="${i}">prazos</button>`;   // decisões ficam no quadro do topo
+  const termo=f.exp_dec1==="prorrogar"&&x.periodo===2&&x.fase!=="efetivado"&&x.fase!=="rescindir"?`<button class="link" type="button" data-exptermo="${i}">termo</button> · `:"";
+  const acoes=S.somenteLeitura?"":termo+`<button class="link" type="button" data-expedit="${i}">prazos</button>`;   // decisões ficam no quadro do topo
   const quando=x.fim?(x.fase==="efetivado"?"":(x.fase==="rescindir"?"fim ":"até ")+brD(x.fim).slice(0,5)):"";
   return `<span class="pill ${cor}" title="${esc(x.texto)}">${rot}</span><span class="meta" style="display:block;white-space:nowrap" title="${esc(x.texto)}">${x.dias1?x.dias1+(x.dias2?"+"+x.dias2:"")+" d":""}${quando?" · "+quando:""}${x.erro?" · acima de 90 d":""}</span>${acoes}`;
 }
@@ -443,12 +444,14 @@ async function gravarFunc(i,campos,msg){
   const lista=(DOC.funcs||[]).map((x,j)=>j===i?{...x,...campos,atualizado:new Date().toISOString()}:x);
   try{ await F.salvarFuncionarios(DOC.cnpj,lista); DOC.funcs=lista; DOC.form=null; renderFunForm(); renderFuncs(); if(msg) toast(msg); }catch(e){ toast("Não foi possível salvar."); }
 }
+function abrirTermo(f){ try{ window.parent.postMessage({flow:"abrir",tela:"contratos",dados:{cnpj:DOC.cnpj,codigo:f.codigo,nome:f.nome,tipo:"prorrogacao"}},location.origin); }catch(x){} }
 async function decidirExp(i,acao){
   const f=(DOC.funcs||[])[i], x=f&&F.experiencia(f,hoje()); if(!x) return;
   const k=x.periodo===2?"exp_dec2":"exp_dec1", em=new Date().toISOString();
   if(acao==="rescindir"){ DOC.form={tipo:"rescexp",i}; renderFunForm(); $("funForm").scrollIntoView({behavior:"smooth",block:"center"}); return; }
   if(acao==="prorrogar"){ if(!x.dias2){ toast("Informe os dias da prorrogação."); DOC.form={tipo:"exp",i}; renderFunForm(); return; }
-    return gravarFunc(i,{exp_dec1:"prorrogar",exp_dec1_em:em},`Prorrogação registrada: novo vencimento em ${brD(x.fim2)}. Confira se o termo de prorrogação foi assinado antes de ${brD(x.fim1)}.`); }
+    await gravarFunc(i,{exp_dec1:"prorrogar",exp_dec1_em:em},`Prorrogação registrada: novo vencimento em ${brD(x.fim2)}. O termo de prorrogação abre no módulo Contratos: assine até ${brD(x.fim1)}.`);
+    abrirTermo(f); return; }
   if(acao==="efetivar") return gravarFunc(i,{[k]:"efetivar",[k+"_em"]:em},`${f.nome} efetivado: contrato por prazo indeterminado a partir de ${brD(F.addDias(x.fim,1))}.`);
 }
 async function salvarDesligamento(){
@@ -544,6 +547,7 @@ $("drawer").addEventListener("click",async e=>{
   if(e.target.id==="faSalvar"){ salvarAdmissao(); return; }
   if(e.target.id==="fdSalvar"){ salvarDesligamento(); return; }
   const xa=e.target.closest("[data-expac]"); if(xa){ const [i,ac]=xa.dataset.expac.split("|"); decidirExp(+i,ac); return; }
+  const xt=e.target.closest("[data-exptermo]"); if(xt){ abrirTermo(DOC.funcs[+xt.dataset.exptermo]); return; }
   const xe=e.target.closest("[data-expedit]"); if(xe){ DOC.form={tipo:"exp",i:+xe.dataset.expedit}; renderFunForm(); $("funForm").scrollIntoView({behavior:"smooth",block:"center"}); return; }
   if(e.target.id==="feSalvar"){ const e1=parseInt($("fe-1").value)||0, e2=parseInt($("fe-2").value)||0;
     if(e1+e2>90){ toast("No máximo 90 dias somando a prorrogação (art. 445 da CLT)."); return; } if(e2&&!e1){ toast("Informe o 1º período."); return; }

@@ -192,6 +192,7 @@ contrato de experiência, contrato por prazo indeterminado, termo de prorrogaç�
 - Cada cláusula cita a base legal. Percentuais da CCT não são fixados: o contrato remete à convenção vigente e garante os mínimos legais.
 - Bloqueia: salário abaixo do menor piso, experiência acima de 90 dias, mais de 44h sem compensação, intervalo menor que 1h, menor sem responsável legal, menor de 16 fora de aprendizagem,
   termo de prorrogação depois do fim do 1º período. Avisa: dia acima de 8h sem compensação, salário abaixo do piso após a experiência, domingo, assinatura depois da admissão.
+- **Ligação com o contrato de experiência:** "prorrogar" na ficha do cliente registra a decisão e abre o Contratos com o termo de prorrogação do funcionário (datado no dia; bloqueado depois do fim do 1º período). Vencido o 1º período, "prorrogar" deixa de ser opção (art. 451).
 - O texto-base deve ser validado uma vez por advogado trabalhista antes do uso.
 
 ## Contrato de experiência
