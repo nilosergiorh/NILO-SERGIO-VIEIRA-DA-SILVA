@@ -233,5 +233,8 @@ O programa é publicado como Artifact no claude.ai, no mesmo endereço do antigo
 
 ## Próximos passos
 
-- **Versão para computador** (branch `claude/gallant-lovelace-pidnih`): incluir o módulo Ponto em `web/modulos` e os arquivos de `nucleo`.
+- **Auditoria do eSocial (em espera, aguardando acesso ao sistema)**: totalizadores S-5001/S-5002/S-5003 × folha, S-5011/S-5013 × DCTFWeb e FGTS Digital,
+  prazos de S-2200/S-2299/S-1200/S-1299, cadastro S-2200/S-2206 × ficha e extrato, S-2230 × ponto e folha. Falta um exemplo do que dá para exportar
+  (XMLs pelo Domínio ou pelo portal, relatório de conferência do Domínio, extrato da DCTFWeb e guia do FGTS Digital).
+- **Leitura do prazo de experiência na Ficha de Empregado**: conferir com uma ficha real que traga o campo.
 - **Tabelas com vigência**: faixas do INSS, IRRF e valores de CCT guardados com data de início, para não ficarem fixos no código.
