@@ -201,7 +201,10 @@
   .pse-head{display:flex;gap:14px;align-items:center}
   .pse-head img{width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:50% 35%;border:2px solid #ff2d2d;background:#18181b}
   .pse-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:210;max-width:min(92vw,620px);background:rgba(28,28,32,.95);color:#f3f3f5;border:1px solid rgba(255,255,255,.16);
-    border-left:3px solid #ff2d2d;padding:10px 16px;border-radius:12px;font:14px "Manrope",sans-serif}`;
+    border-left:3px solid #ff2d2d;padding:10px 16px;border-radius:12px;font:14px "Manrope",sans-serif}
+  .pse-vazio{position:fixed;top:0;left:0;right:0;z-index:190;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px;padding:10px 16px;
+    background:linear-gradient(180deg,#b00000,#7a0000);color:#fff;font:600 14px "Manrope","Segoe UI",sans-serif;box-shadow:0 8px 20px -8px rgba(0,0,0,.8)}
+  .pse-vazio .pse-btn{background:#fff;color:#7a0000;box-shadow:0 3px 0 rgba(0,0,0,.35)}`;
   function estilos() { if (document.getElementById("pse-css")) return; const s = document.createElement("style"); s.id = "pse-css"; s.textContent = CSS; document.head.append(s); }
   function aviso(msg) {
     estilos();
@@ -303,6 +306,17 @@
       };
     });
   }
+  // programa sem dados: faixa fixa no topo até a importação (a janela de boas-vindas pode ser fechada sem querer)
+  function faixaVazia() {
+    if (document.getElementById("pse-vazio")) return;
+    estilos();
+    const f = document.createElement("div");
+    f.id = "pse-vazio"; f.className = "pse-vazio"; f.setAttribute("role", "alert");
+    f.innerHTML = `<span>⚠️ O programa está sem dados. Importe o arquivo <b>ExatoFlow_dados_….zip</b> (o próprio .zip, sem extrair).</span>
+      <button class="pse-btn" type="button">📥 Importar dados (.zip)</button>`;
+    f.querySelector("button").onclick = () => abrirConfig(true);
+    document.body.append(f);
+  }
   window.PSE = { abrirConfig, perguntarNome };
 
   // botão "Dados" no trilho e ajustes dos módulos para o computador
@@ -340,7 +354,7 @@
     }
     vigiarModulos();
     const i = await pronto;
-    if (i && i.vazio) abrirConfig(true);
+    if (i && i.vazio) { faixaVazia(); abrirConfig(true); }
     else if (i && !i.nome) perguntarNome();
   });
 })();
