@@ -196,6 +196,8 @@ Entrada: Extrato Mensal do Domínio em PDF (um ou vários meses). Conferências:
   alerta se a cota não for 20% ou o RAT ajustado sair de 0,5%–6%. Com o regime preenchido no cadastro, cruza com a folha.
 - **Tabelas** por ano em `TABELAS` com a fonte oficial (2026: Portaria MPS/MF 13/2026; Receita Federal - Tributação de 2026). Ano sem tabela não é auditado.
 - Resultado salvo em `auditorias_folha/{cnpj}_{AAAAMM}` (sem CPF) e relatório em Excel.
+- **Tabelas INSS e IR** (botão no topo): tabelas do ano com faixas, parcela a deduzir, redução da Lei 15.270, dependente, simplificado, FGTS, mínimo e salário-família, com as fontes.
+- **Simular salário líquido** (botão no topo e atalho "Simular líquido" no Painel): salário, outros proventos, dependentes, pensão, vale-transporte (6%, limitado ao custo) e outros descontos; mostra o holerite com INSS, IRRF (base, simplificado ou deduções, redução) e líquido.
 
 ## Publicação
 

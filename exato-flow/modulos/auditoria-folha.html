@@ -217,6 +217,13 @@ dialog::backdrop{background:var(--scrim)}
 .lst li small{display:block;color:var(--mute);font-size:.78rem}
 .dif{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .dif.neg{color:var(--er)}
+#dlgTab{width:min(96vw,1080px);background:var(--bg);border:1px solid var(--line)}
+#dlgTab .tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:16px}
+#dlgTab .kpi b,#dlgSim .kpi b{font-size:1.25rem;white-space:nowrap}
+#dlgSim{width:min(96vw,980px);background:var(--bg);border:1px solid var(--line)}
+#dlgSim .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+#dlgSim .fld input,#dlgSim .fld select{width:100%}
+.hol td.v{text-align:right;font-family:var(--f-mono);white-space:nowrap} .hol tr.totl td{font-weight:800;border-top:2px solid var(--line)}
 </style>
 <link rel="stylesheet" href="../nucleo/tema-exato.css">
 </head><body>
@@ -229,6 +236,8 @@ dialog::backdrop{background:var(--scrim)}
     <label class="fld cli">Cliente<input id="cli" list="dl-cli" placeholder="Digite o nome, código ou CNPJ" autocomplete="off"></label>
     <datalist id="dl-cli"></datalist>
     <label class="fld">Competência<select id="comp" disabled><option value="">envie o extrato</option></select></label>
+    <button class="btn ghost" type="button" id="btnTab">Tabelas INSS e IR</button>
+    <button class="btn ghost" type="button" id="btnSim">Simular salário líquido</button>
     <div class="st"><span id="stPill"></span><span class="sync" id="sync"><i></i><span>Conectando…</span></span></div>
   </div>
   <div class="banner" id="aviso" hidden></div>
@@ -255,6 +264,25 @@ dialog::backdrop{background:var(--scrim)}
     </div>
   </div>
 </div>
+<dialog id="dlgTab" aria-label="Tabelas de INSS e IRRF"><div style="padding:18px 20px;display:grid;gap:12px;max-width:1040px">
+  <div class="row" style="justify-content:space-between"><label class="fld">Ano<select id="tAno"></select></label><button class="btn ghost sm" type="button" id="tFechar">Fechar</button></div>
+  <div id="tBody" style="display:grid;gap:10px"></div>
+  <div class="row"><button class="btn" type="button" id="tSim">Simular salário líquido</button></div>
+</div></dialog>
+<dialog id="dlgSim" aria-label="Simular salário líquido"><div style="padding:18px 20px;display:grid;gap:12px">
+  <div class="row" style="justify-content:space-between"><h2>Simular salário líquido</h2><button class="btn ghost sm" type="button" id="sFechar">Fechar</button></div>
+  <div class="sgrid">
+    <label class="fld">Salário base (R$)<input id="sSal" inputmode="decimal" placeholder="ex.: 3.500,00"></label>
+    <label class="fld">Outros proventos tributáveis (R$)<input id="sProv" inputmode="decimal" placeholder="HE, adicionais, comissão"></label>
+    <label class="fld">Dependentes para IR<input id="sDep" inputmode="numeric" value="0"></label>
+    <label class="fld">Pensão alimentícia (R$)<input id="sPen" inputmode="decimal" placeholder="judicial ou homologada"></label>
+    <label class="fld">Vale-transporte<select id="sVT"><option value="0">Não usa</option><option value="1">Usa (6% do salário base)</option></select></label>
+    <label class="fld">Custo do VT no mês (R$)<input id="sVTc" inputmode="decimal" placeholder="opcional: limita o desconto"></label>
+    <label class="fld">Outros descontos (R$)<input id="sOut" inputmode="decimal" placeholder="adiantamento, plano de saúde"></label>
+    <label class="fld">Ano das tabelas<select id="sAno"></select></label>
+  </div>
+  <div id="sRes"></div>
+</div></dialog>
 <div class="toast" id="toast" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="../nucleo/flow-dados.js" charset="utf-8"></script>
@@ -393,13 +421,65 @@ function pPatronal(){
     <p class="note">% efetivo = valor ÷ salário de contribuição dos empregados (${brl(P.base)}). Confira o RAT ajustado com o RAT do CNAE × FAP do ano (consulta no site da Previdência) e os Terceiros com o FPAS da empresa. Total INSS da folha: ${brl(P.total)}.</p></div>`;
 }
 function pTabelas(){
-  const T=S.res.T; if(!T) return `<div class="banner er">Sem tabelas para ${S.res.comp.slice(-4)}.</div>`;
-  let a=0; const inss=T.inss.faixas.map(([l,p])=>{ const t=`${brl(a+ (a?0.01:0))} a ${brl(l)}: ${pct(p)}`; a=l; return t; });
-  return `<div class="card"><h2>Tabelas usadas em ${S.res.comp}</h2>
-    <p><b>INSS do empregado</b><br>${inss.join("<br>")}<br><small>${esc(T.inss.fonte)}</small></p>
-    <p><b>IRRF mensal</b><br>${T.irrf.faixas.map(([l,p,d])=>`até ${l===Infinity?"acima":brl(l)}: ${pct(p)} (deduzir ${brl(d)})`).join("<br>")}<br>Dependente ${brl(T.irrf.dependente)} · desconto simplificado ${brl(T.irrf.simplificado)} · redução: zera o imposto até ${brl(T.irrf.reducao.ate)} de rendimentos; de ${brl(T.irrf.reducao.ate+0.01)} a ${brl(T.irrf.reducao.limite)}, ${brl(T.irrf.reducao.a)} − 0,133145 × rendimentos<br><small>${esc(T.irrf.fonte)}</small></p>
-    <p><b>FGTS</b> ${pct(T.fgts.aliquota)} (aprendiz ${pct(T.fgts.aprendiz)}) · <b>Salário mínimo</b> ${brl(T.salarioMinimo.valor)} · <b>Salário-família</b> ${brl(T.salarioFamilia.cota)} até ${brl(T.salarioFamilia.limite)}</p>
-    <p class="note">Valores conferidos nas fontes oficiais em ${esc(T.conferido.split("-").reverse().join("/"))}. Ano novo: confira e inclua a tabela no Flow antes de auditar.</p></div>`;
+  const ano=S.res.comp.slice(-4), T=A.TABELAS[ano];
+  return T?`<div class="card">${tabelasHtml(T,ano)}</div>`:`<div class="banner er">Sem tabelas para ${ano}.</div>`;
+}
+// tabelas do ano: usadas na aba Tabelas e no botão do topo
+function tabelasHtml(T,ano){
+  const b=v=>brl(v).replace("R$ ",""), deI=[]; let ant=0, acum=0;
+  const inss=T.inss.faixas.map(([lim,al])=>{ const ded=ant?Math.round((ant*al-acum)*100+1e-6)/100:0; const lin=`<tr><td>${ant?b(ant+0.01):"até"} ${ant?"a ":""}${b(lim)}</td><td class="n">${pct(al)}</td><td class="n">${ded?b(ded):"–"}</td></tr>`; acum+=(lim-ant)*al; ant=lim; return lin; }).join("");
+  let a=0; const ir=T.irrf.faixas.map(([lim,al,ded])=>{ const lin=`<tr><td>${lim===Infinity?"acima de "+b(a):a?b(a+0.01)+" a "+b(lim):"até "+b(lim)}</td><td class="n">${al?pct(al):"isento"}</td><td class="n">${ded?b(ded):"–"}</td></tr>`; a=lim; return lin; }).join("");
+  const R=T.irrf.reducao;
+  return `<h2>Tabelas de ${ano}</h2>
+  <div class="tgrid">
+    <div><b>INSS do empregado</b><div class="tbox" style="margin-top:6px"><table><thead><tr><th>Salário de contribuição</th><th class="n">Alíquota</th><th class="n">Parcela a deduzir</th></tr></thead><tbody>${inss}</tbody></table></div>
+      <p class="note">Progressivo: cada alíquota só sobre a parte do salário dentro da faixa. Teto ${brl(T.inss.teto)}; desconto máximo ${brl(Math.round(acum*100+1e-6)/100)}. A parcela a deduzir dá o mesmo resultado em uma conta só (salário × alíquota − parcela). O Domínio trunca os centavos em cada faixa (pode dar até 2 centavos a menos; no teto, ${brl(A.inssEmpregado(T.inss.teto,T))}).<br>${esc(T.inss.fonte)}</p></div>
+    <div><b>IRRF mensal</b><div class="tbox" style="margin-top:6px"><table><thead><tr><th>Base de cálculo</th><th class="n">Alíquota</th><th class="n">Parcela a deduzir</th></tr></thead><tbody>${ir}</tbody></table></div>
+      <p class="note">Base = rendimentos − INSS − ${brl(T.irrf.dependente)} por dependente (ou desconto simplificado de ${brl(T.irrf.simplificado)}, o que for melhor).<br>
+      <b>Redução (Lei 15.270/2025):</b> rendimentos até ${brl(R.ate)}: imposto zerado (redução até ${brl(R.max)}); de ${brl(R.ate+0.01)} a ${brl(R.limite)}: redução = ${b(R.a)} − ${String(R.b).replace(".",",")} × rendimentos; acima de ${brl(R.limite)}: sem redução.<br>${esc(T.irrf.fonte)}</p></div>
+  </div>
+  <p class="note"><b>FGTS</b> ${pct(T.fgts.aliquota)} (aprendiz ${pct(T.fgts.aprendiz)}) · <b>Salário mínimo</b> ${brl(T.salarioMinimo.valor)} (${esc(T.salarioMinimo.fonte)}) · <b>Salário-família</b> ${brl(T.salarioFamilia.cota)} por filho até ${brl(T.salarioFamilia.limite)} de remuneração.<br>Conferido nas fontes oficiais em ${esc(T.conferido.split("-").reverse().join("/"))}. Ano novo: as tabelas precisam ser conferidas e incluídas no Flow antes de auditar.</p>`;
+}
+// simulador de salário líquido (botão do topo e atalho do Painel)
+const nBR=id=>parseFloat(String($(id).value||"").replace(/\./g,"").replace(",","."))||0;
+function simular(){
+  const T=A.TABELAS[$("sAno").value], sal=nBR("sSal"), prov=nBR("sProv"), dep=Math.max(0,parseInt($("sDep").value)||0), pen=nBR("sPen"), outros=nBR("sOut");
+  if(!T||!(sal+prov)){ $("sRes").innerHTML='<p class="note">Digite o salário para ver o cálculo.</p>'; return; }
+  const bruto=Math.round((sal+prov)*100)/100;
+  const inss=A.inssEmpregado(bruto,T);
+  const legais=inss+dep*T.irrf.dependente+pen, simpl=legais<T.irrf.simplificado;   // o desconto simplificado substitui todas as deduções legais
+  const ded=simpl?T.irrf.simplificado:legais, base=Math.max(0,Math.round((bruto-ded)*100)/100);
+  const ir=A.irrfMensal(base,bruto,T);
+  let vt=0; if($("sVT").value==="1"){ vt=Math.round(sal*0.06*100)/100; const c=nBR("sVTc"); if(c>0) vt=Math.min(vt,c); }
+  const desc=Math.round((inss+ir.devido+pen+vt+outros)*100)/100, liq=Math.round((bruto-desc)*100)/100, fgts=A.trunc(bruto*T.fgts.aliquota);
+  const L=(r,ref,v,cl)=>`<tr${cl?` class="${cl}"`:""}><td>${r}</td><td class="v">${ref}</td><td class="v">${v}</td></tr>`;
+  $("sRes").innerHTML=`<div class="kpis">
+      <div class="kpi"><b>${brl(liq)}</b><span>salário líquido</span></div>
+      <div class="kpi"><b>${brl(inss)}</b><span>INSS (${pct(inss/bruto)} efetivo)</span></div>
+      <div class="kpi"><b>${brl(ir.devido)}</b><span>IRRF</span></div>
+      <div class="kpi"><b>${brl(fgts)}</b><span>FGTS (pago pela empresa, não desconta)</span></div></div>
+    <div class="tbox"><table class="hol"><thead><tr><th>Item</th><th class="n">Referência</th><th class="n">Valor</th></tr></thead><tbody>
+      ${L("Salário base","",b2(sal))}${prov?L("Outros proventos tributáveis","",b2(prov)):""}
+      ${L("<b>Total de proventos</b>","","<b>"+b2(bruto)+"</b>")}
+      ${L("INSS",pct(inss/bruto),"− "+b2(inss))}
+      ${L("IRRF",`base ${b2(base)}`,"− "+b2(ir.devido))}
+      ${pen?L("Pensão alimentícia","","− "+b2(pen)):""}${vt?L("Vale-transporte","6% do salário"+(nBR("sVTc")>0&&vt<Math.round(sal*6)/100?" (limitado ao custo)":""),"− "+b2(vt)):""}${outros?L("Outros descontos","","− "+b2(outros)):""}
+      ${L("Salário líquido","",b2(liq),"totl")}</tbody></table></div>
+    <p class="note"><b>Como saiu o IRRF:</b> base = ${b2(bruto)} − ${simpl?`desconto simplificado ${b2(T.irrf.simplificado)} (melhor que INSS${dep?" + dependentes":""}${pen?" + pensão":""} = ${b2(legais)})`:`INSS ${b2(inss)}${dep?` + ${dep} dependente(s) ${b2(dep*T.irrf.dependente)}`:""}${pen?` + pensão ${b2(pen)}`:""}`} = ${b2(base)}; tabela ${brl(ir.bruto)}${ir.reducao?` − redução da Lei 15.270 ${brl(ir.reducao)}`:""} = ${brl(ir.devido)}.
+    Simulação de um mês comum, com as tabelas de ${$("sAno").value}: férias, 13º e rescisão têm cálculo próprio.</p>`;
+}
+const b2=v=>brl(v).replace("R$ ","");
+function abrirSimulador(){
+  const anos=Object.keys(A.TABELAS).sort();
+  $("sAno").innerHTML=anos.map(a=>`<option>${a}</option>`).join(""); $("sAno").value=anos[anos.length-1];
+  simular(); if($("dlgTab").open) $("dlgTab").close(); $("dlgSim").showModal(); $("sSal").focus();
+}
+function abrirTabelas(){
+  const anos=Object.keys(A.TABELAS).sort();
+  $("tAno").innerHTML=anos.map(a=>`<option>${a}</option>`).join("");
+  $("tAno").value=S.res?S.res.comp.slice(-4):anos[anos.length-1];
+  $("tBody").innerHTML=tabelasHtml(A.TABELAS[$("tAno").value],$("tAno").value);
+  $("dlgTab").showModal();
 }
 async function salvar(){
   const R=S.res, db=S.E.db; if(!db||!R) return;
@@ -433,6 +513,14 @@ const dz=$("drop"); ["dragover","dragenter"].forEach(t=>dz.addEventListener(t,e=
 dz.addEventListener("drop",e=>{ const f=[...e.dataTransfer.files].filter(x=>/\.pdf$/i.test(x.name)); if(f.length) lerExtrato(f); });
 document.querySelector(".tabs").addEventListener("click",e=>{ const b=e.target.closest(".tab"); if(!b) return; S.tab=b.dataset.t; render(); });
 $("btnXls").onclick=baixarXls;
+$("btnTab").onclick=abrirTabelas; $("tFechar").onclick=()=>$("dlgTab").close();
+$("tAno").addEventListener("change",()=>{ $("tBody").innerHTML=tabelasHtml(A.TABELAS[$("tAno").value],$("tAno").value); });
+$("btnSim").onclick=abrirSimulador; $("tSim").onclick=abrirSimulador; $("sFechar").onclick=()=>$("dlgSim").close();
+["sSal","sProv","sDep","sPen","sVT","sVTc","sOut","sAno"].forEach(id=>$(id).addEventListener("input",simular));
+$("sVT").addEventListener("change",simular);
+// atalho do Painel: abre direto o simulador
+window.addEventListener("message",e=>{ if(e.origin===location.origin&&e.data&&e.data.flow==="simular") abrirSimulador(); });
+try{ if(new URLSearchParams(location.search).has("simular")) setTimeout(abrirSimulador,300); }catch(e){}
 F.assinar(est=>{
   S.E=est;
   if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }
