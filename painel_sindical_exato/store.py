@@ -10,7 +10,7 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
-COLECOES = ("clientes", "ccts", "alertas", "prazos", "pedidos", "auditorias", "auditorias_folha", "meta",
+COLECOES = ("clientes", "ccts", "alertas", "prazos", "pedidos", "auditorias", "auditorias_folha", "contrato_modelos", "meta",
             "ponto", "ponto_regras", "funcionarios", "cct_ponto")
 _ID = re.compile(r"^[A-Za-z0-9_\-.~:@+]{1,200}$")
 _PDF_ID = re.compile(r"^[0-9a-f]{32}$")

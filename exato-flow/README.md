@@ -181,6 +181,19 @@ As regras de cálculo seguem o sistema `ponto-dominio` (branch `claude/init-git-
 - Formato das horas: o `ponto-dominio` usa horas decimais (centesimal); a planilha de lançamentos usa sexagesimal. No Flow, a escolha é por cliente.
 - Registro 11: o `ponto-dominio` não gera; a planilha de lançamentos gera para a rubrica 40. No Flow, também é escolha por cliente.
 
+## Contratos de trabalho
+
+`modulos/contratos.html` + `nucleo/contratos.js` (testes em `testes/contratos.test.js`). Gera em Word (.docx, montado com JSZip, A4, Arial 11):
+contrato de experiência, contrato por prazo indeterminado, termo de prorrogação, acordo de compensação (sábado), acordo de banco de horas de 6 meses e termo de opção pelo vale-transporte.
+
+- Dados do cadastro (empresa, funcionário, horário, experiência) e da CCT do Painel Sindical; CPF, CTPS, endereço e salário entram só no documento (não são gravados).
+- **Modelo da empresa** (`contrato_modelos/{cnpj}`): endereço, representante, local, dia de pagamento, compensação (nenhuma, sábado, mensal, banco de 6 meses, banco da CCT),
+  prorrogação automática, cláusula assecuratória, desconto por dano, EPI, uniforme, sigilo, uso de imagem, ponto e cláusulas próprias.
+- Cada cláusula cita a base legal. Percentuais da CCT não são fixados: o contrato remete à convenção vigente e garante os mínimos legais.
+- Bloqueia: salário abaixo do menor piso, experiência acima de 90 dias, mais de 44h sem compensação, intervalo menor que 1h, menor sem responsável legal, menor de 16 fora de aprendizagem,
+  termo de prorrogação depois do fim do 1º período. Avisa: dia acima de 8h sem compensação, salário abaixo do piso após a experiência, domingo, assinatura depois da admissão.
+- O texto-base deve ser validado uma vez por advogado trabalhista antes do uso.
+
 ## Contrato de experiência
 
 `FlowDados.experiencia(f)` (testes em `testes/experiencia.test.js`): com a admissão e os prazos do funcionário (`exp_dias1`, `exp_dias2`, lidos da Ficha de Empregado ou informados na admissão / em "prazos"), calcula o fim de cada período (contando o dia da admissão; até 90 dias e uma prorrogação, arts. 445 e 451 da CLT).

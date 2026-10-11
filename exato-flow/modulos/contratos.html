@@ -1,0 +1,415 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Contratos · Exato Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: barra (cliente, funcionário, documento); à esquerda modelo da empresa e dados do empregado; à direita conferência e prévia do documento. */
+:root{
+  --red:#C00000; --red-hi:#e01515; --red-soft:rgba(192,0,0,.07);
+  --bg:#f3f3f5; --surf:#ffffff; --surf2:#f7f7f9; --ink:#16171a; --mute:#5f626b; --line:#e2e3e8; --hover:#fbf4f4; --sel:#fdeeee;
+  --ok:#14804f; --ok-bg:#e2f4ea; --at:#9a5b00; --at-bg:#fff1d6; --er:#b00000; --er-bg:#fde6e6; --nt:#4a4d55; --nt-bg:#ececf0;
+  --we:#f1f1f4; --scrim:rgba(17,17,17,.5);
+  --f-disp:"Sora","Segoe UI",system-ui,sans-serif;
+  --f-body:"Manrope","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",Consolas,ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09);
+  --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b; --sel:#2c1a1a;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#c3c5cc; --nt-bg:rgba(255,255,255,.08);
+  --we:#19191c; --scrim:rgba(0,0,0,.65); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09);
+  --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b; --sel:#2c1a1a;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#c3c5cc; --nt-bg:rgba(255,255,255,.08);
+  --we:#19191c; --scrim:rgba(0,0,0,.65); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.5 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--red-hi);outline-offset:2px}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:24px;padding-block:22px 48px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+#area{min-width:0}
+#area>section{grid-template-columns:minmax(0,1fr)}
+h1{margin:0;font:800 1.6rem/1.15 var(--f-disp);letter-spacing:-.02em}
+h2{margin:0;font:700 1.05rem/1.3 var(--f-disp)}
+h3{margin:0;font:700 .76rem var(--f-disp);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.lead{margin:4px 0 0;color:var(--mute);font-size:.9rem;max-width:72ch}
+.meta{font-size:.78rem;color:var(--mute)}
+.mono{font-family:var(--f-mono)}
+
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.fld{display:grid;gap:4px;font-size:.74rem;font-weight:700;color:var(--mute);min-width:0}
+.fld input,.fld select{background:var(--surf2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:.92rem;font-weight:500;color:var(--ink);min-width:0}
+.fld.cli{flex:1 1 320px}
+.fld.cli input{width:100%}
+.bar .st{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{display:inline-block;font:500 10px var(--f-mono);letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--ok-bg);color:var(--ok)} .p-at{background:var(--at-bg);color:var(--at)} .p-er{background:var(--er-bg);color:var(--er)} .p-nt{background:var(--nt-bg);color:var(--nt)}
+.cctw{overflow-x:auto;margin-top:6px}
+.cctt{width:100%;border-collapse:collapse;font-size:.88rem;min-width:620px}
+.cctt th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:6px 8px;border-bottom:1px solid var(--line)}
+.cctt td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.cctt td small{display:block;color:var(--mute);font-size:.76rem;margin-top:2px}
+.cctt .acts{display:flex;flex-wrap:wrap;gap:6px}
+.cctx{display:grid;gap:6px;margin-top:10px;font-size:.86rem}
+.cctx li{color:var(--mute)} .cctx b{color:var(--ink)}
+.cctf{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:10px}
+.cctf label{display:grid;gap:4px;font-size:.8rem;color:var(--mute)}
+.cctf input,.cctf select{padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surf2);color:inherit;font:inherit}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mute)}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--mute)} .sync.on i{background:var(--ok)} .sync.err i{background:var(--er)} .sync.wait i{background:var(--at)}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{border:0;background:none;padding:10px 14px;font:700 .86rem var(--f-disp);color:var(--mute);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;display:flex;gap:8px;align-items:center}
+.tab b{font:500 11px var(--f-mono);color:var(--mute)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--red-hi)}
+.tab:hover{color:var(--ink)}
+
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:10px;padding:9px 16px;font:700 .86rem var(--f-disp);cursor:pointer;background:var(--red);color:#fff;white-space:nowrap}
+.btn:hover{background:var(--red-hi)}
+.btn.ghost{background:var(--surf);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--red-hi);color:var(--red-hi)}
+.btn.sm{padding:6px 11px;font-size:.78rem}
+.btn:disabled,.btn.disabled{opacity:.45;cursor:not-allowed}
+label.btn.disabled{pointer-events:none}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+.card{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:12px;min-width:0}
+.empty{padding:36px 20px;text-align:center;color:var(--mute)}
+.banner{border-radius:10px;padding:10px 14px;font-size:.88rem;background:var(--at-bg);color:var(--at)}
+.banner.er{background:var(--er-bg);color:var(--er)}
+
+/* arquivos */
+.drops{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.drop{border:1.5px dashed var(--line);border-radius:14px;background:var(--surf);padding:18px;display:grid;gap:8px;align-content:start}
+.drop.over{border-color:var(--red-hi);background:var(--red-soft)}
+.drop p{margin:0;color:var(--mute);font-size:.88rem}
+.files{display:grid;gap:6px}
+.file{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surf);font-size:.86rem}
+.file b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file .meta{white-space:normal}
+
+.rev{display:grid;gap:12px;border-top:1px solid var(--line);padding-top:12px}
+.passos{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:.88rem}
+.passos li{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.passos i{flex:none;width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font:700 11px var(--f-mono);font-style:normal;background:var(--nt-bg);color:var(--nt);transform:translateY(3px)}
+.passos .ok i{background:var(--ok-bg);color:var(--ok)}
+.passos .pend i{background:var(--at-bg);color:var(--at)}
+.passos b{font-weight:700}
+.passos .link{background:none;border:0;padding:0;color:var(--red-hi);font-weight:700;cursor:pointer}
+.rev table{min-width:640px}
+.rev details p{margin:6px 0 0;font-size:.74rem}
+.rev select{background:var(--surf2);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:.82rem;color:var(--ink);max-width:100%}
+.aus{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.2fr) auto auto minmax(0,1.2fr) auto;gap:10px;align-items:end}
+.aus .fld select,.aus .fld input{width:100%}
+@media (max-width:1000px){.aus{grid-template-columns:1fr 1fr}.aus .aobs{grid-column:1/-1}}
+@media (max-width:520px){.aus{grid-template-columns:1fr}}
+/* E-exato */
+.guia{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;display:flex;align-items:flex-end;gap:10px;max-width:min(440px,calc(100vw - 32px))}
+.gface{flex:none;width:64px;height:64px;border-radius:50%;padding:0;border:2px solid var(--red-hi);background:var(--surf);overflow:hidden;cursor:pointer;box-shadow:0 10px 24px -8px rgba(0,0,0,.5);order:2}
+.gface img{width:100%;height:100%;object-fit:cover;display:block;animation:gBob 3.4s ease-in-out infinite}
+.guia[data-humor="pensando"] .gface img{animation:gBob .9s ease-in-out infinite}
+.guia[data-humor="feliz"] .gface img{animation:gHop .5s ease-in-out 2}
+@keyframes gBob{50%{transform:translateY(-3px)}} @keyframes gHop{50%{transform:translateY(-8px)}}
+.gbal{background:var(--surf);border:1px solid var(--line);border-left:3px solid var(--red-hi);border-radius:16px 16px 4px 16px;padding:10px 12px 12px;box-shadow:0 14px 34px -12px rgba(0,0,0,.45);display:grid;gap:8px;min-width:0}
+.gtop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.gtop b{font:700 .82rem var(--f-disp);color:var(--red-hi)}
+.gtop button{border:0;background:none;color:var(--mute);cursor:pointer;font-size:1.1rem;line-height:1;padding:0 4px}
+.gbal p{margin:0;font-size:.88rem;line-height:1.45}
+.gacoes{display:flex;flex-wrap:wrap;gap:6px}
+.gacoes:empty{display:none}
+.guia.min .gbal{display:none}
+.gface{position:relative;overflow:visible}
+.gface img{border-radius:50%}
+.guia.min.novo .gface::after{content:"";position:absolute;right:0;top:0;width:14px;height:14px;border-radius:50%;background:var(--red-hi);border:2px solid var(--surf)}
+.wrap{padding-bottom:180px}
+@media (max-width:640px){.gface{width:52px;height:52px}.gbal p{font-size:.84rem}.gbal{max-height:45vh;overflow:auto}}
+@media (prefers-reduced-motion:reduce){.gface img{animation:none!important}}
+/* conferencia */
+.conf{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:start}
+.emps{background:var(--surf);border:1px solid var(--line);border-radius:14px;overflow:hidden;position:sticky;top:8px;max-height:calc(100vh - 16px);display:flex;flex-direction:column}
+.emps .hd{padding:10px 12px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.emps .hd input{background:var(--surf2);border:1px solid var(--line);border-radius:999px;padding:7px 12px;width:100%}
+.emps ul{list-style:none;margin:0;padding:0;overflow:auto}
+.emps li button{width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:10px 12px;cursor:pointer;display:grid;gap:3px}
+.emps li button:hover{background:var(--hover)}
+.emps li button[aria-current="true"]{background:var(--sel);box-shadow:inset 3px 0 0 var(--red-hi)}
+.emps .nm{font-weight:700;font-size:.86rem;line-height:1.3}
+.emps .sm{display:flex;flex-wrap:wrap;gap:4px 10px;font:500 11px var(--f-mono);color:var(--mute)}
+.emps .sm .er{color:var(--er)}
+.det{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-width:0}
+.eh{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start}
+.eh .f{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:8px}
+.eh .f .fld input{width:120px}
+.tots{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surf)}
+.tot{padding:10px 12px;border-left:1px solid var(--line);display:grid;gap:1px;min-width:0}
+.tot:first-child{border-left:0}
+.tot b{font:700 1.15rem/1.2 var(--f-mono);font-variant-numeric:tabular-nums}
+.tot span{font-size:.72rem;color:var(--mute)}
+.tot.er b{color:var(--er)}
+.fotos{display:flex;gap:8px;flex-wrap:wrap}
+.fotos button{border:1px solid var(--line);border-radius:8px;padding:0;background:none;cursor:zoom-in;width:72px;height:72px;overflow:hidden}
+.fotos img{width:100%;height:100%;object-fit:cover;display:block}
+.tbox{overflow-x:auto;background:var(--surf);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th{font:700 10px var(--f-disp);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:left;padding:9px 8px;background:var(--surf2);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.n.z{color:var(--line)}
+tr.we td{background:var(--we)}
+tr.fer td{background:var(--red-soft)}
+.grid{min-width:1060px}
+.grid td.d{white-space:nowrap;font-family:var(--f-mono);font-size:.8rem}
+.grid td.d small{display:block;font-family:var(--f-body);color:var(--mute);font-size:.7rem}
+.grid input.m{width:100%;min-width:220px;font-family:var(--f-mono);font-size:.82rem;background:transparent;border:1px solid transparent;border-radius:6px;padding:5px 7px}
+.grid input.m:hover{border-color:var(--line)} .grid input.m:focus{border-color:var(--red-hi);background:var(--surf);outline:none}
+.grid select{font-size:.8rem;background:transparent;border:1px solid transparent;border-radius:6px;padding:4px}
+.grid select:hover{border-color:var(--line)}
+.al{display:grid;gap:2px;font-size:.74rem;min-width:180px}
+.al span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;background:var(--mute)}
+.al .alta::before{background:var(--er)} .al .media::before{background:var(--at)}
+.al .alta{color:var(--er)}
+.orig{font:500 9.5px var(--f-mono);text-transform:uppercase;color:var(--mute)}
+.orig.foto{color:var(--at)}
+tfoot td{font-weight:700;background:var(--surf2);border-top:1px solid var(--line)}
+
+/* regras */
+.rgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 12px}
+.form label,.jr label{display:grid;gap:4px;font-size:.74rem;font-weight:700;color:var(--mute)}
+.form input,.form select,.jr input{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:.88rem;font-weight:500;width:100%;min-width:0;color:var(--ink)}
+.chk{display:flex!important;grid-template-columns:none!important;gap:8px!important;align-items:center;font-size:.84rem!important;color:var(--ink)!important;font-weight:600!important}
+.chk input{width:auto!important}
+.jr{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px}
+.jr .dias{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.jr .dias input{font-family:var(--f-mono);font-size:.76rem;padding:6px}
+.note{font-size:.8rem;color:var(--mute);margin:0;max-width:90ch}
+
+/* txt */
+.check{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.9rem}
+.check li{display:flex;gap:8px;align-items:baseline}
+.check i{flex:none;width:9px;height:9px;border-radius:50%}
+.check .ok i{background:var(--ok)} .check .er i{background:var(--er)} .check .at i{background:var(--at)}
+pre.txt{margin:0;max-height:340px;overflow:auto;background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:12px;font:12px/1.55 var(--f-mono)}
+
+dialog{border:0;border-radius:14px;padding:0;max-width:min(96vw,1100px);max-height:94vh;background:var(--surf);color:var(--ink)}
+dialog::backdrop{background:var(--scrim)}
+.zoom{display:grid;gap:8px;padding:12px}
+.zoom .img{overflow:auto;max-height:82vh}
+.zoom img{display:block;max-width:none;width:160%}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,620px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.88rem;z-index:40}
+
+@media (max-width:1000px){.conf{grid-template-columns:minmax(0,1fr)}.emps{position:static;max-height:300px}.tots{grid-template-columns:repeat(3,minmax(0,1fr))}.tot:nth-child(4){border-left:0}.tot:nth-child(n+4){border-top:1px solid var(--line)}.rgrid{grid-template-columns:1fr}}
+@media (max-width:640px){.wrap{padding-inline:16px}.drops{grid-template-columns:1fr}.jr .dias{grid-template-columns:repeat(2,minmax(0,1fr))}.eh{grid-template-columns:1fr}.bar .st{margin-left:0}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.cols{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:980px){.cols{grid-template-columns:minmax(0,1fr)}}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.fgrid .full{grid-column:1/-1}
+.fgrid input,.fgrid select,.fgrid textarea{width:100%}
+.fld textarea{background:var(--surf2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:500 .9rem var(--f-body);color:var(--ink);min-height:70px;resize:vertical}
+.chks{display:grid;gap:6px}
+.chks label{display:flex;gap:8px;align-items:flex-start;font-size:.86rem}
+.chks input{margin-top:3px}
+.paper{background:#fff;color:#16171a;border-radius:10px;padding:34px 40px;font:13.5px/1.6 Arial,Helvetica,sans-serif;box-shadow:0 2px 16px rgba(0,0,0,.25);max-height:78vh;overflow:auto}
+.paper,.paper *{color:#16171a!important;letter-spacing:normal!important;text-transform:none!important}
+.paper h1{font:700 15px/1.3 Arial,sans-serif;text-align:center;margin:0 0 18px}
+.paper h3{font:700 13px Arial,sans-serif;margin:16px 0 4px}
+.paper p{margin:0 0 8px;text-align:justify} .paper p.it{margin-left:22px} .paper p.loc{text-align:right;margin:22px 0}
+.paper .sig{text-align:center;margin:34px auto 8px;max-width:320px;font-size:12.5px} .paper .sig span{display:block;border-top:1px solid #333;margin-bottom:4px}
+.paper .sig2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.vl{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.vl li{display:flex;gap:8px;font-size:.86rem;align-items:flex-start} .vl li::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--at)} .vl li.er::before{background:var(--er)} .vl li.ok::before{background:var(--ok)}
+</style>
+<link rel="stylesheet" href="../nucleo/tema-exato.css">
+</head><body>
+<div class="wrap">
+  <header>
+    <h1>Contratos de trabalho</h1>
+    <p class="lead"><b>Na admissão:</b> escolha o cliente, o funcionário e o documento. O Flow monta o contrato com os dados do cadastro, a convenção da categoria e as regras da empresa, confere piso, jornada e prazos e gera o Word para assinatura. CPF, endereço e salário entram só no documento: não ficam gravados.</p>
+  </header>
+  <div class="bar">
+    <label class="fld cli">Cliente<input id="cli" list="dl-cli" placeholder="Digite o nome, código ou CNPJ" autocomplete="off"></label>
+    <datalist id="dl-cli"></datalist>
+    <label class="fld">Funcionário<select id="func" disabled><option value="">escolha o cliente</option></select></label>
+    <label class="fld">Documento<select id="tipo"></select></label>
+    <div class="st"><span class="sync" id="sync"><i></i><span>Conectando…</span></span></div>
+  </div>
+  <div class="banner" id="aviso" hidden></div>
+  <p class="note" id="semCli">Escolha o cliente para começar.</p>
+  <div class="cols" id="area" hidden>
+    <div style="display:grid;gap:16px">
+      <div class="card"><h2>Dados do empregado</h2>
+        <div class="fgrid">
+          <label class="fld full">Nome completo<input id="f-nome"></label>
+          <label class="fld">CPF<input id="f-cpf" inputmode="numeric" placeholder="000.000.000-00"></label>
+          <label class="fld">CTPS (se física)<input id="f-ctps" placeholder="vazio = CTPS Digital"></label>
+          <label class="fld full">Endereço<input id="f-end" placeholder="rua, número, bairro, cidade/UF"></label>
+          <label class="fld">Nascimento<input id="f-nasc" type="date"></label>
+          <label class="fld">Admissão<input id="f-adm" type="date"></label>
+          <label class="fld">Cargo<input id="f-cargo"></label>
+          <label class="fld">CBO<input id="f-cbo" inputmode="numeric" placeholder="opcional"></label>
+          <label class="fld">Salário mensal (R$)<input id="f-sal" inputmode="decimal" placeholder="ex.: 2.329,40"></label>
+          <label class="fld">Data da assinatura<input id="f-data" type="date"></label>
+          <label class="fld">Experiência: 1º período (dias)<input id="f-e1" inputmode="numeric"></label>
+          <label class="fld">Prorrogação (dias)<input id="f-e2" inputmode="numeric"></label>
+          <label class="fld">Horário seg. a sex.<input id="f-hor" placeholder="07:30-12:00 13:30-17:48"></label>
+          <label class="fld">Horário sábado<input id="f-sab" placeholder="vazio = não trabalha"></label>
+          <div class="full" id="boxResp" hidden><div class="fgrid">
+            <label class="fld">Responsável legal (menor)<input id="f-resp"></label>
+            <label class="fld">CPF do responsável<input id="f-rcpf" inputmode="numeric"></label></div></div>
+        </div>
+        <p class="note">Nome, cargo, admissão, nascimento, horário e experiência vêm do cadastro do funcionário. CPF, CTPS, endereço e salário não são gravados.</p>
+      </div>
+      <div class="card"><h2>Modelo da empresa</h2>
+        <div class="fgrid">
+          <label class="fld full">Endereço do empregador<input id="m-end"></label>
+          <label class="fld">Representante legal<input id="m-rep"></label>
+          <label class="fld">Cargo do representante<input id="m-repc" placeholder="ex.: sócio administrador"></label>
+          <label class="fld full">Local de trabalho<input id="m-local" placeholder="vazio = endereço do empregador"></label>
+          <label class="fld">Cidade da assinatura<input id="m-cid" placeholder="ex.: Meleiro/SC"></label>
+          <label class="fld">Pagamento até o dia útil<input id="m-pag" inputmode="numeric" placeholder="5"></label>
+          <label class="fld full">Compensação de jornada<select id="m-comp">
+            <option value="nenhuma">Sem compensação</option>
+            <option value="sabado">Compensação do sábado (acréscimo nos dias da semana)</option>
+            <option value="mensal">Compensação no mesmo mês (art. 59, § 6º)</option>
+            <option value="banco_semestral">Banco de horas individual de 6 meses (art. 59, § 5º)</option>
+            <option value="banco_cct">Banco de horas da convenção coletiva (art. 59, § 2º)</option></select></label>
+        </div>
+        <div class="chks">
+          <label><input type="checkbox" id="m-pa"> Prorrogação automática da experiência (sem termo separado)</label>
+          <label><input type="checkbox" id="m-ass"> Cláusula assecuratória (art. 481: rescisão antecipada com aviso prévio)</label>
+          <label><input type="checkbox" id="m-dano"> Desconto por dano culposo (art. 462, § 1º)</label>
+          <label><input type="checkbox" id="m-epi"> Uso obrigatório de EPI (NR-6)</label>
+          <label><input type="checkbox" id="m-uni"> Uniforme obrigatório (art. 456-A)</label>
+          <label><input type="checkbox" id="m-sig"> Sigilo e normas internas</label>
+          <label><input type="checkbox" id="m-img"> Autorização de uso de imagem</label>
+          <label><input type="checkbox" id="m-pto"> Registro de ponto (art. 74, § 2º)</label>
+        </div>
+        <label class="fld">Cláusulas próprias da empresa (uma por linha)<textarea id="m-ext" placeholder="ex.: É proibido o uso de celular na área de produção, salvo nos intervalos."></textarea></label>
+        <div class="row"><button class="btn ghost" type="button" id="mSalvar">Salvar modelo da empresa</button><span class="meta" id="mSt"></span></div>
+      </div>
+    </div>
+    <div style="display:grid;gap:16px">
+      <div class="card"><h2>Conferência</h2><ul class="vl" id="val"></ul>
+        <div class="row"><button class="btn" type="button" id="btnDoc">Baixar em Word</button><span class="meta" id="docSt"></span></div>
+        <p class="note">Texto-base com fundamento legal em cada cláusula. Valide o modelo uma vez com o advogado trabalhista do escritório antes do primeiro uso.</p></div>
+      <div class="paper" id="prev"></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="../nucleo/flow-dados.js" charset="utf-8"></script>
+<script src="../nucleo/contratos.js" charset="utf-8"></script>
+<script>
+"use strict";
+const F=window.FlowDados, K=window.Contratos;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function toast(m,ms){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,ms||4200);}
+function setSync(c,t){ const s=$("sync"); s.className="sync "+c; s.lastElementChild.textContent=t; }
+const S={E:null,cli:null,funcs:[],pararF:null,modelo:null,doc:null};
+const hojeIso=()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const num=v=>parseFloat(String(v||"").replace(/\./g,"").replace(",","."))||0;
+$("tipo").innerHTML=K.TIPOS.map(([v,r])=>`<option value="${v}">${esc(r)}</option>`).join("");
+
+function listaClientes(){
+  const L=(S.E.clientes||[]).filter(F.ativo).sort((a,b)=>(parseInt(a.cod)||1e9)-(parseInt(b.cod)||1e9));
+  $("dl-cli").innerHTML=L.map(c=>`<option value="${esc((c.cod?c.cod+" · ":"")+c.nome)}">${esc(F.fmtCnpj(c.cnpj))}</option>`).join("");
+}
+function acharCliente(v){
+  const t=String(v||"").trim(); if(!t) return null;
+  const cod=t.split(" · ")[0].trim(), d=F.digitos(t);
+  return (S.E.clientes||[]).find(c=>(c.cod&&String(c.cod)===cod)||(d.length===14&&F.digitos(c.cnpj)===d)||((c.cod?c.cod+" · ":"")+c.nome)===t)||null;
+}
+const cctDoCliente=()=>S.cli&&S.cli.cct?(S.E.ccts||[]).find(k=>k.ramo===S.cli.cct)||null:null;
+async function escolherCliente(){
+  const c=acharCliente($("cli").value);
+  if(!c){ $("area").hidden=true; $("semCli").hidden=false; S.cli=null; return; }
+  if(S.cli&&S.cli._id===c._id) return;
+  S.cli=c; $("area").hidden=false; $("semCli").hidden=true;
+  try{ localStorage.setItem("flow.contratos.cli",$("cli").value); }catch(e){}
+  if(S.pararF) S.pararF();
+  S.pararF=F.assinarFuncionarios(c.cnpj,L=>{ S.funcs=(L||[]).filter(f=>F.funcAtivo(f,hojeIso())); listaFuncs(); });
+  S.modelo={...K.MODELO_PADRAO};
+  if(S.E.db){ try{ const d=await S.E.db.doc("contrato_modelos/"+F.digitos(c.cnpj)).get(); if(d.exists) S.modelo={...S.modelo,...d.data()}; }catch(e){} }
+  preencherModelo(); limparFunc(); atualizar();
+}
+function listaFuncs(){
+  const sel=$("func"), v=sel.value;
+  sel.innerHTML=`<option value="">Novo funcionário (digitar)</option>`+S.funcs.map((f,i)=>`<option value="${i}">${esc((f.codigo?f.codigo+" · ":"")+f.nome)}${f.admissao?" · adm. "+esc(f.admissao.split("-").reverse().join("/")):""}</option>`).join("");
+  sel.disabled=false; if(v&&+v<S.funcs.length) sel.value=v;
+}
+function limparFunc(){ ["f-nome","f-cpf","f-ctps","f-end","f-nasc","f-adm","f-cargo","f-cbo","f-sal","f-e1","f-e2","f-hor","f-sab","f-resp","f-rcpf"].forEach(id=>$(id).value=""); $("f-data").value=hojeIso(); }
+function escolherFunc(){
+  const f=S.funcs[+$("func").value]; limparFunc(); if(!f){ atualizar(); return; }
+  $("f-nome").value=f.nome||""; $("f-nasc").value=f.nascimento||""; $("f-adm").value=f.admissao||""; $("f-cargo").value=f.cargo||"";
+  if(f.admissao) $("f-data").value=f.admissao;   // contrato é assinado no início do trabalho
+  $("f-e1").value=f.exp_dias1||""; $("f-e2").value=f.exp_dias2||""; $("f-hor").value=(f.horario&&f.horario.seg)||""; $("f-sab").value=(f.horario&&f.horario.sab)||"";
+  if(f.exp_dias1&&$("tipo").value==="indeterminado") $("tipo").value="experiencia";
+  if(!f.exp_dias1&&$("tipo").value==="experiencia") $("tipo").value="indeterminado";
+  atualizar();
+}
+function preencherModelo(){
+  const m=S.modelo, c=S.cli;
+  $("m-end").value=m.endereco||c.emp_endereco||""; $("m-rep").value=m.rep_nome||c.emp_resp||""; $("m-repc").value=m.rep_cargo||"";
+  $("m-local").value=m.local||""; $("m-cid").value=m.cidade||(c.mun?c.mun+"/SC":""); $("m-pag").value=m.pagamento_dia||5; $("m-comp").value=m.compensacao||"nenhuma";
+  $("m-pa").checked=m.prorroga_auto!==false; $("m-ass").checked=!!m.assecuratoria; $("m-dano").checked=m.desconto_dano!==false; $("m-epi").checked=m.epi!==false;
+  $("m-uni").checked=!!m.uniforme; $("m-sig").checked=m.sigilo!==false; $("m-img").checked=!!m.imagem; $("m-pto").checked=m.ponto!==false; $("m-ext").value=(m.extras||[]).join("\n");
+}
+function lerModelo(){
+  return {endereco:$("m-end").value.trim(),rep_nome:$("m-rep").value.trim().toUpperCase(),rep_cargo:$("m-repc").value.trim(),local:$("m-local").value.trim(),cidade:$("m-cid").value.trim(),
+    pagamento_dia:parseInt($("m-pag").value)||5,compensacao:$("m-comp").value,prorroga_auto:$("m-pa").checked,assecuratoria:$("m-ass").checked,desconto_dano:$("m-dano").checked,
+    epi:$("m-epi").checked,uniforme:$("m-uni").checked,sigilo:$("m-sig").checked,imagem:$("m-img").checked,ponto:$("m-pto").checked,extras:$("m-ext").value.split("\n").map(x=>x.trim()).filter(Boolean)};
+}
+function contexto(){
+  const m=lerModelo(), c=S.cli, k=cctDoCliente(), h=$("f-hor").value.trim(), sab=$("f-sab").value.trim();
+  return {emp:{nome:c.nome,cnpj:F.fmtCnpj(c.cnpj),endereco:m.endereco,rep_nome:m.rep_nome,rep_cargo:m.rep_cargo,cidade:m.cidade},
+    func:{nome:$("f-nome").value.trim().toUpperCase(),cpf:$("f-cpf").value.trim(),ctps:$("f-ctps").value.trim(),endereco:$("f-end").value.trim(),nascimento:$("f-nasc").value,admissao:$("f-adm").value,
+      cargo:$("f-cargo").value.trim().toUpperCase(),cbo:$("f-cbo").value.trim(),salario:num($("f-sal").value),exp1:parseInt($("f-e1").value)||0,exp2:parseInt($("f-e2").value)||0,
+      horario:{seg:h,ter:h,qua:h,qui:h,sex:h,sab,dom:""},resp_nome:$("f-resp").value.trim().toUpperCase(),resp_cpf:$("f-rcpf").value.trim()},
+    modelo:m,cct:k?{ramo:k.ramo,reg:k.reg,pmin:k.pmin,pref:k.pref}:{},cidade:m.cidade,data:$("f-data").value||hojeIso()};
+}
+function atualizar(){
+  if(!S.cli) return;
+  const ctx=contexto(), a=ctx.func.nascimento&&ctx.func.admissao?(new Date(ctx.func.admissao)-new Date(ctx.func.nascimento))/(365.25*864e5):99;
+  $("boxResp").hidden=!(a<18);
+  let doc; try{ doc=K.montar($("tipo").value,ctx); }catch(e){ console.error(e); return; }
+  S.doc=doc;
+  $("val").innerHTML=doc.erros.map(x=>`<li class="er">${esc(x)}</li>`).join("")+doc.avisos.map(x=>`<li>${esc(x)}</li>`).join("")+(!doc.erros.length&&!doc.avisos.length?'<li class="ok">Tudo conferido: pronto para gerar.</li>':"");
+  $("btnDoc").disabled=!!doc.erros.length; $("docSt").textContent=doc.erros.length?"Corrija os itens em vermelho para gerar.":"";
+  $("prev").innerHTML=K.html(doc);
+}
+async function baixarDoc(){
+  const d=S.doc; if(!d||d.erros.length) return;
+  const blob=await K.docx(d,window.JSZip);
+  const nome=`${d.titulo.split(" – ")[0].replace(/\s+/g,"_")}_${(contexto().func.nome||"empregado").split(" ")[0]}_${S.cli.cod||F.digitos(S.cli.cnpj)}.docx`.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const dl=await F.use("downloads"); if(!dl){ toast("Download indisponível nesta visualização."); return; }
+  try{ await dl.save({filename:nome,data:blob}); toast("Documento salvo: "+nome); }catch(e){ toast("Download cancelado."); }
+}
+async function salvarModelo(){
+  const db=S.E.db; if(!db||!S.cli) return;
+  try{ await db.doc("contrato_modelos/"+F.digitos(S.cli.cnpj)).set({...lerModelo(),cnpj:F.digitos(S.cli.cnpj),...(await F.carimbo())}); $("mSt").textContent="Modelo salvo para "+(S.cli.fant||S.cli.nome)+"."; setSync("on","Salvo"); }
+  catch(e){ $("mSt").textContent="Não foi possível salvar."; }
+}
+$("cli").addEventListener("change",escolherCliente);
+$("func").addEventListener("change",escolherFunc);
+$("tipo").addEventListener("change",atualizar);
+document.querySelector(".cols").addEventListener("input",atualizar);
+document.querySelector(".cols").addEventListener("change",atualizar);
+$("btnDoc").onclick=baixarDoc; $("mSalvar").onclick=salvarModelo;
+F.assinar(est=>{
+  S.E=est;
+  if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }
+  if(est.pronto.clientes){ setSync("on","Sincronizado"); listaClientes();
+    if(!S.cli){ try{ const v=localStorage.getItem("flow.contratos.cli"); if(v&&!$("cli").value){ $("cli").value=v; escolherCliente(); } }catch(e){} } }
+});
+</script>
+<script src="../nucleo/tema-exato.js" data-mod="contratos"></script>
+</body></html>

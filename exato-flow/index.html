@@ -280,6 +280,10 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/><circle cx="16.5" cy="16.5" r="2.5"/><path d="m18.3 18.3 2 2"/></svg>
         <span class="t"><b>Auditoria da folha</b><small>Encargos, piso e ponto</small></span>
       </button>
+      <button class="nav" type="button" data-go="contratos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6"/><path d="M9 18c1-1.5 2-1.5 3 0s2 1.5 3 0"/></svg>
+        <span class="t"><b>Contratos</b><small>Admissão e termos</small></span>
+      </button>
     </div>
 
     <div class="navg">
@@ -377,6 +381,7 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
     <section class="view" id="v-ponto" aria-label="Cálculo de Ponto" hidden></section>
     <section class="view" id="v-guias" aria-label="Auditoria de guias" hidden></section>
     <section class="view" id="v-folha" aria-label="Auditoria da folha" hidden></section>
+    <section class="view" id="v-contratos" aria-label="Contratos de trabalho" hidden></section>
   </main>
 </div>
 
@@ -388,9 +393,10 @@ const MODS={
   sindical:{src:"modulos/painel-sindical.html",title:"Painel Sindical"},
   ponto:{src:"modulos/ponto.html",title:"Cálculo de Ponto"},
   guias:{src:"modulos/auditoria-guias.html",title:"Auditoria de guias"},
-  folha:{src:"modulos/auditoria-folha.html",title:"Auditoria da folha"}
+  folha:{src:"modulos/auditoria-folha.html",title:"Auditoria da folha"},
+  contratos:{src:"modulos/contratos.html",title:"Contratos de trabalho"}
 };
-const VIEWS=["inicio","sindical","ponto","guias","folha","clientes"];
+const VIEWS=["inicio","sindical","ponto","guias","folha","contratos","clientes"];
 function abrir(v){
   if(!VIEWS.includes(v)) v="inicio";
   const m=MODS[v], box=document.getElementById("v-"+v);

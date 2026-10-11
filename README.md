@@ -31,7 +31,7 @@ o servidor local entrega as páginas trocando as bibliotecas do cdnjs pelas cóp
 - Ficam em `%APPDATA%\PainelSindicalExato` (banco `painel_sindical.db`, pasta `pdfs`, `backups`). Não são apagados ao desinstalar.
 - **Faça backup** em *Dados → Fazer backup* (gera um .zip na pasta Downloads). Para backup automático,
   defina a variável de ambiente `PAINEL_SINDICAL_DADOS` apontando para uma pasta do OneDrive.
-- Coleções: clientes, ccts, prazos, alertas, pedidos, auditorias, auditorias_folha, meta, ponto, ponto_regras, funcionarios, cct_ponto.
+- Coleções: clientes, ccts, prazos, alertas, pedidos, auditorias, auditorias_folha, contrato_modelos, meta, ponto, ponto_regras, funcionarios, cct_ponto.
 - Os dados de clientes **não** ficam neste repositório (`exportacao/` e `*.zip` estão no `.gitignore`).
 
 ### IA (opcional)
@@ -52,6 +52,7 @@ python main.py                          # ou executar_windows.bat
 python -m unittest discover -s tests    # testes do programa para computador
 node exato-flow/testes/ponto-calculo.test.js   # testes do motor do ponto
 node exato-flow/testes/folha-auditoria.test.js # testes da auditoria da folha
+node exato-flow/testes/contratos.test.js       # testes dos contratos de trabalho
 ```
 
 ### Estrutura
