@@ -13,6 +13,6 @@ x=F.experiencia({...f,exp_dec1:'prorrogar',exp_dec2:'efetivar'},'2026-12-23'); e
 x=F.experiencia({...f,exp_dec1:'rescindir',rescisao:'2026-11-14'},'2026-11-10'); eq('rescisão registrada no fim do 1º período',[x.fase,x.fim],['rescindir','2026-11-14']);
 x=F.experiencia({...f,exp_dias1:90,exp_dias2:0},'2026-12-25'); eq('90 dias sem prorrogação: só efetivar ou rescindir',[x.fim1,x.opcoes],['2026-12-29',['efetivar','rescindir']]);
 eq('mais de 90 dias no total é erro',!!F.experiencia({...f,exp_dias1:60,exp_dias2:45},'2026-10-10').erro,true);
-x=F.experiencia({nome:'NOVO',admissao:'2026-10-05',situacao:'Trabalhando'},'2026-10-11'); eq('admitido sem prazo: pede o prazo',x.fase,'sem_prazo');
+eq('ficha sem experiência = contratado direto (sem aviso)',F.experiencia({nome:'NOVO',admissao:'2026-10-05',situacao:'Trabalhando'},'2026-10-11'),null);
 eq('admitido há mais de 90 dias sem prazo: nada',F.experiencia({nome:'X',admissao:'2025-01-05'},'2026-10-11'),null);
 console.log(`${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);

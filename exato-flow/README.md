@@ -188,7 +188,7 @@ As regras de cálculo seguem o sistema `ponto-dominio` (branch `claude/init-git-
 - **7 dias antes** do fim de cada período: aviso no Painel (E-exato) e no quadro "Contrato de experiência: decidir" da ficha do cliente; a 2 dias ou vencido sem decisão, vira crítico.
 - Decisões: **prorrogar** (passa a vigiar a prorrogação), **efetivar** ou **rescindir** (registra a rescisão no último dia e mostra o que é devido: saldo, 13º e férias proporcionais + 1/3, FGTS sem multa, sem aviso prévio, art. 479 se antecipar, pagamento em 10 dias).
 - Vencido sem decisão: avisa que, sem prorrogação assinada e com o empregado trabalhando, o contrato virou por prazo indeterminado (art. 451).
-- Admitido há menos de 90 dias sem prazo no cadastro: pede o prazo.
+- Sem prazo de experiência na ficha (ou na admissão) = contratado direto, por prazo indeterminado: não há aviso.
 
 ## Auditoria da folha
 

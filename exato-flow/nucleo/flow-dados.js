@@ -161,11 +161,8 @@
   function experiencia(f,ref){
     if(!ref){ const d=new Date(); ref=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
     if(!f||!f.admissao||(f.rescisao&&!f.exp_dec1&&!f.exp_dec2)) return null;
-    const d1=parseInt(f.exp_dias1)||0, d2=parseInt(f.exp_dias2)||0, desde=difDias(ref,f.admissao);
-    if(!d1){
-      if(desde>=0&&desde<90&&funcAtivo(f,ref)) return {fase:"sem_prazo",nivel:"info",texto:`Admitido há ${desde} dia(s) sem prazo de experiência no cadastro: informe se é contrato de experiência`};
-      return null;
-    }
+    const d1=parseInt(f.exp_dias1)||0, d2=parseInt(f.exp_dias2)||0;
+    if(!d1) return null;   // ficha sem contrato de experi\u00eancia = contratado direto, por prazo indeterminado
     const fim1=addDias(f.admissao,d1-1), fim2=d2?addDias(fim1,d2):null, o={dias1:d1,dias2:d2,fim1,fim2,aviso:EXP_AVISO};
     if(d1+d2>90) o.erro="Experiência com mais de 90 dias no total (art. 445 da CLT): confira os prazos";
     const per=(fim,n,opc,dec)=>{

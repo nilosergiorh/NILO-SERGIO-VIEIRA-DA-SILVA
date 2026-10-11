@@ -429,9 +429,11 @@ async function salvarAdmissao(){
 }
 // contrato de experiência: célula da lista e decisões
 function expCell(f,i){
-  const x=F.experiencia(f,hoje()); if(!x) return '<span class="meta">—</span>';
+  const x=F.experiencia(f,hoje());
+  if(!x){ const rec=f.admissao&&!f.rescisao&&(Date.parse(hoje())-Date.parse(f.admissao))/864e5<90;   // sem experiência na ficha = contratado direto
+    return rec&&!S.somenteLeitura?`<span class="meta">direto</span><br><button class="link" type="button" data-expedit="${i}">informar experiência</button>`:'<span class="meta">—</span>'; }
   const cor={crit:"p-er",warn:"p-at",info:"p-nt"}[x.nivel]||"p-ok";
-  const rot={curso:"em curso",decidir:"decidir",vencido:"vencido",efetivado:"efetivado",rescindir:"rescisão",sem_prazo:"a informar"}[x.fase]||x.fase;
+  const rot={curso:"em curso",decidir:"decidir",vencido:"vencido",efetivado:"efetivado",rescindir:"rescisão"}[x.fase]||x.fase;
   const bt=(a,t)=>`<button class="link" type="button" data-expac="${i}|${a}">${t}</button>`;
   const acoes=S.somenteLeitura?"":`<button class="link" type="button" data-expedit="${i}">prazos</button>`;   // decisões ficam no quadro do topo
   const quando=x.fim?(x.fase==="efetivado"?"":(x.fase==="rescindir"?"fim ":"até ")+brD(x.fim).slice(0,5)):"";
