@@ -412,7 +412,7 @@ function irrf(rend,inss,nd,cfg){
 }
 
 // ---------- leitura do Extrato Mensal (Domínio) ----------
-const EV_RE=/(\d{1,4})\s+([A-Za-zÀ-ÿ0-9%\/\.\-º°ª\(\)'´`&, ]+?)\s{2,}([\d:.,]+)\s+([\d.]+,\d\d)\s([PDIB])(?=\s|$)/g;
+const EV_RE=/(\d{1,4})\s+([A-Za-zÀ-ÿ0-9%\/\.\-º°ª\(\)'´`&,?+ ]+?)\s{2,}([\d:.,]+)\s+([\d.]+,\d\d)\s([PDIB])(?=\s|$)/g;
 const INSS_COD=new Set(['998','812','821','826','843','989']);
 const IR_COD=new Set(['999','856','828','827']);
 function parseExtrato(text){

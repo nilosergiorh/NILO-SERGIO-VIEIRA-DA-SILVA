@@ -274,7 +274,11 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
       </button>
       <button class="nav" type="button" data-go="guias">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="m10 14 2 2 4-4"/></svg>
-        <span class="t"><b>Auditoria</b><small>Guias e folha</small></span><span class="badge" id="b-guias" hidden></span>
+        <span class="t"><b>Auditoria de guias</b><small>INSS e IRRF</small></span><span class="badge" id="b-guias" hidden></span>
+      </button>
+      <button class="nav" type="button" data-go="folha">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/><circle cx="16.5" cy="16.5" r="2.5"/><path d="m18.3 18.3 2 2"/></svg>
+        <span class="t"><b>Auditoria da folha</b><small>Encargos, piso e ponto</small></span>
       </button>
     </div>
 
@@ -370,7 +374,8 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
     <section class="view" id="v-clientes" aria-label="Clientes" hidden></section>
     <section class="view" id="v-sindical" aria-label="Painel Sindical" hidden></section>
     <section class="view" id="v-ponto" aria-label="Cálculo de Ponto" hidden></section>
-    <section class="view" id="v-guias" aria-label="Auditoria de guias e folha" hidden></section>
+    <section class="view" id="v-guias" aria-label="Auditoria de guias" hidden></section>
+    <section class="view" id="v-folha" aria-label="Auditoria da folha" hidden></section>
   </main>
 </div>
 
@@ -381,9 +386,10 @@ const MODS={
   clientes:{src:"modulos/clientes.html",title:"Clientes"},
   sindical:{src:"modulos/painel-sindical.html",title:"Painel Sindical"},
   ponto:{src:"modulos/ponto.html",title:"Cálculo de Ponto"},
-  guias:{src:"modulos/auditoria-guias.html",title:"Auditoria de guias e folha"}
+  guias:{src:"modulos/auditoria-guias.html",title:"Auditoria de guias"},
+  folha:{src:"modulos/auditoria-folha.html",title:"Auditoria da folha"}
 };
-const VIEWS=["inicio","sindical","ponto","guias","clientes"];
+const VIEWS=["inicio","sindical","ponto","guias","folha","clientes"];
 function abrir(v){
   if(!VIEWS.includes(v)) v="inicio";
   const m=MODS[v], box=document.getElementById("v-"+v);

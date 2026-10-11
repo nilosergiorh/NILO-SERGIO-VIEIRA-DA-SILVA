@@ -181,6 +181,22 @@ As regras de cálculo seguem o sistema `ponto-dominio` (branch `claude/init-git-
 - Formato das horas: o `ponto-dominio` usa horas decimais (centesimal); a planilha de lançamentos usa sexagesimal. No Flow, a escolha é por cliente.
 - Registro 11: o `ponto-dominio` não gera; a planilha de lançamentos gera para a rubrica 40. No Flow, também é escolha por cliente.
 
+## Auditoria da folha
+
+`modulos/auditoria-folha.html` + `nucleo/folha-auditoria.js` (testes em `testes/folha-auditoria.test.js`).
+Entrada: Extrato Mensal do Domínio em PDF (um ou vários meses). Conferências:
+
+- **Encargos recalculados** por funcionário: INSS progressivo (truncado por faixa, como o Domínio), FGTS 8% (aprendiz 2%) e IRRF mensal
+  com a redução da Lei 15.270/2025. A dedução usada (simplificado ou INSS + dependentes) é deduzida da base do extrato. Meses com férias
+  ou rescisão ficam como "conferir à mão" no IRRF e no FGTS rescisório. Validado em 7 meses de extrato real (94 INSS, 96 FGTS, 63 IRRF iguais ao Domínio).
+- **Piso e reajuste da CCT** (Painel Sindical): piso de ingresso até 90 dias e piso após a experiência; salário mínimo nacional; reajuste da
+  data-base quando o extrato tem o mês anterior e o da data-base. Função com piso próprio na CCT: conferir na convenção.
+- **Ponto × Folha**: compara cada linha do TXT gerado no Cálculo de Ponto (gravado em `ponto/{cnpj}_{AAAAMM}.txt_linhas`) com a rubrica na folha.
+- **INSS patronal**: quando a folha tem cota patronal (fora do Simples ou Anexo IV), mostra o % efetivo de empresa, RAT × FAP, Terceiros e SENAI e
+  alerta se a cota não for 20% ou o RAT ajustado sair de 0,5%–6%. Com o regime preenchido no cadastro, cruza com a folha.
+- **Tabelas** por ano em `TABELAS` com a fonte oficial (2026: Portaria MPS/MF 13/2026; Receita Federal - Tributação de 2026). Ano sem tabela não é auditado.
+- Resultado salvo em `auditorias_folha/{cnpj}_{AAAAMM}` (sem CPF) e relatório em Excel.
+
 ## Publicação
 
 O programa é publicado como Artifact no claude.ai, no mesmo endereço do antigo Painel Sindical. Com isso, a base de dados, os PDFs das convenções e as permissões continuam os mesmos.

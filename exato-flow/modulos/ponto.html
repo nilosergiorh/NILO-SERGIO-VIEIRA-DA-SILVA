@@ -1709,7 +1709,7 @@ $("btnConferido").onclick=async()=>{ if(!S.podeExportar) return; S.doc.status="c
 $("btnBaixar").onclick=async()=>{
   const nome=`Lancamentos_Ponto_${S.cli.cod||F.digitos(S.cli.cnpj)}_${S.comp.replace("-","")}.txt`;
   const blob=new Blob([S.txt.linhas.join("\r\n")+"\r\n"],{type:"text/plain"});
-  if(await baixar(nome,blob)){ S.doc.status="exportado"; S.doc.txt_em=new Date().toISOString(); await salvarAgora(); render(); }
+  if(await baixar(nome,blob)){ S.doc.status="exportado"; S.doc.txt_em=new Date().toISOString(); S.doc.txt_linhas=S.txt.linhas.filter(l=>l.startsWith("10")); await salvarAgora();   // a Auditoria da folha compara a folha com estas linhas render(); }
 };
 $("btnCopiar").onclick=async()=>{ try{ await navigator.clipboard.writeText(S.txt.linhas.join("\r\n")+"\r\n"); toast("TXT copiado. Cole num arquivo .txt para importar."); }catch(e){ const r=document.createRange(); r.selectNodeContents($("txt")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("Texto selecionado: use Ctrl+C para copiar."); } };
 window.addEventListener("pagehide",()=>{ if(tSalvar) salvarAgora(); });

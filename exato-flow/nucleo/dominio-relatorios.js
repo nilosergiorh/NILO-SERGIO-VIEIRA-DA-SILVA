@@ -35,7 +35,7 @@ function itemsToLines(items){
 
 const num=s=>s==null?0:parseFloat(String(s).replace(/\./g,'').replace(',','.'))||0;
 // ---------- leitura do Extrato Mensal (Dom\u00ednio) ----------
-const EV_RE=/(\d{1,4})\s+([A-Za-z\u00c0-\u00ff0-9%\/\.\-\u00ba\u00b0\u00aa\(\)'\u00b4`&, ]+?)\s{2,}([\d:.,]+)\s+([\d.]+,\d\d)\s([PDIB])(?=\s|$)/g;
+const EV_RE=/(\d{1,4})\s+([A-Za-z\u00c0-\u00ff0-9%\/\.\-\u00ba\u00b0\u00aa\(\)'\u00b4`&,?+ ]+?)\s{2,}([\d:.,]+)\s+([\d.]+,\d\d)\s([PDIB])(?=\s|$)/g;
 const INSS_COD=new Set(['998','812','821','826','843','989']);
 const IR_COD=new Set(['999','856','828','827']);
 function parseExtrato(text){
@@ -51,7 +51,7 @@ function parseExtrato(text){
     const blocks=pg.split(/\n(?=\s*(?:Empr|Contr)\.?:\s+\d+ )/);
     for(const b of blocks){
       const wm=b.match(/^\s*(Empr|Contr)\.?:\s+(\d+)\s+(.+?)\s{2,}Situa\u00e7\u00e3o:\s+(.+?)\s{2,}/); if(!wm) continue;
-      const w={tipo:wm[1],id:wm[2],nome:wm[3].trim(),sit:wm[4].trim(),eventos:[]};
+      const w={tipo:wm[1],id:wm[2],nome:wm[3].trim(),sit:wm[4].trim(),comp,eventos:[]};   // comp: extrato de varios meses vem num PDF so
       w.vinculo=((b.match(/V\u00ednculo:\s+(\S+)/)||[])[1])||'';
       for(const line of b.split('\n')){
         if(/^\s*(ND:|NF:|V\u00ednculo|Cargo|Empr|Contr)/.test(line)) continue;
@@ -59,6 +59,9 @@ function parseExtrato(text){
       }
       const g=re=>{const x=b.match(re);return x?x[1]:null};
       w.nd=parseInt(g(/ND:\s+(\d+)/)||'0'); w.prov=num(g(/Proventos:\s+([\d.,]+)/)); w.desc=num(g(/Descontos:\s+([\d.,]+)/));
+      w.cargo=((b.match(/Cargo:\s+\d+\s+(.+?)\s{2,}C\.B\.O/)||[])[1]||'').trim(); w.salario=num(g(/Sal\u00e1rio:\s+([\d.,]+)/));
+      w.horasMes=num(g(/Horas M\u00eas:\s+([\d.,]+)/)); w.adm=((b.match(/Adm:\s+(\d\d\/\d\d\/\d{4})/)||[])[1]||'').split('/').reverse().join('-');
+      w.baseFgts=num(g(/Base FGTS:\s+([\d.,]+)/)); w.valorFgts=num(g(/Valor FGTS:\s+([\d.,]+)/)); w.liquido=num(g(/L\u00edquido:\s+(-?[\d.,]+)/));
       w.baseInss=num(g(/Base INSS:\s+([\d.,]+)/)); w.exced=num(g(/Excedente INSS:\s+([\d.,]+)/)); w.baseIrrf=num(g(/Base IRRF:\s+([\d.,]+)/));
       w.obs=b.split('\n').map(l=>l.trim()).filter(l=>/^(FERIAS|DEMITIDO|Doen\u00e7a|Licen\u00e7a|Aposent|Novo afast|Afast)/i.test(l)).join('; ');
       c.workers.push(w);
@@ -74,7 +77,7 @@ function parseExtrato(text){
         const x=pg.match(new RegExp(esc+':\\s+([\\d.,]+)\\s+'+esc+':\\s+([\\d.,]+)'));
         if(x) s.irrf[lab]=[num(x[1]),num(x[2])];
       }
-      c.summary=s;
+      s.comp=comp; c.summary=s; (c.summaries=c.summaries||[]).push(s);
     }
   }
   return {comp,empresas:Object.values(comps)};

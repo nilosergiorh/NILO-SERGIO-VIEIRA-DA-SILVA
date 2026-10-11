@@ -1,0 +1,444 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Auditoria da folha · Exato Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: barra de cliente e competência; arquivos; indicadores; abas Resumo → Encargos → Piso → Ponto x Folha → INSS patronal → Tabelas. */
+:root{
+  --red:#C00000; --red-hi:#e01515; --red-soft:rgba(192,0,0,.07);
+  --bg:#f3f3f5; --surf:#ffffff; --surf2:#f7f7f9; --ink:#16171a; --mute:#5f626b; --line:#e2e3e8; --hover:#fbf4f4; --sel:#fdeeee;
+  --ok:#14804f; --ok-bg:#e2f4ea; --at:#9a5b00; --at-bg:#fff1d6; --er:#b00000; --er-bg:#fde6e6; --nt:#4a4d55; --nt-bg:#ececf0;
+  --we:#f1f1f4; --scrim:rgba(17,17,17,.5);
+  --f-disp:"Sora","Segoe UI",system-ui,sans-serif;
+  --f-body:"Manrope","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",Consolas,ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09);
+  --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b; --sel:#2c1a1a;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#c3c5cc; --nt-bg:rgba(255,255,255,.08);
+  --we:#19191c; --scrim:rgba(0,0,0,.65); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09);
+  --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b; --sel:#2c1a1a;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#c3c5cc; --nt-bg:rgba(255,255,255,.08);
+  --we:#19191c; --scrim:rgba(0,0,0,.65); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.5 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--red-hi);outline-offset:2px}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:24px;padding-block:22px 48px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+#area{min-width:0}
+#area>section{grid-template-columns:minmax(0,1fr)}
+h1{margin:0;font:800 1.6rem/1.15 var(--f-disp);letter-spacing:-.02em}
+h2{margin:0;font:700 1.05rem/1.3 var(--f-disp)}
+h3{margin:0;font:700 .76rem var(--f-disp);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.lead{margin:4px 0 0;color:var(--mute);font-size:.9rem;max-width:72ch}
+.meta{font-size:.78rem;color:var(--mute)}
+.mono{font-family:var(--f-mono)}
+
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.fld{display:grid;gap:4px;font-size:.74rem;font-weight:700;color:var(--mute);min-width:0}
+.fld input,.fld select{background:var(--surf2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:.92rem;font-weight:500;color:var(--ink);min-width:0}
+.fld.cli{flex:1 1 320px}
+.fld.cli input{width:100%}
+.bar .st{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{display:inline-block;font:500 10px var(--f-mono);letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--ok-bg);color:var(--ok)} .p-at{background:var(--at-bg);color:var(--at)} .p-er{background:var(--er-bg);color:var(--er)} .p-nt{background:var(--nt-bg);color:var(--nt)}
+.cctw{overflow-x:auto;margin-top:6px}
+.cctt{width:100%;border-collapse:collapse;font-size:.88rem;min-width:620px}
+.cctt th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:6px 8px;border-bottom:1px solid var(--line)}
+.cctt td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.cctt td small{display:block;color:var(--mute);font-size:.76rem;margin-top:2px}
+.cctt .acts{display:flex;flex-wrap:wrap;gap:6px}
+.cctx{display:grid;gap:6px;margin-top:10px;font-size:.86rem}
+.cctx li{color:var(--mute)} .cctx b{color:var(--ink)}
+.cctf{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:10px}
+.cctf label{display:grid;gap:4px;font-size:.8rem;color:var(--mute)}
+.cctf input,.cctf select{padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surf2);color:inherit;font:inherit}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mute)}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--mute)} .sync.on i{background:var(--ok)} .sync.err i{background:var(--er)} .sync.wait i{background:var(--at)}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{border:0;background:none;padding:10px 14px;font:700 .86rem var(--f-disp);color:var(--mute);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;display:flex;gap:8px;align-items:center}
+.tab b{font:500 11px var(--f-mono);color:var(--mute)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--red-hi)}
+.tab:hover{color:var(--ink)}
+
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:10px;padding:9px 16px;font:700 .86rem var(--f-disp);cursor:pointer;background:var(--red);color:#fff;white-space:nowrap}
+.btn:hover{background:var(--red-hi)}
+.btn.ghost{background:var(--surf);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--red-hi);color:var(--red-hi)}
+.btn.sm{padding:6px 11px;font-size:.78rem}
+.btn:disabled,.btn.disabled{opacity:.45;cursor:not-allowed}
+label.btn.disabled{pointer-events:none}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+.card{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:12px;min-width:0}
+.empty{padding:36px 20px;text-align:center;color:var(--mute)}
+.banner{border-radius:10px;padding:10px 14px;font-size:.88rem;background:var(--at-bg);color:var(--at)}
+.banner.er{background:var(--er-bg);color:var(--er)}
+
+/* arquivos */
+.drops{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.drop{border:1.5px dashed var(--line);border-radius:14px;background:var(--surf);padding:18px;display:grid;gap:8px;align-content:start}
+.drop.over{border-color:var(--red-hi);background:var(--red-soft)}
+.drop p{margin:0;color:var(--mute);font-size:.88rem}
+.files{display:grid;gap:6px}
+.file{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surf);font-size:.86rem}
+.file b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file .meta{white-space:normal}
+
+.rev{display:grid;gap:12px;border-top:1px solid var(--line);padding-top:12px}
+.passos{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:.88rem}
+.passos li{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.passos i{flex:none;width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font:700 11px var(--f-mono);font-style:normal;background:var(--nt-bg);color:var(--nt);transform:translateY(3px)}
+.passos .ok i{background:var(--ok-bg);color:var(--ok)}
+.passos .pend i{background:var(--at-bg);color:var(--at)}
+.passos b{font-weight:700}
+.passos .link{background:none;border:0;padding:0;color:var(--red-hi);font-weight:700;cursor:pointer}
+.rev table{min-width:640px}
+.rev details p{margin:6px 0 0;font-size:.74rem}
+.rev select{background:var(--surf2);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:.82rem;color:var(--ink);max-width:100%}
+.aus{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.2fr) auto auto minmax(0,1.2fr) auto;gap:10px;align-items:end}
+.aus .fld select,.aus .fld input{width:100%}
+@media (max-width:1000px){.aus{grid-template-columns:1fr 1fr}.aus .aobs{grid-column:1/-1}}
+@media (max-width:520px){.aus{grid-template-columns:1fr}}
+/* E-exato */
+.guia{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;display:flex;align-items:flex-end;gap:10px;max-width:min(440px,calc(100vw - 32px))}
+.gface{flex:none;width:64px;height:64px;border-radius:50%;padding:0;border:2px solid var(--red-hi);background:var(--surf);overflow:hidden;cursor:pointer;box-shadow:0 10px 24px -8px rgba(0,0,0,.5);order:2}
+.gface img{width:100%;height:100%;object-fit:cover;display:block;animation:gBob 3.4s ease-in-out infinite}
+.guia[data-humor="pensando"] .gface img{animation:gBob .9s ease-in-out infinite}
+.guia[data-humor="feliz"] .gface img{animation:gHop .5s ease-in-out 2}
+@keyframes gBob{50%{transform:translateY(-3px)}} @keyframes gHop{50%{transform:translateY(-8px)}}
+.gbal{background:var(--surf);border:1px solid var(--line);border-left:3px solid var(--red-hi);border-radius:16px 16px 4px 16px;padding:10px 12px 12px;box-shadow:0 14px 34px -12px rgba(0,0,0,.45);display:grid;gap:8px;min-width:0}
+.gtop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.gtop b{font:700 .82rem var(--f-disp);color:var(--red-hi)}
+.gtop button{border:0;background:none;color:var(--mute);cursor:pointer;font-size:1.1rem;line-height:1;padding:0 4px}
+.gbal p{margin:0;font-size:.88rem;line-height:1.45}
+.gacoes{display:flex;flex-wrap:wrap;gap:6px}
+.gacoes:empty{display:none}
+.guia.min .gbal{display:none}
+.gface{position:relative;overflow:visible}
+.gface img{border-radius:50%}
+.guia.min.novo .gface::after{content:"";position:absolute;right:0;top:0;width:14px;height:14px;border-radius:50%;background:var(--red-hi);border:2px solid var(--surf)}
+.wrap{padding-bottom:180px}
+@media (max-width:640px){.gface{width:52px;height:52px}.gbal p{font-size:.84rem}.gbal{max-height:45vh;overflow:auto}}
+@media (prefers-reduced-motion:reduce){.gface img{animation:none!important}}
+/* conferencia */
+.conf{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:start}
+.emps{background:var(--surf);border:1px solid var(--line);border-radius:14px;overflow:hidden;position:sticky;top:8px;max-height:calc(100vh - 16px);display:flex;flex-direction:column}
+.emps .hd{padding:10px 12px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.emps .hd input{background:var(--surf2);border:1px solid var(--line);border-radius:999px;padding:7px 12px;width:100%}
+.emps ul{list-style:none;margin:0;padding:0;overflow:auto}
+.emps li button{width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:10px 12px;cursor:pointer;display:grid;gap:3px}
+.emps li button:hover{background:var(--hover)}
+.emps li button[aria-current="true"]{background:var(--sel);box-shadow:inset 3px 0 0 var(--red-hi)}
+.emps .nm{font-weight:700;font-size:.86rem;line-height:1.3}
+.emps .sm{display:flex;flex-wrap:wrap;gap:4px 10px;font:500 11px var(--f-mono);color:var(--mute)}
+.emps .sm .er{color:var(--er)}
+.det{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-width:0}
+.eh{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start}
+.eh .f{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:8px}
+.eh .f .fld input{width:120px}
+.tots{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surf)}
+.tot{padding:10px 12px;border-left:1px solid var(--line);display:grid;gap:1px;min-width:0}
+.tot:first-child{border-left:0}
+.tot b{font:700 1.15rem/1.2 var(--f-mono);font-variant-numeric:tabular-nums}
+.tot span{font-size:.72rem;color:var(--mute)}
+.tot.er b{color:var(--er)}
+.fotos{display:flex;gap:8px;flex-wrap:wrap}
+.fotos button{border:1px solid var(--line);border-radius:8px;padding:0;background:none;cursor:zoom-in;width:72px;height:72px;overflow:hidden}
+.fotos img{width:100%;height:100%;object-fit:cover;display:block}
+.tbox{overflow-x:auto;background:var(--surf);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th{font:700 10px var(--f-disp);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:left;padding:9px 8px;background:var(--surf2);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.n.z{color:var(--line)}
+tr.we td{background:var(--we)}
+tr.fer td{background:var(--red-soft)}
+.grid{min-width:1060px}
+.grid td.d{white-space:nowrap;font-family:var(--f-mono);font-size:.8rem}
+.grid td.d small{display:block;font-family:var(--f-body);color:var(--mute);font-size:.7rem}
+.grid input.m{width:100%;min-width:220px;font-family:var(--f-mono);font-size:.82rem;background:transparent;border:1px solid transparent;border-radius:6px;padding:5px 7px}
+.grid input.m:hover{border-color:var(--line)} .grid input.m:focus{border-color:var(--red-hi);background:var(--surf);outline:none}
+.grid select{font-size:.8rem;background:transparent;border:1px solid transparent;border-radius:6px;padding:4px}
+.grid select:hover{border-color:var(--line)}
+.al{display:grid;gap:2px;font-size:.74rem;min-width:180px}
+.al span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;background:var(--mute)}
+.al .alta::before{background:var(--er)} .al .media::before{background:var(--at)}
+.al .alta{color:var(--er)}
+.orig{font:500 9.5px var(--f-mono);text-transform:uppercase;color:var(--mute)}
+.orig.foto{color:var(--at)}
+tfoot td{font-weight:700;background:var(--surf2);border-top:1px solid var(--line)}
+
+/* regras */
+.rgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 12px}
+.form label,.jr label{display:grid;gap:4px;font-size:.74rem;font-weight:700;color:var(--mute)}
+.form input,.form select,.jr input{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:.88rem;font-weight:500;width:100%;min-width:0;color:var(--ink)}
+.chk{display:flex!important;grid-template-columns:none!important;gap:8px!important;align-items:center;font-size:.84rem!important;color:var(--ink)!important;font-weight:600!important}
+.chk input{width:auto!important}
+.jr{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px}
+.jr .dias{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.jr .dias input{font-family:var(--f-mono);font-size:.76rem;padding:6px}
+.note{font-size:.8rem;color:var(--mute);margin:0;max-width:90ch}
+
+/* txt */
+.check{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.9rem}
+.check li{display:flex;gap:8px;align-items:baseline}
+.check i{flex:none;width:9px;height:9px;border-radius:50%}
+.check .ok i{background:var(--ok)} .check .er i{background:var(--er)} .check .at i{background:var(--at)}
+pre.txt{margin:0;max-height:340px;overflow:auto;background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:12px;font:12px/1.55 var(--f-mono)}
+
+dialog{border:0;border-radius:14px;padding:0;max-width:min(96vw,1100px);max-height:94vh;background:var(--surf);color:var(--ink)}
+dialog::backdrop{background:var(--scrim)}
+.zoom{display:grid;gap:8px;padding:12px}
+.zoom .img{overflow:auto;max-height:82vh}
+.zoom img{display:block;max-width:none;width:160%}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,620px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.88rem;z-index:40}
+
+@media (max-width:1000px){.conf{grid-template-columns:minmax(0,1fr)}.emps{position:static;max-height:300px}.tots{grid-template-columns:repeat(3,minmax(0,1fr))}.tot:nth-child(4){border-left:0}.tot:nth-child(n+4){border-top:1px solid var(--line)}.rgrid{grid-template-columns:1fr}}
+@media (max-width:640px){.wrap{padding-inline:16px}.drops{grid-template-columns:1fr}.jr .dias{grid-template-columns:repeat(2,minmax(0,1fr))}.eh{grid-template-columns:1fr}.bar .st{margin-left:0}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:2px}
+.kpi b{font:800 1.6rem/1.1 var(--f-disp)} .kpi span{font-size:.78rem;color:var(--mute)}
+.kpi.er b{color:var(--er)} .kpi.at b{color:var(--at)} .kpi.ok b{color:var(--ok)}
+.lst{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.lst li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surf)}
+.lst li small{display:block;color:var(--mute);font-size:.78rem}
+.dif{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dif.neg{color:var(--er)}
+</style>
+<link rel="stylesheet" href="../nucleo/tema-exato.css">
+</head><body>
+<div class="wrap">
+  <header>
+    <h1>Auditoria da folha</h1>
+    <p class="lead"><b>Todo mês, antes de fechar:</b> envie o Extrato Mensal do Domínio (PDF, pode ter vários meses). O Flow recalcula INSS, IRRF e FGTS de cada funcionário, confere salário com o piso e o reajuste da convenção, compara a folha com o TXT do ponto conferido e mostra o INSS patronal quando a empresa não é do Simples.</p>
+  </header>
+  <div class="bar">
+    <label class="fld cli">Cliente<input id="cli" list="dl-cli" placeholder="Digite o nome, código ou CNPJ" autocomplete="off"></label>
+    <datalist id="dl-cli"></datalist>
+    <label class="fld">Competência<select id="comp" disabled><option value="">envie o extrato</option></select></label>
+    <div class="st"><span id="stPill"></span><span class="sync" id="sync"><i></i><span>Conectando…</span></span></div>
+  </div>
+  <div class="banner" id="aviso" hidden></div>
+  <p class="note" id="semCli">Escolha o cliente para começar.</p>
+  <div id="area" hidden style="display:grid;gap:16px">
+    <div class="drop" id="drop">
+      <h2>Extrato Mensal do Domínio</h2>
+      <p>Domínio Folha › Relatórios › Extrato Mensal, em PDF. Pode ser um mês ou vários (a conferência do reajuste usa o mês anterior à data-base). Os dados ficam só na sua base: o Flow guarda o resultado da auditoria, sem CPF.</p>
+      <div class="row"><label class="btn" for="inE">Selecionar extrato</label><span class="meta" id="arqSt"></span></div>
+      <input id="inE" type="file" accept=".pdf" multiple hidden>
+    </div>
+    <div id="res" hidden style="display:grid;gap:16px">
+      <div class="kpis" id="kpis"></div>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-t="resumo" aria-selected="true">Resumo</button>
+        <button class="tab" role="tab" data-t="encargos">Encargos</button>
+        <button class="tab" role="tab" data-t="piso">Piso e reajuste</button>
+        <button class="tab" role="tab" data-t="ponto">Ponto × Folha</button>
+        <button class="tab" role="tab" data-t="patronal">INSS patronal</button>
+        <button class="tab" role="tab" data-t="tabelas">Tabelas</button>
+      </div>
+      <div id="pane"></div>
+      <div class="row"><button class="btn ghost" type="button" id="btnXls">Baixar relatório em Excel</button><span class="meta" id="salvoSt"></span></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="../nucleo/flow-dados.js" charset="utf-8"></script>
+<script src="../nucleo/dominio-relatorios.js" charset="utf-8"></script>
+<script src="../nucleo/folha-auditoria.js" charset="utf-8"></script>
+<script>
+"use strict";
+const F=window.FlowDados, D=window.DominioRel, A=window.FolhaAuditoria;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const brl=A.brl, pct=v=>(v*100).toFixed(2).replace(".",",")+"%";
+function toast(m,ms){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,ms||4200);}
+function setSync(c,t){ const s=$("sync"); s.className="sync "+c; s.lastElementChild.textContent=t; }
+const S={E:null,cli:null,emp:null,comp:"",tab:"resumo",res:null,ponto:null,regras:null};
+const NIV={erro:["Divergência","p-er"],atencao:["Atenção","p-at"],ok:["OK","p-ok"],nc:["Conferir à mão","p-nt"]};
+const pill=n=>`<span class="pill ${NIV[n][1]}">${NIV[n][0]}</span>`;
+const difH=v=>v==null?"":`<span class="dif ${v<0?"neg":""}">${v>0?"+":""}${brl(v).replace("R$ ","")}</span>`;
+
+// ---------- cliente ----------
+function listaClientes(){
+  const L=(S.E.clientes||[]).filter(F.ativo).sort((a,b)=>(parseInt(a.cod)||1e9)-(parseInt(b.cod)||1e9));
+  $("dl-cli").innerHTML=L.map(c=>`<option value="${esc((c.cod?c.cod+" · ":"")+c.nome)}">${esc(F.fmtCnpj(c.cnpj))}</option>`).join("");
+}
+function acharCliente(v){
+  const t=String(v||"").trim(); if(!t) return null;
+  const cod=t.split(" · ")[0].trim(), d=F.digitos(t);
+  return (S.E.clientes||[]).find(c=>(c.cod&&String(c.cod)===cod)||(d.length===14&&F.digitos(c.cnpj)===d)||((c.cod?c.cod+" · ":"")+c.nome)===t)||null;
+}
+function escolherCliente(){
+  const c=acharCliente($("cli").value);
+  if(!c){ $("area").hidden=true; $("semCli").hidden=false; S.cli=null; return; }
+  if(S.cli&&S.cli._id===c._id) return;
+  S.cli=c; S.emp=null; S.res=null; $("area").hidden=false; $("semCli").hidden=true; $("res").hidden=true; $("arqSt").textContent="";
+  $("comp").innerHTML='<option value="">envie o extrato</option>'; $("comp").disabled=true; $("stPill").innerHTML="";
+  try{ localStorage.setItem("flow.audfolha.cli",$("cli").value); }catch(e){}
+}
+const cctDoCliente=()=>S.cli&&S.cli.cct?(S.E.ccts||[]).find(k=>k.ramo===S.cli.cct)||null:null;
+
+// ---------- extrato ----------
+async function lerExtrato(files){
+  if(!S.cli) return;
+  $("arqSt").textContent="Lendo o extrato…";
+  try{
+    let texto="";
+    for(const f of files) texto+="\n"+await D.pdfText(f);
+    const r=D.parseExtrato(texto);
+    const emp=r.empresas.find(e=>F.digitos(e.cnpj)===F.digitos(S.cli.cnpj));
+    if(!emp){ const outro=r.empresas[0]; $("arqSt").textContent=""; toast(outro?`Este extrato é de ${outro.code} - ${outro.name} (${outro.cnpj}), não do cliente escolhido.`:"Não reconheci um Extrato Mensal do Domínio neste PDF.",7000); return; }
+    S.emp=emp;
+    const comps=[...new Set(emp.workers.map(w=>w.comp))].filter(Boolean).sort((a,b)=>a.split("/").reverse().join().localeCompare(b.split("/").reverse().join()));
+    $("comp").innerHTML=comps.map(c=>`<option>${c}</option>`).join(""); $("comp").value=comps[comps.length-1]; $("comp").disabled=comps.length<2;
+    $("arqSt").textContent=`${emp.code} - ${emp.name} · ${comps.length} competência(s): ${comps.join(", ")}`;
+    await auditar();
+  }catch(e){ console.error(e); $("arqSt").textContent=""; toast(e&&e.message?e.message:"Não consegui ler o PDF."); }
+}
+
+// ---------- auditoria ----------
+async function auditar(){
+  const comp=$("comp").value; if(!S.emp||!comp) return;
+  S.comp=comp;
+  const ws=S.emp.workers.filter(w=>w.comp===comp), cct=cctDoCliente(), T=A.tab(comp);
+  const hist={}; S.emp.workers.forEach(w=>(hist[w.id]=hist[w.id]||[]).push({comp:w.comp,salario:w.salario}));
+  const enc=[], piso=[];
+  for(const w of ws){
+    const it=A.conferirEncargos(w,comp); if(it.length) enc.push({w,it});
+    if(w.tipo==="Empr"){ const p=A.conferirPiso(w,cct,comp); const rj=A.conferirReajuste(hist[w.id],cct); piso.push({w,p,rj}); }
+  }
+  // ponto conferido no Flow (TXT gerado) e regras do cliente
+  S.ponto=null; S.regras=null; const db=S.E.db, chave=F.digitos(S.cli.cnpj)+"_"+comp.split("/").reverse().join("");
+  if(db){ try{ const d=await db.doc("ponto/"+chave).get(); if(d.exists) S.ponto=d.data(); }catch(e){}
+          try{ const r=await db.doc("ponto_regras/"+F.digitos(S.cli.cnpj)).get(); if(r.exists) S.regras=r.data(); }catch(e){} }
+  const pf=S.ponto&&S.ponto.txt_linhas?A.conferirPonto(ws,S.ponto.txt_linhas,S.regras):null;
+  const sm=(S.emp.summaries||[]).find(s=>s.comp===comp)||null;
+  const pat=A.conferirPatronal(sm,S.cli.dp_regime||"");
+  S.res={comp,ws,enc,piso,pf,pat,cct,T};
+  render(); await salvar();
+}
+function achados(){
+  const R=S.res, out=[];
+  for(const {w,it} of R.enc) for(const x of it) if(x.nivel!=="ok") out.push({area:"Encargos",nivel:x.nivel,cod:w.id,nome:w.nome,tit:x.tipo,msg:x.msg,folha:x.folha,calc:x.calc,dif:x.dif});
+  for(const {w,p,rj} of R.piso){ for(const x of p) if(x.nivel!=="ok") out.push({area:"Piso",nivel:x.nivel,cod:w.id,nome:w.nome,tit:"Piso",msg:x.msg,folha:x.folha,calc:x.calc,dif:x.dif});
+    if(rj&&rj.nivel==="erro") out.push({area:"Reajuste",nivel:"erro",cod:w.id,nome:w.nome,tit:"Reajuste",msg:rj.msg,folha:rj.folha,calc:rj.calc,dif:rj.dif}); }
+  for(const x of R.pf||[]) if(x.nivel!=="ok") out.push({area:"Ponto × Folha",nivel:x.nivel,cod:x.cod,nome:x.nome,tit:"Rubrica "+x.rub,msg:`${x.msg} (ponto ${x.ponto}, folha ${x.folha})`});
+  if(R.pat) for(const a of R.pat.alertas) out.push({area:"INSS patronal",nivel:a.nivel,cod:"",nome:"Empresa",tit:"INSS patronal",msg:a.msg});
+  const ord={erro:0,atencao:1,nc:2};
+  return out.sort((a,b)=>ord[a.nivel]-ord[b.nivel]||(+a.cod||0)-(+b.cod||0));
+}
+function render(){
+  const R=S.res; if(!R) return; $("res").hidden=false;
+  const ac=achados(), er=ac.filter(x=>x.nivel==="erro"), at=ac.filter(x=>x.nivel==="atencao");
+  const impacto=ac.filter(x=>x.nivel!=="nc"&&x.dif!=null&&x.dif<0).reduce((t,x)=>t-x.dif,0);
+  $("kpis").innerHTML=`<div class="kpi"><b>${R.ws.filter(w=>w.tipo==="Empr").length}</b><span>funcionários em ${R.comp}</span></div>
+    <div class="kpi ${er.length?"er":"ok"}"><b>${er.length}</b><span>divergência(s)</span></div>
+    <div class="kpi ${at.length?"at":"ok"}"><b>${at.length}</b><span>ponto(s) de atenção</span></div>
+    <div class="kpi ${impacto?"er":"ok"}"><b>${brl(impacto)}</b><span>pago ou descontado a menos no mês (soma)</span></div>
+    <div class="kpi"><b>${R.pat?(R.pat.temPatronal?"Fora do Simples":"Simples"):"—"}</b><span>${R.pat?esc(R.pat.regimeDeduzido):"sem resumo de encargos no extrato"}</span></div>`;
+  $("stPill").innerHTML=er.length?'<span class="pill p-er">Com divergências</span>':'<span class="pill p-ok">Sem divergências</span>';
+  document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===S.tab?"true":"false"));
+  $("pane").innerHTML=({resumo:pResumo,encargos:pEncargos,piso:pPiso,ponto:pPonto,patronal:pPatronal,tabelas:pTabelas})[S.tab](ac);
+}
+function pResumo(ac){
+  if(!ac.length) return `<div class="card"><h2>Nenhuma divergência em ${S.res.comp}</h2><p class="note">Encargos, piso${S.res.pf?", ponto":""} e INSS patronal conferidos.</p></div>`;
+  return `<div class="card"><h2>O que corrigir antes de fechar ${S.res.comp}</h2>
+    <ul class="lst">${ac.map(x=>`<li>${pill(x.nivel)}<div><b>${esc(x.cod?x.cod+" · ":"")}${esc(x.nome)}</b> — ${esc(x.tit)}<small>${x.area===x.tit?"":esc(x.area)+": "}${esc(x.msg)}</small></div>${x.dif!=null?difH(x.dif):"<span></span>"}</li>`).join("")}</ul>
+    <p class="note">Diferença = valor na folha − valor recalculado. Negativo: pago ou descontado a menos. Arredondamentos de até R$ 0,05 são ignorados.</p></div>`;
+}
+function pEncargos(){
+  const R=S.res; if(!R.T) return `<div class="banner er">Tabelas de ${R.comp.slice(-4)} ainda não cadastradas no Flow.</div>`;
+  const cel=(it,t)=>{ const x=it.find(y=>y.tipo===t&&y.nivel!=="atencao")||it.find(y=>y.tipo===t); if(!x) return "<td class='n z'>–</td><td></td>"; return `<td class="n">${x.folha!=null?brl(x.folha).replace("R$ ",""):"–"}${x.nivel!=="ok"&&x.calc!=null?`<br><small>calc. ${brl(x.calc).replace("R$ ","")}</small>`:""}</td><td>${pill(x.nivel)}</td>`; };
+  return `<div class="tbox"><table><thead><tr><th>Cód.</th><th>Funcionário</th><th class="n">INSS</th><th></th><th class="n">FGTS</th><th></th><th class="n">IRRF</th><th></th><th>Observação</th></tr></thead><tbody>
+    ${R.enc.map(({w,it})=>`<tr><td class="n">${esc(w.id)}</td><td>${esc(w.nome)}</td>${cel(it,"INSS")}${cel(it,"FGTS")}${cel(it,"IRRF")}<td><small>${esc(it.filter(x=>x.tipo==="IRRF").map(x=>x.msg).join(" · "))}</small></td></tr>`).join("")}</tbody></table></div>
+    <p class="note">Recalculado com as tabelas de ${R.comp.slice(-4)} (aba Tabelas), truncando os centavos como o Domínio. Pró-labore (contribuinte) não entra nesta conferência.</p>`;
+}
+function pPiso(){
+  const R=S.res, k=R.cct;
+  const cab=k?`<p class="note">CCT: <b>${esc(k.ramo)}</b> · vigência ${esc((k.ini||"?").split("-").reverse().join("/"))} a ${esc((k.fim||"?").split("-").reverse().join("/"))} · piso de ingresso ${k.pmin?brl(k.pmin):"–"} · piso após a experiência ${k.pref?brl(k.pref):"–"} · reajuste ${k.reaj?pct(k.reaj):"–"}. Fonte: Painel Sindical. Funções com piso próprio na CCT precisam ser conferidas na convenção.</p>`:`<div class="banner">Cliente sem convenção no cadastro: só o salário mínimo foi conferido. Enquadre o cliente no Painel Sindical.</div>`;
+  return cab+`<div class="tbox"><table><thead><tr><th>Cód.</th><th>Funcionário</th><th>Cargo</th><th>Admissão</th><th class="n">Salário</th><th class="n">Piso</th><th class="n">Dif.</th><th></th><th>Reajuste</th></tr></thead><tbody>
+    ${R.piso.map(({w,p,rj})=>{ const x=p.find(y=>y.tipo==="Piso"&&y.calc!=null)||p[0]||{}; return `<tr><td class="n">${esc(w.id)}</td><td>${esc(w.nome)}</td><td>${esc(w.cargo)}</td><td>${esc((w.adm||"").split("-").reverse().join("/"))}</td><td class="n">${brl(w.salario).replace("R$ ","")}</td><td class="n">${x.calc!=null?brl(x.calc).replace("R$ ",""):"–"}</td><td class="n">${difH(x.dif)}</td><td>${x.nivel?pill(x.nivel):""}</td><td>${rj?`${pill(rj.nivel)} <small>${esc(rj.msg)}</small>`:""}</td></tr>`; }).join("")}</tbody></table></div>`;
+}
+function pPonto(){
+  const R=S.res;
+  if(!S.ponto) return `<div class="card"><h2>Ponto de ${R.comp} não está no Flow</h2><p class="note">Confira o ponto deste cliente no módulo Cálculo de Ponto e gere o TXT: a auditoria compara cada lançamento com a folha.</p></div>`;
+  if(!R.pf) return `<div class="card"><h2>TXT do ponto ainda não gerado</h2><p class="note">O ponto de ${R.comp} está ${esc(S.ponto.status==="conferido"?"conferido":"em conferência")}, mas o TXT não foi baixado no Flow. Gere o TXT no Cálculo de Ponto e volte aqui.</p></div>`;
+  return `<div class="tbox"><table><thead><tr><th>Cód.</th><th>Funcionário</th><th>Rubrica</th><th class="n">TXT do ponto</th><th class="n">Folha</th><th></th><th>Observação</th></tr></thead><tbody>
+    ${R.pf.map(x=>`<tr><td class="n">${esc(x.cod)}</td><td>${esc(x.nome)}</td><td class="n">${esc(x.rub)}</td><td class="n">${esc(x.ponto)}</td><td class="n">${esc(x.folha)}</td><td>${pill(x.nivel)}</td><td><small>${esc(x.msg)}</small></td></tr>`).join("")}</tbody></table></div>
+    <p class="note">TXT gerado no Flow em ${esc(S.ponto.txt_em?new Date(S.ponto.txt_em).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):"?")}. Rubricas que o ponto lança e que aparecem na folha sem estar no TXT viram atenção (lançamento à mão).</p>`;
+}
+function pPatronal(){
+  const P=S.res.pat; if(!P) return `<div class="banner">O extrato não trouxe o resumo de encargos da empresa (última página do Extrato Mensal).</div>`;
+  if(!P.temPatronal) return `<div class="card"><h2>${esc(P.regimeDeduzido)}</h2><p class="note">A folha de ${S.res.comp} não tem cota patronal, RAT nem Terceiros: o INSS da empresa é recolhido no DAS. Total de INSS da folha (segurados): ${brl(P.total)}.${S.cli.dp_regime?"":" Preencha o regime tributário no cadastro do cliente para o Flow cruzar com a folha."}</p>${P.alertas.map(a=>`<div class="banner ${a.nivel==="erro"?"er":""}">${esc(a.msg)}</div>`).join("")}</div>`;
+  return `<div class="card"><h2>${esc(P.regimeDeduzido)}</h2>
+    ${P.alertas.map(a=>`<div class="banner ${a.nivel==="erro"?"er":""}">${esc(a.msg)}</div>`).join("")}
+    <div class="tbox"><table><thead><tr><th>Contribuição</th><th class="n">Base</th><th class="n">Valor</th><th class="n">% efetivo</th><th>Referência</th></tr></thead><tbody>
+    ${P.linhas.filter(l=>l.valor||l.rot.startsWith("Empresa")||l.rot.startsWith("RAT")||l.rot.startsWith("Terceiros")).map(l=>`<tr><td>${esc(l.rot)}</td><td class="n">${brl(l.base!=null?l.base:P.base).replace("R$ ","")}</td><td class="n">${brl(l.valor).replace("R$ ","")}</td><td class="n"><b>${pct(l.pct)}</b></td><td><small>${esc(l.esperado)}</small></td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="note">% efetivo = valor ÷ salário de contribuição dos empregados (${brl(P.base)}). Confira o RAT ajustado com o RAT do CNAE × FAP do ano (consulta no site da Previdência) e os Terceiros com o FPAS da empresa. Total INSS da folha: ${brl(P.total)}.</p></div>`;
+}
+function pTabelas(){
+  const T=S.res.T; if(!T) return `<div class="banner er">Sem tabelas para ${S.res.comp.slice(-4)}.</div>`;
+  let a=0; const inss=T.inss.faixas.map(([l,p])=>{ const t=`${brl(a+ (a?0.01:0))} a ${brl(l)}: ${pct(p)}`; a=l; return t; });
+  return `<div class="card"><h2>Tabelas usadas em ${S.res.comp}</h2>
+    <p><b>INSS do empregado</b><br>${inss.join("<br>")}<br><small>${esc(T.inss.fonte)}</small></p>
+    <p><b>IRRF mensal</b><br>${T.irrf.faixas.map(([l,p,d])=>`até ${l===Infinity?"acima":brl(l)}: ${pct(p)} (deduzir ${brl(d)})`).join("<br>")}<br>Dependente ${brl(T.irrf.dependente)} · desconto simplificado ${brl(T.irrf.simplificado)} · redução: zera o imposto até ${brl(T.irrf.reducao.ate)} de rendimentos; de ${brl(T.irrf.reducao.ate+0.01)} a ${brl(T.irrf.reducao.limite)}, ${brl(T.irrf.reducao.a)} − 0,133145 × rendimentos<br><small>${esc(T.irrf.fonte)}</small></p>
+    <p><b>FGTS</b> ${pct(T.fgts.aliquota)} (aprendiz ${pct(T.fgts.aprendiz)}) · <b>Salário mínimo</b> ${brl(T.salarioMinimo.valor)} · <b>Salário-família</b> ${brl(T.salarioFamilia.cota)} até ${brl(T.salarioFamilia.limite)}</p>
+    <p class="note">Valores conferidos nas fontes oficiais em ${esc(T.conferido.split("-").reverse().join("/"))}. Ano novo: confira e inclua a tabela no Flow antes de auditar.</p></div>`;
+}
+async function salvar(){
+  const R=S.res, db=S.E.db; if(!db||!R) return;
+  const ac=achados(), id=F.digitos(S.cli.cnpj)+"_"+R.comp.split("/").reverse().join("");
+  const doc={cnpj:F.digitos(S.cli.cnpj),comp:R.comp,em:new Date().toISOString(),funcionarios:R.ws.filter(w=>w.tipo==="Empr").length,
+    erros:ac.filter(x=>x.nivel==="erro").length,atencao:ac.filter(x=>x.nivel==="atencao").length,
+    impacto:Math.round(ac.filter(x=>x.nivel!=="nc"&&x.dif!=null&&x.dif<0).reduce((t,x)=>t-x.dif,0)*100)/100,
+    regime:R.pat?R.pat.regimeDeduzido:"",achados:ac.slice(0,200).map(x=>({area:x.area,nivel:x.nivel,cod:x.cod,nome:x.nome,tit:x.tit,msg:x.msg,dif:x.dif??null})),...(await F.carimbo())};
+  try{ await db.doc("auditorias_folha/"+id).set(doc); $("salvoSt").textContent="Resultado salvo em "+new Date().toLocaleTimeString("pt-BR",{timeStyle:"short"})+"."; setSync("on","Salvo"); }
+  catch(e){ $("salvoSt").textContent="Não foi possível salvar o resultado."; setSync("err","Não salvou"); }
+}
+async function baixarXls(){
+  const R=S.res; if(!R) return;
+  const ac=achados(), wb=XLSX.utils.book_new();
+  const a1=[["Área","Situação","Cód.","Funcionário","Item","Observação","Folha","Recalculado","Diferença"],...ac.map(x=>[x.area,NIV[x.nivel][0],x.cod,x.nome,x.tit,x.msg,x.folha??"",x.calc??"",x.dif??""])];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(a1),"Divergências");
+  const a2=[["Cód.","Funcionário","Item","Folha","Recalculado","Diferença","Situação","Observação"]];
+  for(const {w,it} of R.enc) for(const x of it) a2.push([w.id,w.nome,x.tipo,x.folha??"",x.calc??"",x.dif??"",NIV[x.nivel][0],x.msg]);
+  for(const {w,p} of R.piso) for(const x of p) a2.push([w.id,w.nome,"Piso",x.folha??"",x.calc??"",x.dif??"",NIV[x.nivel][0],x.msg]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(a2),"Conferência completa");
+  const blob=new Blob([XLSX.write(wb,{bookType:"xlsx",type:"array"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const dl=await F.use("downloads"); if(!dl){ toast("Download indisponível nesta visualização."); return; }
+  try{ await dl.save({filename:`Auditoria_Folha_${S.cli.cod||F.digitos(S.cli.cnpj)}_${R.comp.split("/").reverse().join("")}.xlsx`,data:blob}); toast("Relatório salvo."); }catch(e){ toast("Download cancelado."); }
+}
+
+$("cli").addEventListener("change",escolherCliente);
+$("comp").addEventListener("change",auditar);
+$("inE").addEventListener("change",e=>{ if(e.target.files.length) lerExtrato([...e.target.files]); e.target.value=""; });
+const dz=$("drop"); ["dragover","dragenter"].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.add("over");}));
+["dragleave","drop"].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.remove("over");}));
+dz.addEventListener("drop",e=>{ const f=[...e.dataTransfer.files].filter(x=>/\.pdf$/i.test(x.name)); if(f.length) lerExtrato(f); });
+document.querySelector(".tabs").addEventListener("click",e=>{ const b=e.target.closest(".tab"); if(!b) return; S.tab=b.dataset.t; render(); });
+$("btnXls").onclick=baixarXls;
+F.assinar(est=>{
+  S.E=est;
+  if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }
+  if(est.pronto.clientes){ setSync("on","Sincronizado"); listaClientes();
+    if(!S.cli){ try{ const v=localStorage.getItem("flow.audfolha.cli"); if(v&&!$("cli").value){ $("cli").value=v; escolherCliente(); } }catch(e){} } }
+});
+</script>
+<script src="../nucleo/tema-exato.js" data-mod="folha"></script>
+</body></html>
