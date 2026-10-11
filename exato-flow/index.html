@@ -684,6 +684,14 @@ function listaAlertas(x){
   const naoConf=x.comCct.length-x.conf;
   if(naoConf) add("info","Enquadramento",`${naoConf} enquadramento${naoConf>1?"s":""} ainda sem confirmação. Confirmar evita passivo trabalhista.`,"sindical","Confirmar");
   if(!x.nReg) add("info","Cálculo de Ponto",`Nenhum cliente configurado no Ponto. Comece pela ficha da empresa e as fichas dos funcionários.`,"ponto","Configurar");
+  // contratos de experiência que terminam em até 7 dias (ou venceram sem decisão)
+  const EE=F&&F.estado, porCnpj=Object.fromEntries(((EE&&EE.clientes)||[]).map(c=>[F.digitos(c.cnpj),c]));
+  const exps=[]; for(const d of (EE&&EE.funcionarios)||[]){ const c=porCnpj[d._id]||porCnpj[d.cnpj]; if(!c||!F.ativo(c)) continue;
+    for(const f of d.lista||[]){ const e=F.experiencia(f); if(e&&(e.nivel==="crit"||e.nivel==="warn")&&e.fase!=="rescindir") exps.push({c,f,e}); } }
+  exps.sort((a,b)=>(a.e.dias??-99)-(b.e.dias??-99));
+  for(const {c,f,e} of exps.slice(0,4)) add(e.nivel,"Contrato de experiência",`<b>${esc(f.nome)}</b> (${esc(c.fant||c.nome)}): ${esc(e.texto)}`,"clientes","Decidir na ficha do cliente");
+  if(exps.length>4) add("warn","Contrato de experiência",`Mais ${exps.length-4} contrato${exps.length-4>1?"s":""} de experiência para decidir nos próximos dias.`,"clientes","Ver clientes");
+  const ordem={crit:0,warn:1,info:2}; L.sort((a,b)=>ordem[a.niv]-ordem[b.niv]);
   const crit=L.filter(a=>a.niv==="crit").length;
   $("subF").textContent=L.length?`${L.length} pontos de atenção · ${crit} crítico${crit===1?"":"s"}`:"Nada pendente agora";
   const rot={crit:"Crítico",warn:"Atenção",info:"Aviso"};

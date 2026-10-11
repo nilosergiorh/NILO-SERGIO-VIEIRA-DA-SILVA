@@ -181,6 +181,15 @@ As regras de cálculo seguem o sistema `ponto-dominio` (branch `claude/init-git-
 - Formato das horas: o `ponto-dominio` usa horas decimais (centesimal); a planilha de lançamentos usa sexagesimal. No Flow, a escolha é por cliente.
 - Registro 11: o `ponto-dominio` não gera; a planilha de lançamentos gera para a rubrica 40. No Flow, também é escolha por cliente.
 
+## Contrato de experiência
+
+`FlowDados.experiencia(f)` (testes em `testes/experiencia.test.js`): com a admissão e os prazos do funcionário (`exp_dias1`, `exp_dias2`, lidos da Ficha de Empregado ou informados na admissão / em "prazos"), calcula o fim de cada período (contando o dia da admissão; até 90 dias e uma prorrogação, arts. 445 e 451 da CLT).
+
+- **7 dias antes** do fim de cada período: aviso no Painel (E-exato) e no quadro "Contrato de experiência: decidir" da ficha do cliente; a 2 dias ou vencido sem decisão, vira crítico.
+- Decisões: **prorrogar** (passa a vigiar a prorrogação), **efetivar** ou **rescindir** (registra a rescisão no último dia e mostra o que é devido: saldo, 13º e férias proporcionais + 1/3, FGTS sem multa, sem aviso prévio, art. 479 se antecipar, pagamento em 10 dias).
+- Vencido sem decisão: avisa que, sem prorrogação assinada e com o empregado trabalhando, o contrato virou por prazo indeterminado (art. 451).
+- Admitido há menos de 90 dias sem prazo no cadastro: pede o prazo.
+
 ## Auditoria da folha
 
 `modulos/auditoria-folha.html` + `nucleo/folha-auditoria.js` (testes em `testes/folha-auditoria.test.js`).

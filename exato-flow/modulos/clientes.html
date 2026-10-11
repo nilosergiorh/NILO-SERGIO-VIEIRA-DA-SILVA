@@ -94,6 +94,7 @@ td small{display:block;color:var(--mute);font-family:var(--f-mono);font-size:.72
 .plist li{display:flex;gap:8px;align-items:baseline}
 .plist i{flex:none;width:8px;height:8px;border-radius:50%;transform:translateY(-1px)}
 .plist .alta{background:var(--er)} .plist .media{background:var(--at)} .plist .baixa{background:var(--mute)}
+.panel>*,.box>*{min-width:0}   /* tabela larga rola dentro do quadro, sem alargar a ficha */
 .form{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
 .form .full{grid-column:1/-1}
 .form label{display:grid;gap:4px;font-size:.76rem;font-weight:700;color:var(--mute)}
@@ -363,15 +364,30 @@ function renderFuncs(){
   const L=DOC.funcs, at=L.filter(f=>F.funcAtivo(f,hoje()));
   $("nFun").textContent=L.length?`(${at.length} ativo${at.length===1?"":"s"}${L.length>at.length?`, ${L.length-at.length} desligado(s)`:""})`:"";
   if(!L.length){ el.innerHTML='<p class="meta" style="margin:0">Nenhum funcionário cadastrado. Use "Enviar fichas dos funcionários".</p>'; return; }
-  el.innerHTML=`<div style="overflow-x:auto"><table class="hist"><thead><tr><th>Cód.</th><th>Nome</th><th>Cargo</th><th>Admissão</th><th>Situação</th><th></th></tr></thead><tbody>${L.map((f,i)=>{
+  const dec=L.map((f,i)=>({f,i,x:F.experiencia(f,hoje())})).filter(o=>o.x&&(o.x.fase==="decidir"||o.x.fase==="vencido"));
+  const topo=dec.length?`<div class="box" style="border-color:${dec.some(o=>o.x.nivel==="crit")?"var(--red-hi)":"var(--line)"};margin-bottom:10px"><h3>Contrato de experiência: decidir</h3><ul class="plist">${dec.map(o=>`<li><i class="${o.x.nivel==="crit"?"alta":"media"}"></i><span><b>${esc(o.f.nome)}</b>: ${esc(o.x.texto)}<br>${o.x.opcoes.map(a=>`<button class="link" type="button" data-expac="${o.i}|${a}">${a}</button>`).join(" · ")}</span></li>`).join("")}</ul></div>`:"";
+  el.innerHTML=topo+`<div style="overflow-x:auto"><table class="hist"><thead><tr><th>Cód.</th><th>Nome</th><th>Cargo</th><th>Admissão</th><th>Situação</th><th>Experiência</th><th></th></tr></thead><tbody>${L.map((f,i)=>{
     const a=DR.idade(f.nascimento,hoje()), ativo=F.funcAtivo(f,hoje());
-    return `<tr${ativo?"":' style="opacity:.55"'}><td class="mono">${esc(f.codigo||"—")}</td><td>${esc(f.nome)}${a!=null&&a<18?' <span class="pill p-er">menor</span>':""}</td><td>${esc(f.cargo||"")}</td><td>${brD(f.admissao)}</td><td>${esc(f.situacao||"")}${f.rescisao?` · rescisão ${brD(f.rescisao)}`:""}${f.ferias_ini?` · férias ${brD(f.ferias_ini)} a ${brD(f.ferias_fim)}`:""}${f.afast_ini?` · ${esc((f.afast_tipo||"afastamento").toLowerCase())} desde ${brD(f.afast_ini)}`:""}${(f.ausencias||[]).filter(x=>!x.fim||x.fim>=hoje()).map(x=>` · ${esc(({FERIAS:"férias",AFASTAMENTO:"afastamento",ATESTADO:"atestado",LICENCA:"licença",FOLGA:"folga",ABONO:"falta abonada"})[x.tipo]||x.tipo)} ${brD(x.ini)}${x.fim?" a "+brD(x.fim):""}`).join("")}</td>
+    return `<tr${ativo?"":' style="opacity:.55"'}><td class="mono">${esc(f.codigo||"—")}</td><td>${esc(f.nome)}${a!=null&&a<18?' <span class="pill p-er">menor</span>':""}</td><td>${esc(f.cargo||"")}</td><td>${brD(f.admissao)}</td><td>${esc(f.situacao||"")}${f.rescisao?` · rescisão ${brD(f.rescisao)}`:""}${f.ferias_ini&&(!f.ferias_fim||f.ferias_fim>=hoje())?` · férias ${brD(f.ferias_ini)} a ${brD(f.ferias_fim)}`:""}${f.afast_ini?` · ${esc((f.afast_tipo||"afastamento").toLowerCase())} desde ${brD(f.afast_ini)}`:""}${(f.ausencias||[]).filter(x=>!x.fim||x.fim>=hoje()).map(x=>` · ${esc(({FERIAS:"férias",AFASTAMENTO:"afastamento",ATESTADO:"atestado",LICENCA:"licença",FOLGA:"folga",ABONO:"falta abonada"})[x.tipo]||x.tipo)} ${brD(x.ini)}${x.fim?" a "+brD(x.fim):""}`).join("")}</td>
+      <td>${expCell(f,i)}</td>
       <td style="white-space:nowrap">${S.somenteLeitura?"":`${ativo&&!f.rescisao?`<button class="link" type="button" data-fdes="${i}" aria-label="Desligar ${esc(f.nome)}">desligar</button> · `:""}<button class="link" type="button" data-fdel="${i}" aria-label="Remover ${esc(f.nome)}">remover</button>`}</td></tr>`; }).join("")}</tbody></table></div>`;
 }
 // admissão e desligamento informados à mão (sem esperar a ficha do Domínio): entram na planilha de lançamentos do mês
 function renderFunForm(){
   const el=$("funForm"); if(!el) return; const fm=DOC.form;
   if(!fm){ el.innerHTML=""; return; }
+  if(fm.tipo==="exp"){ const f=(DOC.funcs||[])[fm.i]; if(!f){ DOC.form=null; el.innerHTML=""; return; }
+    el.innerHTML=`<div class="box" style="border-color:var(--red-hi)"><h3>Contrato de experiência — ${esc(f.nome)}</h3>
+      <div class="form"><label>1º período (dias)<input id="fe-1" inputmode="numeric" value="${esc(f.exp_dias1||"")}" placeholder="ex.: 45"></label>
+      <label>Prorrogação (dias)<input id="fe-2" inputmode="numeric" value="${esc(f.exp_dias2||"")}" placeholder="0 = sem prorrogação"></label></div>
+      <p class="meta" style="margin:0">Admissão ${brD(f.admissao)}. O prazo conta o dia da admissão; o total não pode passar de 90 dias e só cabe uma prorrogação (arts. 445 e 451 da CLT). Deixe o 1º período vazio se não for contrato de experiência.</p>
+      <div class="row-b"><button class="btn" type="button" id="feSalvar">Salvar prazos</button><button class="btn ghost" type="button" id="fCancelar">Cancelar</button></div></div>`; return; }
+  if(fm.tipo==="rescexp"){ const f=(DOC.funcs||[])[fm.i], x=f&&F.experiencia(f,hoje()); if(!x){ DOC.form=null; el.innerHTML=""; return; }
+    el.innerHTML=`<div class="box" style="border-color:var(--red-hi)"><h3>Rescindir no fim da experiência — ${esc(f.nome)}</h3>
+      <p style="margin:0">Último dia do contrato: <b>${brD(x.fim)}</b> (${x.periodo===2?"fim da prorrogação":x.dias2?"fim do 1º período":"fim da experiência"}).</p>
+      <ul class="plist">${F.EXP_RESCISAO.map(t=>`<li><i class="media"></i>${esc(t)}</li>`).join("")}</ul>
+      <p class="meta" style="margin:0">Ao confirmar, o Flow registra a rescisão nessa data: ele sai da planilha de lançamentos a partir do mês seguinte. O cálculo das verbas é feito no Domínio.</p>
+      <div class="row-b"><button class="btn" type="button" id="frSalvar">Confirmar rescisão em ${brD(x.fim)}</button><button class="btn ghost" type="button" id="fCancelar">Cancelar</button></div></div>`; return; }
   if(fm.tipo==="des"){ const f=(DOC.funcs||[])[fm.i]; if(!f){ DOC.form=null; el.innerHTML=""; return; }
     el.innerHTML=`<div class="box" style="border-color:var(--red-hi)"><h3>Desligar ${esc(f.nome)}</h3>
       <div class="form"><label>Data da rescisão (último dia trabalhado)<input id="fd-data" type="date" value="${esc(hoje())}"></label></div>
@@ -389,6 +405,8 @@ function renderFunForm(){
       <label>Data de nascimento<input id="fa-nasc" type="date"></label>
       <label>Horário de segunda a sexta<input id="fa-hor" value="${esc(hPad)}" placeholder="07:30-12:00 13:30-17:48"></label>
       <label>Horário de sábado<input id="fa-sab" value="${esc(sPad)}" placeholder="vazio = não trabalha"></label>
+      <label>Experiência: 1º período (dias)<input id="fa-e1" inputmode="numeric" placeholder="ex.: 45 (vazio = sem experiência)"></label>
+      <label>Prorrogação (dias)<input id="fa-e2" inputmode="numeric" placeholder="ex.: 45 (total até 90)"></label>
     </div>
     <p class="meta" style="margin:0">Sem CPF, endereço ou salário: o cadastro guarda só o que o Ponto usa. A ficha do Domínio, quando chegar, completa o cadastro. A data de nascimento serve para o aviso de menor de 18 anos.</p>
     <div class="row-b"><button class="btn" type="button" id="faSalvar">Salvar admissão</button><button class="btn ghost" type="button" id="fCancelar">Cancelar</button></div></div>`;
@@ -401,10 +419,35 @@ async function salvarAdmissao(){
   if(cod&&(DOC.funcs||[]).some(f=>String(f.codigo)===cod&&F.chaveNome(f.nome)!==F.chaveNome(nome))){ toast(`O código ${cod} já é de outro funcionário.`); return; }
   const hv=h=>!h||/^(\d{1,2}:\d{2}-\d{1,2}:\d{2})(\s+\d{1,2}:\d{2}-\d{1,2}:\d{2})*$/.test(h);
   if(!hv(hor)||!hv(sab)){ toast("Horário no formato 07:30-12:00 13:30-17:48."); return; }
-  const novo={codigo:cod,nome,cargo:v("fa-cargo").toUpperCase(),admissao:adm,nascimento:v("fa-nasc"),situacao:"Trabalhando",origem:"manual",horario:{seg:hor,ter:hor,qua:hor,qui:hor,sex:hor,sab,dom:""}};
+  const e1=parseInt(v("fa-e1"))||0, e2=parseInt(v("fa-e2"))||0;
+  if(e1+e2>90){ toast("Contrato de experiência tem no máximo 90 dias somando a prorrogação (art. 445 da CLT)."); return; }
+  if(e2&&!e1){ toast("Informe o 1º período antes da prorrogação."); return; }
+  const novo={codigo:cod,nome,cargo:v("fa-cargo").toUpperCase(),admissao:adm,nascimento:v("fa-nasc"),situacao:"Trabalhando",origem:"manual",horario:{seg:hor,ter:hor,qua:hor,qui:hor,sex:hor,sab,dom:""},...(e1?{exp_dias1:e1,exp_dias2:e2}:{})};
   const lista=F.mesclarFuncionarios(DOC.funcs||[],[novo]);
   try{ await F.salvarFuncionarios(DOC.cnpj,lista); DOC.funcs=lista; DOC.form=null; renderFunForm(); renderFuncs(); toast(cod?"Admissão salva: já entra na planilha de lançamentos do mês.":"Admissão salva. Falta o código do Domínio: sem ele o TXT fica bloqueado."); }
   catch(x){ toast("Não foi possível salvar."); }
+}
+// contrato de experiência: célula da lista e decisões
+function expCell(f,i){
+  const x=F.experiencia(f,hoje()); if(!x) return '<span class="meta">—</span>';
+  const cor={crit:"p-er",warn:"p-at",info:"p-nt"}[x.nivel]||"p-ok";
+  const rot={curso:"em curso",decidir:"decidir",vencido:"vencido",efetivado:"efetivado",rescindir:"rescisão",sem_prazo:"a informar"}[x.fase]||x.fase;
+  const bt=(a,t)=>`<button class="link" type="button" data-expac="${i}|${a}">${t}</button>`;
+  const acoes=S.somenteLeitura?"":`<button class="link" type="button" data-expedit="${i}">prazos</button>`;   // decisões ficam no quadro do topo
+  const quando=x.fim?(x.fase==="efetivado"?"":(x.fase==="rescindir"?"fim ":"até ")+brD(x.fim).slice(0,5)):"";
+  return `<span class="pill ${cor}" title="${esc(x.texto)}">${rot}</span><span class="meta" style="display:block;white-space:nowrap" title="${esc(x.texto)}">${x.dias1?x.dias1+(x.dias2?"+"+x.dias2:"")+" d":""}${quando?" · "+quando:""}${x.erro?" · acima de 90 d":""}</span>${acoes}`;
+}
+async function gravarFunc(i,campos,msg){
+  const lista=(DOC.funcs||[]).map((x,j)=>j===i?{...x,...campos,atualizado:new Date().toISOString()}:x);
+  try{ await F.salvarFuncionarios(DOC.cnpj,lista); DOC.funcs=lista; DOC.form=null; renderFunForm(); renderFuncs(); if(msg) toast(msg); }catch(e){ toast("Não foi possível salvar."); }
+}
+async function decidirExp(i,acao){
+  const f=(DOC.funcs||[])[i], x=f&&F.experiencia(f,hoje()); if(!x) return;
+  const k=x.periodo===2?"exp_dec2":"exp_dec1", em=new Date().toISOString();
+  if(acao==="rescindir"){ DOC.form={tipo:"rescexp",i}; renderFunForm(); $("funForm").scrollIntoView({behavior:"smooth",block:"center"}); return; }
+  if(acao==="prorrogar"){ if(!x.dias2){ toast("Informe os dias da prorrogação."); DOC.form={tipo:"exp",i}; renderFunForm(); return; }
+    return gravarFunc(i,{exp_dec1:"prorrogar",exp_dec1_em:em},`Prorrogação registrada: novo vencimento em ${brD(x.fim2)}. Confira se o termo de prorrogação foi assinado antes de ${brD(x.fim1)}.`); }
+  if(acao==="efetivar") return gravarFunc(i,{[k]:"efetivar",[k+"_em"]:em},`${f.nome} efetivado: contrato por prazo indeterminado a partir de ${brD(F.addDias(x.fim,1))}.`);
 }
 async function salvarDesligamento(){
   const f=(DOC.funcs||[])[DOC.form.i], d=$("fd-data").value; if(!f||!d){ toast("Informe a data."); return; }
@@ -447,9 +490,9 @@ function renderRev(){
     const atual=DOC.funcs||[];
     el.innerHTML=`<div class="box" style="border-color:var(--red-hi)"><h3>Fichas dos funcionários: conferir (${r.funcionarios.length})</h3>${al}
       <p class="meta" style="margin:0">Arquivos: ${r.arquivos.map(a=>esc(a.nome)+" ("+esc(a.tipo)+")").join(" · ")}. CPF, endereço, salário e dados bancários não são guardados.</p>
-      <div style="overflow-x:auto"><table class="hist"><thead><tr><th><input type="checkbox" id="revTodos" checked aria-label="Todos"></th><th>Cód.</th><th>Nome</th><th>Cargo</th><th>Admissão</th><th>Nasc.</th><th>Horário (seg)</th><th></th></tr></thead><tbody>${r.funcionarios.map((f,i)=>{
+      <div style="overflow-x:auto"><table class="hist"><thead><tr><th><input type="checkbox" id="revTodos" checked aria-label="Todos"></th><th>Cód.</th><th>Nome</th><th>Cargo</th><th>Admissão</th><th>Nasc.</th><th>Horário (seg)</th><th>Experiência</th><th></th></tr></thead><tbody>${r.funcionarios.map((f,i)=>{
         const ja=atual.find(x=>(f.codigo&&String(x.codigo)===String(f.codigo))||F.chaveNome(x.nome)===F.chaveNome(f.nome)), a=DR.idade(f.nascimento,hoje());
-        return `<tr><td><input type="checkbox" data-rf="${i}" checked aria-label="Usar ${esc(f.nome)}"></td><td class="mono">${esc(f.codigo||"—")}</td><td>${esc(f.nome)}${a!=null&&a<18?' <span class="pill p-er">menor</span>':""}</td><td>${esc(f.cargo||"")}</td><td>${brD(f.admissao)}</td><td>${brD(f.nascimento)}</td><td class="mono" style="font-size:.74rem">${esc((f.horario&&f.horario.seg)||"—")}</td><td><span class="pill ${ja?"p-nt":"p-ok"}">${ja?"atualiza":"novo"}</span></td></tr>`; }).join("")}</tbody></table></div>
+        return `<tr><td><input type="checkbox" data-rf="${i}" checked aria-label="Usar ${esc(f.nome)}"></td><td class="mono">${esc(f.codigo||"—")}</td><td>${esc(f.nome)}${a!=null&&a<18?' <span class="pill p-er">menor</span>':""}</td><td>${esc(f.cargo||"")}</td><td>${brD(f.admissao)}</td><td>${brD(f.nascimento)}</td><td class="mono" style="font-size:.74rem">${esc((f.horario&&f.horario.seg)||"—")}</td><td class="mono">${f.exp_dias1?esc(f.exp_dias1+(f.exp_dias2?" + "+f.exp_dias2:""))+" dias":"—"}</td><td><span class="pill ${ja?"p-nt":"p-ok"}">${ja?"atualiza":"novo"}</span></td></tr>`; }).join("")}</tbody></table></div>
       <label class="meta" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="revQtd" checked> Atualizar o nº de funcionários do cliente</label>
       <div class="row-b"><button class="btn" type="button" id="revAplicar">Aplicar ao cadastro</button><button class="btn ghost" type="button" id="revDesc">Descartar</button></div></div>`;
   }
@@ -498,6 +541,13 @@ $("drawer").addEventListener("click",async e=>{
   if(e.target.id==="fCancelar"){ DOC.form=null; renderFunForm(); return; }
   if(e.target.id==="faSalvar"){ salvarAdmissao(); return; }
   if(e.target.id==="fdSalvar"){ salvarDesligamento(); return; }
+  const xa=e.target.closest("[data-expac]"); if(xa){ const [i,ac]=xa.dataset.expac.split("|"); decidirExp(+i,ac); return; }
+  const xe=e.target.closest("[data-expedit]"); if(xe){ DOC.form={tipo:"exp",i:+xe.dataset.expedit}; renderFunForm(); $("funForm").scrollIntoView({behavior:"smooth",block:"center"}); return; }
+  if(e.target.id==="feSalvar"){ const e1=parseInt($("fe-1").value)||0, e2=parseInt($("fe-2").value)||0;
+    if(e1+e2>90){ toast("No máximo 90 dias somando a prorrogação (art. 445 da CLT)."); return; } if(e2&&!e1){ toast("Informe o 1º período."); return; }
+    gravarFunc(DOC.form.i,e1?{exp_dias1:e1,exp_dias2:e2}:{exp_dias1:"",exp_dias2:"",exp_dec1:"",exp_dec2:""},e1?"Prazos da experiência salvos.":"Marcado como sem contrato de experiência."); return; }
+  if(e.target.id==="frSalvar"){ const f=DOC.funcs[DOC.form.i], x=F.experiencia(f,hoje()), k=x.periodo===2?"exp_dec2":"exp_dec1";
+    gravarFunc(DOC.form.i,{[k]:"rescindir",[k+"_em"]:new Date().toISOString(),rescisao:x.fim,situacao:"Demitido",obs:((f.obs?f.obs+" ":"")+"Término do contrato de experiência.").trim()},`Rescisão registrada para ${brD(x.fim)}. Pagamento até ${brD(F.addDias(x.fim,10))}.`); return; }
   const des=e.target.closest("[data-fdes]"); if(des){ DOC.form={tipo:"des",i:+des.dataset.fdes}; renderFunForm(); $("funForm").scrollIntoView({behavior:"smooth",block:"center"}); return; }
   const del=e.target.closest("[data-fdel]");
   if(del){ if(!del.dataset.arm){ del.dataset.arm=1; del.textContent="confirmar?"; setTimeout(()=>{ if(del.isConnected){ delete del.dataset.arm; del.textContent="remover"; } },3500); return; }

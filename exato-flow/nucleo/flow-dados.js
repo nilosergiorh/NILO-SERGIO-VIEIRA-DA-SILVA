@@ -95,7 +95,7 @@
 
   // ---------- conex\u00e3o com a base ----------
   // Assina clientes, ccts e auditorias uma \u00fanica vez e avisa quem pediu.
-  const estado={clientes:[],ccts:[],auditorias:[],pronto:{},erro:null,db:null};
+  const estado={clientes:[],ccts:[],auditorias:[],funcionarios:[],pronto:{},erro:null,db:null};
   const ouvintes=new Set();
   let iniciado=null;
   function avisar(){ ouvintes.forEach(fn=>{ try{ fn(estado); }catch(e){ console.error(e); } }); }
@@ -105,7 +105,7 @@
       const db=await use("db");
       if(!db){ estado.erro="sem_base"; avisar(); return null; }
       estado.db=db;
-      for(const col of ["clientes","ccts","auditorias"]){
+      for(const col of ["clientes","ccts","auditorias","funcionarios"]){
         db.collection(col).onSnapshot(snap=>{
           estado[col]=snap.docs.map(d=>({...d.data(),_id:d.id}));
           estado.pronto[col]=true; avisar();
@@ -151,9 +151,47 @@
     const db=await conectar(); if(!db) throw {code:"sem_base"};
     await db.doc("funcionarios/"+digitos(cnpj)).set({cnpj:digitos(cnpj),lista,...(await carimbo())});
   }
+  // ---------- contrato de experiência (CLT arts. 443, 445 e 451) ----------
+  // f.exp_dias1 = 1º período; f.exp_dias2 = prorrogação (0 = sem); total até 90 dias, uma prorrogação só.
+  // f.exp_dec1: "prorrogar" | "efetivar" | "rescindir"; f.exp_dec2: "efetivar" | "rescindir".
+  // O prazo conta o dia da admissão (admitido em 01/10 com 45 dias: termina em 14/11).
+  const EXP_AVISO=7;
+  const addDias=(iso,n)=>{ const d=new Date(iso+"T12:00:00Z"); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
+  const difDias=(a,b)=>Math.round((Date.parse(a+"T12:00:00Z")-Date.parse(b+"T12:00:00Z"))/864e5);
+  function experiencia(f,ref){
+    if(!ref){ const d=new Date(); ref=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+    if(!f||!f.admissao||(f.rescisao&&!f.exp_dec1&&!f.exp_dec2)) return null;
+    const d1=parseInt(f.exp_dias1)||0, d2=parseInt(f.exp_dias2)||0, desde=difDias(ref,f.admissao);
+    if(!d1){
+      if(desde>=0&&desde<90&&funcAtivo(f,ref)) return {fase:"sem_prazo",nivel:"info",texto:`Admitido há ${desde} dia(s) sem prazo de experiência no cadastro: informe se é contrato de experiência`};
+      return null;
+    }
+    const fim1=addDias(f.admissao,d1-1), fim2=d2?addDias(fim1,d2):null, o={dias1:d1,dias2:d2,fim1,fim2,aviso:EXP_AVISO};
+    if(d1+d2>90) o.erro="Experiência com mais de 90 dias no total (art. 445 da CLT): confira os prazos";
+    const per=(fim,n,opc,dec)=>{
+      if(dec==="rescindir") return {...o,fase:"rescindir",periodo:n,fim,nivel:difDias(fim,ref)>=0?"warn":"info",dias:difDias(fim,ref),texto:`Rescisão no fim da experiência em ${fmtData(fim)}`};
+      if(dec==="efetivar") return {...o,fase:"efetivado",periodo:n,fim,nivel:null,texto:`Efetivado após a experiência (${fmtData(fim)})`};
+      const dias=difDias(fim,ref);
+      if(dias<0) return {...o,fase:"vencido",periodo:n,fim,dias,opcoes:opc,nivel:"crit",
+        texto:n===1&&d2?`1º período venceu em ${fmtData(fim)} sem decisão registrada. Se não houve prorrogação assinada antes do vencimento e ele continuou trabalhando, o contrato virou por prazo indeterminado (art. 451 da CLT)`
+                                 :`Experiência terminou em ${fmtData(fim)} sem decisão registrada. Se ele continuou trabalhando, o contrato já é por prazo indeterminado: registre como efetivado`};
+      if(dias<=EXP_AVISO) return {...o,fase:"decidir",periodo:n,fim,dias,opcoes:opc,nivel:dias<=2?"crit":"warn",
+        texto:`${n===1?(d2?"1º período":"Experiência"):"Prorrogação"} termina em ${fmtData(fim)} (${dias===0?"hoje":dias===1?"amanhã":"em "+dias+" dias"}): ${opc.includes("prorrogar")?"prorrogar, efetivar ou rescindir?":"efetivar ou rescindir?"}`};
+      return {...o,fase:"curso",periodo:n,fim,dias,nivel:null,texto:`${n===1?(d2?"1º período":"Experiência"):"Prorrogação"} até ${fmtData(fim)}`};
+    };
+    if(f.exp_dec1!=="prorrogar") return per(fim1,1,d2?["prorrogar","efetivar","rescindir"]:["efetivar","rescindir"],f.exp_dec1);
+    if(!d2) return {...o,fase:"curso",nivel:"warn",texto:"Prorrogação registrada sem prazo: informe os dias da prorrogação"};
+    return per(fim2,2,["efetivar","rescindir"],f.exp_dec2);
+  }
+  // o que é devido no término normal do contrato de experiência (texto de orientação, não substitui o cálculo da rescisão)
+  const EXP_RESCISAO=["Saldo de salário até o último dia do contrato","13º salário proporcional","Férias proporcionais + 1/3",
+    "FGTS do mês; saque liberado no término do contrato a prazo, sem a multa de 40% (Lei 8.036/1990, art. 20, IX)","Não há aviso prévio no término no prazo",
+    "Se a empresa encerrar ANTES do fim: indenização de metade da remuneração do tempo que faltava (art. 479), salvo cláusula assecuratória (art. 481, aí segue as regras do aviso prévio)",
+    "Pagamento e entrega dos documentos até 10 dias após o término (art. 477, § 6º); desligamento no eSocial (S-2299) no mesmo prazo",
+    "Avise o cliente antes do último dia: se o empregado trabalhar um dia a mais, o contrato vira por prazo indeterminado"];
   const funcAtivo=(f,ref)=>!(f.rescisao&&ref&&f.rescisao<ref)&&!/demit|rescind|deslig/i.test(f.situacao||"");
 
   window.FlowDados={use,digitos,fmtCnpj,cnpjValido,raiz,hoje,isoData,fmtData,statusCct,ROTULO_CCT,compChave,
     REGIMES,SITUACOES,PONTO,ativo,pendencias,indices,conectar,assinar,estado,usuarioId,carimbo,
-    chaveNome,assinarFuncionarios,mesclarFuncionarios,salvarFuncionarios,funcAtivo};
+    chaveNome,assinarFuncionarios,mesclarFuncionarios,salvarFuncionarios,funcAtivo,experiencia,EXP_RESCISAO,EXP_AVISO,addDias};
 })();
