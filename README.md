@@ -7,6 +7,7 @@ Repositório pessoal de Nilo Sergio Vieira da Silva.
 | Pasta | O que é |
 |---|---|
 | [`ponto-dominio/`](ponto-dominio/) | Sistema de apuração de ponto para a folha no **Domínio**: lê o ponto do cliente (espelho do relógio, planilha-modelo, foto ou PDF), calcula horas extras, faltas, adicional noturno e DSR, mostra um painel com as pendências e gera o TXT de importação de lançamentos. Como usar: [`ponto-dominio/COMO_USAR.md`](ponto-dominio/COMO_USAR.md). |
+| [`canal-youtube/`](canal-youtube/) | Conteúdo pronto para um canal no YouTube **sem aparecer** sobre direitos trabalhistas e MEI: estratégia, calendário dos 30 primeiros vídeos, roteiros completos e Shorts. |
 
 > Os dados de clientes e funcionários **não** ficam neste repositório: só o programa (LGPD).
 
