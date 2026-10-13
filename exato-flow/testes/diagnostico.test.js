@@ -2,7 +2,7 @@
 const D=require('../nucleo/diagnostico.js'), fs=require('fs'), path=require('path');
 let ok=0, fail=0;
 const eq=(n,a,b)=>{ const s=JSON.stringify(a)===JSON.stringify(b); s?ok++:fail++; if(!s) console.log('FALHA',n,'\n  obtido ',JSON.stringify(a),'\n  esperado',JSON.stringify(b)); };
-const ler=f=>fs.readFileSync(path.join(__dirname,'dados',f),'utf8');
+const ler=f=>fs.readFileSync(path.join(__dirname,'dados',f),'utf8').replace(/\r\n/g,'\n');   // o checkout no Windows troca LF por CRLF
 const ids=(r,p)=>r.itens.filter(i=>!p||i.p===p).map(i=>i.id);
 const base={salMin:1621,hoje:'2026-10-13'};
 
