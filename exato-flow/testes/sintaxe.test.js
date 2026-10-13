@@ -2,6 +2,8 @@
 const fs=require('fs'), path=require('path'), vm=require('vm');
 const raiz=path.join(__dirname,'..');
 const paginas=['index.html',...fs.readdirSync(path.join(raiz,'modulos')).filter(f=>f.endsWith('.html')).map(f=>'modulos/'+f)];
+// ficha do cliente (publicada à parte, no Netlify)
+if(fs.existsSync(path.join(raiz,'..','ficha-cliente','index.html'))) paginas.push('../ficha-cliente/index.html');
 let ok=0, fail=0;
 for(const p of paginas){
   const html=fs.readFileSync(path.join(raiz,p),'utf8');

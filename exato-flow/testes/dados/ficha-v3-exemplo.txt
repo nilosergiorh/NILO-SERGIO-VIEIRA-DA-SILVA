@@ -1,0 +1,40 @@
+RESPOSTAS DA FICHA DE INÍCIO
+Padaria Pão Quente Ltda – CNPJ 11.222.333/0001-81
+Respondido em 13/10/2026
+
+== SUA EMPRESA ==
+- Nome da empresa (como está no CNPJ): Padaria Pão Quente Ltda
+- CNPJ: 11.222.333/0001-81
+- Quantos endereços (lojas, fábricas, unidades) a empresa tem: 2
+- WhatsApp e e-mail do responsável: (48) 99999-1111
+
+== SUA EQUIPE ==
+- Funcionários com carteira assinada: 34
+- Pessoas que trabalham com CNPJ próprio (PJ / MEI): 1
+- As pessoas com CNPJ próprio cumprem horário fixo na empresa: Sim
+- Quantas mulheres trabalham na empresa: 30 ou mais
+- Quando alguém novo começa, a carteira é assinada: Alguns dias depois
+- Quem entra passa por contrato de experiência: Não
+
+== ÁREAS DA EMPRESA ==
+- Os funcionários fazem exame médico quando entram na empresa: Às vezes
+
+== HORÁRIOS ==
+- Como os funcionários marcam a entrada e a saída: Não marcam
+
+== PAGAMENTOS E BENEFÍCIOS ==
+- Qual o menor salário pago hoje, sem contar extras (R$): 1.550,00
+- Alguém recebe parte do pagamento fora do holerite (dinheiro ou Pix à parte): Sim
+- Tem funcionário com mais de um ano sem tirar férias: Sim
+- Quantos funcionários: 3
+
+== ROTINA COM A GENTE ==
+- A empresa tem processo trabalhista ou recebeu fiscalização do trabalho nos últimos 2 anos: Sim
+- O que aconteceu: reclamatória de horas extras em 2025
+
+== DOCUMENTOS ==
+- Já tenho: nenhum marcado
+- Ainda não tenho: Contrato social da empresa; Lista dos funcionários com salário e data de admissão; Contratos de trabalho dos funcionários; Folhas de pagamento ou holerites dos últimos 3 meses; Controle de férias de cada funcionário; Registros de ponto do último mês; Exames médicos dos funcionários (ASO); Convenção coletiva do sindicato; Contratos de estágio, PJ ou terceirizados; Atestados ou documentos de quem está afastado
+
+--- Código para o escritório (não apague) ---
+#EXATO-FICHA:eyJ2ZXIiOjMsInYiOnsic2V0b3JlcyI6W10sInJhemFvIjoiUGFkYXJpYSBQw6NvIFF1ZW50ZSBMdGRhIiwiY25waiI6IjExLjIyMi4zMzMvMDAwMS04MSIsInJlc3BfY29udGF0byI6Iig0OCkgOTk5OTktMTExMSIsInVuaWRhZGVzIjoiMiIsInF0X2NsdCI6IjM0IiwicXRfcGoiOiIxIiwicGpfaG9yYXJpbyI6IlNpbSIsInF0X211bGhlcmVzIjoiMzAgb3UgbWFpcyIsInJlZ2lzdHJvIjoiQWxndW5zIGRpYXMgZGVwb2lzIiwiZXhwZXJpZW5jaWEiOiJOw6NvIiwiZXhhbWUiOiLDgHMgdmV6ZXMiLCJwb250byI6Ik7Do28gbWFyY2FtIiwibWVub3Jfc2FsIjoiMS41NTAsMDAiLCJwb3JfZm9yYSI6IlNpbSIsImZlcmlhc192ZW5jIjoiU2ltIiwiZmVyaWFzX3ZlbmNfcXQiOiIzIiwicHJvY2Vzc28iOiJTaW0iLCJwcm9jZXNzb19kZXQiOiJyZWNsYW1hdMOzcmlhIGRlIGhvcmFzIGV4dHJhcyBlbSAyMDI1In19#FIM

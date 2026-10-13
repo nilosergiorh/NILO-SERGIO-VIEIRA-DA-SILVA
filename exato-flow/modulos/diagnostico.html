@@ -1,0 +1,368 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Diagnóstico DP · Exato Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: barra (diagnóstico salvo, novo, sincronização); à esquerda respostas e dados do escritório; à direita o laudo: nota, riscos, pontos em ordem, plano, perguntas e documentos. */
+:root{
+  --red:#C00000; --red-hi:#e01515; --red-soft:rgba(192,0,0,.07);
+  --bg:#f3f3f5; --surf:#ffffff; --surf2:#f7f7f9; --ink:#16171a; --mute:#5f626b; --line:#e2e3e8; --hover:#fbf4f4; --sel:#fdeeee;
+  --ok:#14804f; --ok-bg:#e2f4ea; --at:#9a5b00; --at-bg:#fff1d6; --er:#b00000; --er-bg:#fde6e6; --nt:#3d5a80; --nt-bg:#e7edf5;
+  --scrim:rgba(17,17,17,.5);
+  --f-disp:"Sora","Segoe UI",system-ui,sans-serif; --f-body:"Manrope","Segoe UI",system-ui,sans-serif; --f-mono:"JetBrains Mono",Consolas,ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09); --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b; --sel:#2c1a1a;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#8fb0db; --nt-bg:rgba(143,176,219,.14);
+  --scrim:rgba(0,0,0,.65); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09); --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b; --sel:#2c1a1a;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#8fb0db; --nt-bg:rgba(143,176,219,.14);
+  --scrim:rgba(0,0,0,.65); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.5 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--red-hi);outline-offset:2px}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:24px;padding-block:22px 48px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+h1{margin:0;font:800 1.6rem/1.15 var(--f-disp);letter-spacing:-.02em}
+h2{margin:0;font:700 1.05rem/1.3 var(--f-disp)}
+h3{margin:0;font:700 .76rem var(--f-disp);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.lead{margin:4px 0 0;color:var(--mute);font-size:.9rem;max-width:80ch}
+.meta,.note{font-size:.8rem;color:var(--mute);margin:0}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.fld{display:grid;gap:4px;font-size:.74rem;font-weight:700;color:var(--mute);min-width:0}
+.fld input,.fld select,.fld textarea{background:var(--surf2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:.92rem;font-weight:500;color:var(--ink);min-width:0;width:100%}
+.fld.grow{flex:1 1 340px}
+.bar .st{margin-left:auto;display:flex;gap:8px;align-items:center}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mute)}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--mute)} .sync.on i{background:var(--ok)} .sync.err i{background:var(--er)}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:10px;padding:9px 16px;font:700 .86rem var(--f-disp);cursor:pointer;background:var(--red);color:#fff;white-space:nowrap}
+.btn:hover{background:var(--red-hi)}
+.btn.ghost{background:var(--surf);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--red-hi);color:var(--red-hi)}
+.btn.sm{padding:6px 11px;font-size:.78rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:12px;min-width:0}
+.banner{border-radius:10px;padding:10px 14px;font-size:.88rem;background:var(--at-bg);color:var(--at)}
+.cols{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
+.side{display:grid;gap:16px;position:sticky;top:8px}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.fgrid .full{grid-column:1/-1}
+textarea.resp{min-height:220px;font:12px/1.5 var(--f-mono);resize:vertical}
+.pill{display:inline-block;font:600 10.5px var(--f-mono);letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.p-alta{background:var(--er-bg);color:var(--er)} .p-media{background:var(--at-bg);color:var(--at)} .p-conf{background:var(--nt-bg);color:var(--nt)} .p-ok{background:var(--ok-bg);color:var(--ok)}
+/* laudo */
+.lhead{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center}
+.gauge{width:118px;height:118px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--gc) calc(var(--v)*1%),var(--line) 0);position:relative}
+.gauge::before{content:"";position:absolute;inset:11px;border-radius:50%;background:var(--surf)}
+.gauge div{position:relative;text-align:center;line-height:1.05}
+.gauge b{display:block;font:800 2rem var(--f-disp)}
+.gauge span{font-size:.72rem;color:var(--mute);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surf2)}
+.kpi b{display:block;font:700 1.25rem var(--f-mono)} .kpi span{font-size:.72rem;color:var(--mute)}
+.kpi.alta b{color:var(--er)} .kpi.media b{color:var(--at)} .kpi.conf b{color:var(--nt)} .kpi.ok b{color:var(--ok)}
+.areas{display:flex;flex-wrap:wrap;gap:6px}
+.area{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:.8rem;background:var(--surf2)}
+.area i{width:8px;height:8px;border-radius:50%;background:var(--nt)} .area.alta i{background:var(--er)} .area.media i{background:var(--at)}
+.items{display:grid;gap:8px}
+.item{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:12px 14px 12px 12px;border:1px solid var(--line);border-left:5px solid var(--nt);border-radius:10px;background:var(--surf)}
+.item.alta{border-left-color:var(--er)} .item.media{border-left-color:var(--at)} .item.ok{border-left-color:var(--ok)}
+.item>input{margin-top:4px;width:17px;height:17px;accent-color:var(--red)}
+.item .t{font-weight:700}
+.item.done{opacity:.6} .item.done .t{text-decoration:line-through}
+.item dl{grid-column:2;margin:4px 0 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 10px;font-size:.86rem}
+.item dt{color:var(--mute);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
+.item dd{margin:0} .item .law{font:12px var(--f-mono);color:var(--mute)}
+.item .est{font-weight:700;color:var(--er)}
+.item .obs{grid-column:2;background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:.84rem;width:100%}
+.oks{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+.okc{border:1px solid var(--line);border-left:4px solid var(--ok);border-radius:10px;padding:9px 12px;background:var(--surf)}
+.okc b{display:block;font-size:.9rem} .okc span{font-size:.8rem;color:var(--mute)}
+.plan{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.plan>div{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surf2);display:grid;gap:6px;align-content:start}
+.plan h3{color:var(--red-hi)}
+ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.9rem}
+.lst{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.lst li{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surf);cursor:pointer;font-size:.86rem}
+.lst li:hover{background:var(--hover)} .lst li[aria-current="true"]{background:var(--sel);box-shadow:inset 3px 0 0 var(--red-hi)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,620px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.88rem;z-index:40}
+.only-print{display:none}
+@media (max-width:1000px){.cols{grid-template-columns:minmax(0,1fr)}.side{position:static}.plan{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.wrap{padding-inline:16px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.lhead{grid-template-columns:1fr}.fgrid{grid-template-columns:1fr}.bar .st{margin-left:0}}
+/* relatório impresso: só o laudo, claro, com a marca */
+@media print{
+  @page{size:A4;margin:14mm 12mm}
+  body{background:#fff!important;color:#111!important;font-size:11.5px}
+  .bar,.side,.no-print,.toast,#novo,.fx-bg{display:none!important}
+  .wrap{padding:0;max-width:none}
+  .cols{display:block}
+  .card{border:0;padding:0;margin-bottom:12px;break-inside:auto}
+  .item{break-inside:avoid;border-color:#ccc}
+  .item>input,.item .obs:placeholder-shown{display:none}
+  .item{grid-template-columns:minmax(0,1fr)} .item dl,.item .obs{grid-column:1}
+  .only-print{display:block}
+  .gauge::before{background:#fff}
+}
+</style>
+<link rel="stylesheet" href="../nucleo/tema-exato.css">
+</head><body>
+<div class="wrap">
+  <header class="no-print">
+    <h1>Diagnóstico de DP</h1>
+    <p class="lead">Para clientes que estão chegando e para prospects: cole as respostas da <b>Ficha de Início</b> e o Flow mostra o que está errado, o que está certo, quanto pode custar e o plano de ação. Complete os dados do escritório (regime, porte, CCT) para fechar os pontos “Confirmar”.</p>
+  </header>
+  <div class="bar">
+    <label class="fld grow">Diagnóstico salvo<select id="sel"><option value="">—</option></select></label>
+    <button class="btn" type="button" id="btnNovo">+ Novo diagnóstico</button>
+    <div class="st"><span class="sync" id="sync"><i></i><span>Conectando…</span></span></div>
+  </div>
+  <div class="banner" id="aviso" hidden></div>
+
+  <section class="card" id="novo" hidden>
+    <h2>Novo diagnóstico</h2>
+    <p class="note">Copie o texto do e-mail do Netlify (campo “respostas”) ou da mensagem de WhatsApp do cliente, começando em “RESPOSTAS DA FICHA DE INÍCIO”, e cole abaixo. Se vier o código <span class="mono">#EXATO-FICHA</span> no fim, a leitura é exata.</p>
+    <div class="fgrid">
+      <label class="fld">Situação<select id="n-tipo"><option>Prospect</option><option>Cliente novo</option></select></label>
+      <label class="fld">Indicação / origem (opcional)<input id="n-orig" placeholder="ex.: indicação do cliente X"></label>
+      <label class="fld full">Respostas da ficha<textarea class="resp" id="n-txt" spellcheck="false"></textarea></label>
+    </div>
+    <div class="row"><button class="btn" type="button" id="btnGerar">Gerar diagnóstico</button><button class="btn ghost" type="button" id="btnEx">Ver com um exemplo</button><button class="btn ghost" type="button" id="btnCancelar">Cancelar</button><span class="meta" id="n-st"></span></div>
+  </section>
+
+  <p class="note" id="vazio">Escolha um diagnóstico salvo ou clique em “Novo diagnóstico”.</p>
+
+  <div class="cols" id="area" hidden>
+    <aside class="side">
+      <div class="card"><h2>Dados do escritório</h2>
+        <p class="note">O que a ficha não pergunta ao cliente. Cada campo preenchido refina o diagnóstico.</p>
+        <div class="fgrid">
+          <label class="fld">Situação<select id="c-tipo"><option>Prospect</option><option>Cliente novo</option><option>Cliente</option><option>Não fechou</option></select></label>
+          <label class="fld">Regime tributário<select id="c-regime"><option value="">—</option></select></label>
+          <label class="fld">Porte<select id="c-porte"><option value="">—</option><option>ME/EPP</option><option>Demais</option></select></label>
+          <label class="fld">Salário médio (R$)<input id="c-sal" inputmode="decimal" placeholder="para estimar custos"></label>
+          <label class="fld full">Convenção coletiva<select id="c-cct"><option value="">—</option></select></label>
+          <label class="fld full">Anotações da reunião<textarea id="c-obs" rows="3"></textarea></label>
+        </div>
+        <p class="meta" id="c-cctinfo"></p>
+        <div class="row"><button class="btn ghost sm" type="button" id="btnSalvar">Salvar</button><span class="meta" id="c-st"></span></div>
+      </div>
+      <div class="card"><h2>Ações</h2>
+        <div class="row">
+          <button class="btn" type="button" id="btnPrint">Imprimir / PDF</button>
+          <button class="btn ghost" type="button" id="btnCopiar">Copiar resumo para o cliente</button>
+          <button class="btn ghost" type="button" id="btnCliente">Cadastrar como cliente</button>
+        </div>
+        <p class="meta" id="cliInfo"></p>
+        <details><summary class="meta" style="cursor:pointer">Respostas do cliente</summary>
+          <textarea class="resp" id="c-txt" spellcheck="false" style="width:100%;margin-top:8px;background:var(--surf2);border:1px solid var(--line);border-radius:9px;padding:8px"></textarea>
+          <div class="row" style="margin-top:6px"><button class="btn ghost sm" type="button" id="btnRelerTxt">Reler respostas</button><button class="btn ghost sm" type="button" id="btnExcluir">Excluir diagnóstico</button></div>
+        </details>
+      </div>
+    </aside>
+    <main style="display:grid;gap:16px;min-width:0" id="laudo"></main>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="../nucleo/flow-dados.js" charset="utf-8"></script>
+<script src="../nucleo/folha-auditoria.js" charset="utf-8"></script>
+<script src="../nucleo/diagnostico.js" charset="utf-8"></script>
+<script>
+"use strict";
+const F=window.FlowDados, D=window.Diagnostico;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function toast(m,ms){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,ms||4200);}
+function setSync(c,t){ const s=$("sync"); s.className="sync "+c; s.lastElementChild.textContent=t; }
+const hojeIso=()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const SAL_MIN=(window.FolhaAuditoria&&window.FolhaAuditoria.tab&&(()=>{ try{ return window.FolhaAuditoria.tab(hojeIso().slice(0,4)).salarioMinimo.valor; }catch(e){ return 0; } })())||1621.00;
+const P={alta:"Alta",media:"Média",conf:"Confirmar",ok:"Em ordem"};
+const S={E:null,db:null,lista:[],id:null,doc:null,R:null,pararL:null};
+$("c-regime").innerHTML+=F.REGIMES.map(r=>`<option>${esc(r)}</option>`).join("");
+
+// ---------- lista de diagnósticos ----------
+function ouvirLista(){
+  if(S.pararL||!S.db) return;
+  S.pararL=S.db.collection("diagnosticos").onSnapshot(q=>{
+    S.lista=q.docs.map(d=>({_id:d.id,...d.data()})).sort((a,b)=>String(b.criado_em||"").localeCompare(String(a.criado_em||"")));
+    const sel=$("sel"), v=S.id||sel.value;
+    sel.innerHTML='<option value="">—</option>'+S.lista.map(d=>`<option value="${esc(d._id)}">${esc(d.empresa||"Empresa sem nome")} · ${esc(d.tipo||"")} · nota ${d.nota??"—"} · ${esc(F.fmtData(d.criado_em))}</option>`).join("");
+    if(v&&S.lista.some(d=>d._id===v)) sel.value=v;
+    if(!S.id&&S.pend&&S.lista.some(d=>d._id===S.pend)&&S.E&&S.E.pronto.clientes){ const id=S.pend; S.pend=null; sel.value=id; abrir(id); }
+    if(S.id){ const d=S.lista.find(x=>x._id===S.id); if(d&&!S.editando) { S.doc=d; render(); } }
+  },()=>setSync("err","Erro ao ler"));
+}
+function abrir(id){
+  S.id=id||null; S.doc=S.lista.find(d=>d._id===id)||null;
+  $("area").hidden=!S.doc; $("vazio").hidden=!!S.doc||!$("novo").hidden;
+  try{ localStorage.setItem("flow.diag.sel",S.id||""); }catch(e){}
+  if(!S.doc) return;
+  preencherComp(); render();
+}
+// ---------- dados do escritório ----------
+function cctsOrdenadas(cidade){
+  const mun=String(cidade||"").split(/[\/,;e]/)[0].trim().toLowerCase();
+  const L=(S.E&&S.E.ccts||[]).filter(k=>k.ramo);
+  const naBase=k=>mun&&String(k.base||"").toLowerCase().split(",").some(m=>m.trim()===mun);
+  return L.map(k=>({k,b:naBase(k)})).sort((a,b)=>(b.b-a.b)||String(a.k.ramo).localeCompare(b.k.ramo));
+}
+function preencherComp(){
+  const d=S.doc, c=d.comp||{};
+  $("c-tipo").value=d.tipo||"Prospect"; $("c-regime").value=c.regime||""; $("c-porte").value=c.porte||""; $("c-sal").value=c.sal_medio||""; $("c-obs").value=c.obs||"";
+  const cid=(D.ler(d.texto).v.cidade)||"";
+  $("c-cct").innerHTML='<option value="">—</option>'+cctsOrdenadas(cid).map(({k,b})=>`<option value="${esc(k.ramo)}">${b?"● ":""}${esc(k.ramo)}${k.lab?" · "+esc(k.lab.split(" – ")[0]):""}</option>`).join("");
+  $("c-cct").value=c.cct_ramo||"";
+  $("c-txt").value=d.texto||"";
+  infoCct();
+}
+function cctEscolhida(){ const r=$("c-cct").value; return r?(S.E.ccts||[]).find(k=>k.ramo===r)||null:null; }
+function infoCct(){
+  const k=cctEscolhida(), st=k?F.statusCct(k):"";
+  $("c-cctinfo").textContent=k?`${F.ROTULO_CCT[st]}${k.fim?" até "+F.fmtData(k.fim):""} · menor piso ${k.pmin?D.brl(k.pmin):"—"} · piso ${k.pref?D.brl(k.pref):"—"}. ● = o município da ficha está na base territorial.`:"● = CCTs do Painel Sindical cuja base territorial inclui o município da ficha.";
+}
+function lerComp(){
+  const k=cctEscolhida();
+  return {regime:$("c-regime").value,porte:$("c-porte").value,sal_medio:$("c-sal").value.trim(),obs:$("c-obs").value.trim(),cct_ramo:k?k.ramo:""};
+}
+function ctxDe(comp,feitos){
+  const k=comp.cct_ramo?(S.E.ccts||[]).find(x=>x.ramo===comp.cct_ramo):null;
+  return {salMin:SAL_MIN,hoje:hojeIso(),feitos:feitos||{},comp:{...comp,cct:k?{ramo:k.ramo,pmin:k.pmin,pref:k.pref,fim:k.fim,reg:k.reg}:null}};
+}
+async function salvarDoc(campos,msg){
+  if(!S.db||!S.id) return;
+  try{ await S.db.doc("diagnosticos/"+S.id).update({...campos,...(await F.carimbo())}); setSync("on","Salvo"); if(msg) $("c-st").textContent=msg; }
+  catch(e){ toast("Não foi possível salvar."); }
+}
+// ---------- laudo ----------
+function render(){
+  const d=S.doc; if(!d) return;
+  const comp={...(d.comp||{}),...(S.editando?lerComp():{})};
+  const feitos=d.feitos||{};
+  const R=D.diagnosticar(d.texto,ctxDe(comp,feitos)); S.R=R;
+  const v=R.L.v, N=R.nota, it=R.itens;
+  const gc=N.valor>=80?"var(--ok)":N.valor>=50?"var(--at)":"var(--er)";
+  const riscos=it.filter(i=>i.p!=="ok"), oks=it.filter(i=>i.p==="ok");
+  const estT=riscos.filter(i=>i.est&&!feitos[i.id]);
+  const item=i=>{ const f=feitos[i.id]; return `<div class="item ${i.p}${f?" done":""}">
+      <input type="checkbox" data-ck="${esc(i.id)}" ${f?"checked":""} aria-label="Marcar como resolvido">
+      <div><span class="t">${esc(i.t)}</span> <span class="pill p-${i.p}">${P[i.p]}</span> <span class="meta" style="display:inline">· ${esc(i.area)}${D.ROTINA.has(i.id)?" · rotina":""}</span></div>
+      <dl><dt>Cliente</dt><dd>${esc(i.resp)}</dd><dt>Por quê</dt><dd>${esc(i.porque)}</dd><dt>Ação</dt><dd>${esc(i.fazer)}</dd>
+      ${i.est?`<dt>Estimativa</dt><dd><span class="est">${D.brl(i.est.valor)}</span> ${esc(i.est.tipo)} <span class="meta">(${esc(i.est.memoria)})</span></dd>`:""}
+      <dt>Base</dt><dd class="law">${esc(i.lei)}</dd></dl>
+      <input class="obs no-print-empty" data-obs="${esc(i.id)}" placeholder="Anotação (o que foi visto, data, quem resolveu)" value="${esc(f&&f.obs||(d.notas||{})[i.id]||"")}"></div>`; };
+  const alta=it.filter(i=>i.p==="alta"&&!feitos[i.id]), media=it.filter(i=>i.p==="media"&&!feitos[i.id]), conf=it.filter(i=>i.p==="conf"&&!feitos[i.id]);
+  const clt=D.n(v.qt_clt), outros=D.n(v.qt_estag)+D.n(v.qt_pj)+D.n(v.qt_terc)+D.n(v.qt_free);
+  $("laudo").innerHTML=`
+  <section class="card">
+    <div class="only-print"><b style="font:800 16px var(--f-disp)">EXATO SOLUÇÕES CONTÁBEIS · Departamento Pessoal</b><div class="meta">Diagnóstico de início · ${esc(new Date().toLocaleDateString("pt-BR"))}</div></div>
+    <div class="lhead">
+      <div class="gauge" style="--v:${N.valor};--gc:${gc}" role="img" aria-label="Nota de conformidade ${N.valor} de 100"><div><b>${N.valor}</b><span>${N.faixa}</span></div></div>
+      <div><span class="meta">${esc(d.tipo||"")} · ${R.L.origem==="codigo"?"lido pelo código da ficha":"lido pelo texto da ficha"} · gerado em ${esc(F.fmtData(d.criado_em))}</span>
+        <h1>${esc(v.razao||d.empresa||"Empresa")}</h1>
+        <p class="lead">${esc([v.cnpj,v.atividade,v.cidade].filter(Boolean).join(" · "))}</p>
+        <div class="kpis"><div class="kpi alta"><b>${N.alta}</b><span>riscos altos</span></div><div class="kpi media"><b>${N.media}</b><span>riscos médios</span></div>
+          <div class="kpi conf"><b>${N.conf}</b><span>a confirmar</span></div><div class="kpi ok"><b>${N.ok}</b><span>em ordem</span></div></div>
+      </div>
+    </div>
+    <p class="note">Nota de conformidade: 100 − 12 por risco alto − 5 por risco médio ainda abertos. Itens “Confirmar” e de rotina não descontam: são falta de informação ou rotina de folha.</p>
+    <div class="row"><span class="meta">${clt} CLT · ${D.n(v.qt_aprendiz)} aprendiz(es) · ${outros} outros vínculos · ${R.L.v.setores.length} área(s) · início: ${esc(v.competencia||"—")} · contato: ${esc(v.dp_interno_nome||v.resp||"—")} ${esc(v.resp_contato||"")}</span></div>
+    ${R.areas.length?`<div class="areas">${R.areas.map(a=>`<span class="area ${a.alta?"alta":a.media?"media":""}"><i></i>${esc(a.area)} <b class="mono">${a.alta+a.media+a.conf}</b></span>`).join("")}</div>`:""}
+    ${estT.length?`<p class="note"><b>Exposição estimada:</b> ${estT.map(i=>`${esc(i.t)}: ${D.brl(i.est.valor)} ${esc(i.est.tipo)}`).join(" · ")}. Estimativas para dimensionar o problema, não cálculo de passivo.</p>`:""}
+  </section>
+  <section class="card"><h2>O que precisa de atenção</h2><div class="items">${riscos.map(item).join("")||'<p class="note">Nenhum ponto de atenção.</p>'}</div></section>
+  ${oks.length?`<section class="card"><h2>O que já está em ordem</h2><div class="oks">${oks.map(i=>`<div class="okc"><b>${esc(i.t)}</b><span>${esc(i.resp)} · ${esc(i.porque)}</span></div>`).join("")}</div></section>`:""}
+  <section class="card"><h2>Plano de ação</h2><div class="plan">
+    <div><h3>Antes da 1ª folha</h3><ul>${alta.map(i=>`<li>${esc(i.fazer)}</li>`).join("")||"<li>Sem riscos altos em aberto.</li>"}<li>Conferir cadastros importados e saldos (férias, banco de horas).</li></ul></div>
+    <div><h3>Primeiros 30 dias</h3><ul>${media.map(i=>`<li>${esc(i.t)}</li>`).join("")||"<li>—</li>"}</ul></div>
+    <div><h3>Confirmar na reunião</h3><ul>${conf.map(i=>`<li>${esc(i.t)}</li>`).join("")||"<li>—</li>"}</ul></div>
+  </div></section>
+  <section class="card"><h2>Perguntas para a reunião</h2><ul>${R.perguntas.map(q=>`<li>${esc(q)}</li>`).join("")}</ul></section>
+  <section class="card"><h2>Documentos</h2><div class="plan" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+    <div><h3>Pedir ao cliente</h3><ul>${R.L.docsFalta.map(x=>`<li>${esc(x)}</li>`).join("")||"<li>Nada pendente.</li>"}</ul></div>
+    <div><h3 style="color:var(--ok)">Cliente já tem</h3><ul>${R.L.docsOk.map(x=>`<li>${esc(x)}</li>`).join("")||"<li>Nenhum marcado.</li>"}</ul></div>
+  </div></section>
+  ${comp.obs?`<section class="card"><h2>Anotações da reunião</h2><p style="margin:0;white-space:pre-wrap">${esc(comp.obs)}</p></section>`:""}
+  <p class="note">Triagem a partir das respostas do cliente. Percentuais, prazos e obrigações dependem da CCT, do porte e do regime tributário e devem ser confirmados com documentos antes de qualquer orientação formal.</p>`;
+  const c=d.cliente_id?(S.E.clientes||[]).find(x=>x._id===d.cliente_id):null;
+  $("cliInfo").textContent=c?`Cadastrado em Clientes: ${c.nome}${c.cod?" (cód. "+c.cod+")":""}.`:"";
+  $("btnCliente").disabled=!!c;
+  const nNova=N.valor;
+  if(!S.editando&&(d.nota!==nNova)&&S.db) S.db.doc("diagnosticos/"+S.id).update({nota:nNova,contagem:{alta:N.alta,media:N.media,conf:N.conf,ok:N.ok}}).catch(()=>{});
+}
+// ---------- criar ----------
+async function gerar(){
+  const txt=$("n-txt").value.trim(); if(!txt){ toast("Cole as respostas da ficha."); return; }
+  const L=D.ler(txt);
+  if(!L.v.razao&&!L.v.cnpj&&!D.n(L.v.qt_clt)){ $("n-st").textContent="Não reconheci respostas da Ficha de Início nesse texto. Confira se copiou a partir de “RESPOSTAS DA FICHA DE INÍCIO”."; return; }
+  if(!S.db){ toast("Sem conexão com a base."); return; }
+  const dg=F.digitos(L.v.cnpj);
+  const ja=dg&&S.lista.find(x=>F.digitos(x.cnpj)===dg);
+  if(ja&&!confirm(`Já existe um diagnóstico de ${ja.empresa} (${F.fmtData(ja.criado_em)}). Criar outro mesmo assim?`)) return;
+  const R=D.diagnosticar(txt,ctxDe({},{}));
+  const ref=S.db.collection("diagnosticos").doc();
+  try{
+    await ref.set({texto:txt,tipo:$("n-tipo").value,origem:$("n-orig").value.trim(),empresa:L.v.razao||"",cnpj:L.v.cnpj||"",cidade:L.v.cidade||"",
+      comp:{},feitos:{},notas:{},nota:R.nota.valor,contagem:{alta:R.nota.alta,media:R.nota.media,conf:R.nota.conf,ok:R.nota.ok},criado_em:new Date().toISOString(),...(await F.carimbo())});
+    $("novo").hidden=true; $("n-txt").value=""; $("n-orig").value=""; $("n-st").textContent="";
+    S.id=ref.id; S.lista.push({_id:ref.id,texto:txt,tipo:$("n-tipo").value,empresa:L.v.razao,cnpj:L.v.cnpj,comp:{},feitos:{},criado_em:new Date().toISOString()});
+    abrir(ref.id); $("sel").value=ref.id; toast("Diagnóstico gerado e salvo.");
+  }catch(e){ toast("Não foi possível salvar o diagnóstico."); }
+}
+// ---------- converter em cliente ----------
+async function cadastrarCliente(){
+  const d=S.doc; if(!d||!S.db) return;
+  const v=S.R.L.v, dg=F.digitos(v.cnpj), comp=lerComp();
+  if(dg&&!F.cnpjValido(dg)){ toast("O CNPJ da ficha não é válido: corrija nas respostas antes de cadastrar."); return; }
+  const existe=dg&&(S.E.clientes||[]).find(c=>F.digitos(c.cnpj)===dg);
+  if(existe){ await salvarDoc({cliente_id:existe._id,tipo:"Cliente"}); toast(`Este CNPJ já está em Clientes (${existe.nome}). Diagnóstico vinculado.`); return; }
+  if(!confirm(`Cadastrar ${v.razao||"a empresa"} em Clientes?`)) return;
+  const k=comp.cct_ramo?(S.E.ccts||[]).find(x=>x.ramo===comp.cct_ramo):null;
+  const ref=S.db.collection("clientes").doc();
+  const novo={nome:String(v.razao||"").toUpperCase(),fant:"",cnpj:dg?F.fmtCnpj(dg):"",cod:"",mun:String(v.cidade||"").split(/[\/,;]/)[0].trim(),cnae:"",ativ:v.atividade||"",
+    cct:k?k.ramo:"",lab:k?k.lab||"":"",pat:k?k.pat||"":"",conf:"",confirmado:"",temEmp:D.n(v.qt_clt)?"Sim":"",obs:"Cadastrado pelo Diagnóstico de DP.",
+    dp_situacao:"Ativo",dp_regime:comp.regime||"",dp_func:D.n(v.qt_clt)+D.n(v.qt_aprendiz)||"",dp_resp:v.dp_interno_nome||v.resp||"",dp_contato:v.resp_contato||"",dp_obs:"",...(await F.carimbo())};
+  try{ await ref.set(novo); await salvarDoc({cliente_id:ref.id,tipo:"Cliente"}); toast("Cliente cadastrado. Complete o código do Domínio em Clientes."); }
+  catch(e){ toast("Não foi possível cadastrar."); }
+}
+// ---------- eventos ----------
+$("btnNovo").onclick=()=>{ $("novo").hidden=false; $("vazio").hidden=true; $("n-txt").focus(); };
+$("btnCancelar").onclick=()=>{ $("novo").hidden=true; $("vazio").hidden=!!S.doc; };
+$("btnEx").onclick=()=>{ $("n-txt").value=D.EXEMPLO; $("n-tipo").value="Prospect"; $("n-orig").value="Exemplo (empresa fictícia)"; };
+$("btnGerar").onclick=gerar;
+$("sel").onchange=()=>{ S.editando=false; abrir($("sel").value); };
+document.querySelector(".side").addEventListener("input",e=>{ if(e.target.id==="c-txt") return; S.editando=true; infoCct(); render(); });
+document.querySelector(".side").addEventListener("change",e=>{ if(e.target.id==="c-txt") return; S.editando=true; infoCct(); render(); });
+$("btnSalvar").onclick=async()=>{ const comp=lerComp(); await salvarDoc({comp,tipo:$("c-tipo").value},"Dados salvos."); S.doc.comp=comp; S.doc.tipo=$("c-tipo").value; S.editando=false; render(); };
+$("btnRelerTxt").onclick=async()=>{ const t=$("c-txt").value.trim(); if(!t) return; await salvarDoc({texto:t,empresa:D.ler(t).v.razao||S.doc.empresa},"Respostas atualizadas."); S.doc.texto=t; render(); };
+$("btnExcluir").onclick=async()=>{ if(!S.doc||!confirm(`Excluir o diagnóstico de ${S.doc.empresa||"empresa"}? Não dá para desfazer.`)) return;
+  try{ await S.db.doc("diagnosticos/"+S.id).delete(); S.id=null; S.doc=null; $("area").hidden=true; $("vazio").hidden=false; toast("Diagnóstico excluído."); }catch(e){ toast("Não foi possível excluir."); } };
+$("btnPrint").onclick=()=>window.print();
+$("btnCopiar").onclick=async()=>{ const t=D.resumoCliente(S.R.L,S.R.itens,S.doc.feitos,S.R.L.v.razao);
+  try{ await navigator.clipboard.writeText(t); toast("Resumo copiado: cole no WhatsApp ou e-mail do cliente."); }catch(e){ prompt("Copie o resumo:",t); } };
+$("btnCliente").onclick=cadastrarCliente;
+$("laudo").addEventListener("change",async e=>{
+  const id=e.target.dataset.ck; if(id===undefined) return;
+  const feitos={...(S.doc.feitos||{})};
+  if(e.target.checked) feitos[id]={em:new Date().toISOString(),por:(await F.carimbo()).upd_by,obs:(S.doc.notas||{})[id]||""}; else delete feitos[id];
+  S.doc.feitos=feitos; render(); salvarDoc({feitos});
+});
+$("laudo").addEventListener("change",e=>{
+  const id=e.target.dataset.obs; if(id===undefined) return;
+  const notas={...(S.doc.notas||{}),[id]:e.target.value.trim()}; S.doc.notas=notas; salvarDoc({notas});
+});
+F.assinar(est=>{
+  S.E=est;
+  if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }
+  if(est.db&&!S.db){ S.db=est.db; ouvirLista(); }
+  if(est.pronto.clientes){ setSync("on","Sincronizado");
+    if(!S.id&&S.pend===undefined){ try{ S.pend=localStorage.getItem("flow.diag.sel")||null; }catch(e){ S.pend=null; }
+      if(S.pend&&S.lista.some(d=>d._id===S.pend)){ const id=S.pend; S.pend=null; $("sel").value=id; abrir(id); } }
+    else if(S.doc&&!S.editando) render(); }
+});
+</script>
+<script src="../nucleo/tema-exato.js" data-mod="diagnostico"></script>
+</body></html>

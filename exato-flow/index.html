@@ -288,6 +288,10 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
 
     <div class="navg">
       <h6>Cadastro</h6>
+      <button class="nav" type="button" data-go="diagnostico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6v3H9z"/><path d="M7 4.5H5.5V21h13V4.5H17"/><path d="m8.5 13 2 2 4.5-4.5"/></svg>
+        <span class="t"><b>Diagnóstico</b><small>Clientes novos e prospects</small></span>
+      </button>
       <button class="nav" type="button" data-go="clientes">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6"/><path d="M17.5 14.3c1.6.6 2.7 2.2 3 4.7"/></svg>
         <span class="t"><b>Clientes</b><small>Cadastro único</small></span><span class="badge" id="b-clientes" hidden></span>
@@ -382,6 +386,7 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
     <section class="view" id="v-guias" aria-label="Auditoria de guias" hidden></section>
     <section class="view" id="v-folha" aria-label="Auditoria da folha" hidden></section>
     <section class="view" id="v-contratos" aria-label="Contratos de trabalho" hidden></section>
+    <section class="view" id="v-diagnostico" aria-label="Diagnóstico de DP" hidden></section>
   </main>
 </div>
 
@@ -394,9 +399,10 @@ const MODS={
   ponto:{src:"modulos/ponto.html",title:"Cálculo de Ponto"},
   guias:{src:"modulos/auditoria-guias.html",title:"Auditoria de guias"},
   folha:{src:"modulos/auditoria-folha.html",title:"Auditoria da folha"},
-  contratos:{src:"modulos/contratos.html",title:"Contratos de trabalho"}
+  contratos:{src:"modulos/contratos.html",title:"Contratos de trabalho"},
+  diagnostico:{src:"modulos/diagnostico.html",title:"Diagnóstico de DP"}
 };
-const VIEWS=["inicio","sindical","ponto","guias","folha","contratos","clientes"];
+const VIEWS=["inicio","sindical","ponto","guias","folha","contratos","diagnostico","clientes"];
 function abrir(v){
   if(!VIEWS.includes(v)) v="inicio";
   const m=MODS[v], box=document.getElementById("v-"+v);
