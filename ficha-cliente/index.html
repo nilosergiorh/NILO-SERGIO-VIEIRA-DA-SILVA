@@ -389,6 +389,12 @@ async function enviar(){
   const st=document.getElementById('sendStatus'), fb=document.getElementById('fallback'), bt=document.getElementById('sendBtn');
   if(!val('razao')||!val('resp_contato')){st.textContent='Para enviar, preencha o nome da empresa e o WhatsApp ou e-mail do responsável (etapa 1).';st.style.color='var(--risk)';return;}
   const txt=buildSummary();
+  // fora do Netlify (site do escritório): o envio é direto pelo WhatsApp da Exato
+  if(!/netlify\.app$/i.test(location.hostname)&&!document.querySelector('meta[name="envio-netlify"]')){
+    V._enviado=new Date().toISOString(); save();
+    window.open('https://wa.me/'+WHATS_EXATO+'?text='+encodeURIComponent(txt),'_blank','noopener');
+    st.textContent='Abrimos o WhatsApp com suas respostas: é só tocar em enviar na conversa.'; return;
+  }
   bt.disabled=true; st.style.color=''; st.textContent='Enviando…';
   try{
     const body=new URLSearchParams({'form-name':'ficha-inicio',empresa:val('razao'),cnpj:val('cnpj'),responsavel:val('resp'),contato:val('resp_contato'),respostas:txt,'bot-field':''});
