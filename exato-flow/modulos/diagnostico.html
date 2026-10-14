@@ -134,7 +134,16 @@ ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.9rem}
     <div class="row"><button class="btn" type="button" id="btnGerar">Gerar diagnóstico</button><button class="btn ghost" type="button" id="btnEx">Ver com um exemplo</button><button class="btn ghost" type="button" id="btnCancelar">Cancelar</button><span class="meta" id="n-st"></span></div>
   </section>
 
-  <p class="note" id="vazio">Escolha um diagnóstico salvo ou clique em “Novo diagnóstico”.</p>
+  <section class="card" id="vazio">
+    <h2 id="vazioTit">Nenhum diagnóstico ainda</h2>
+    <ol style="margin:0;padding-left:20px;display:grid;gap:6px">
+      <li>O cliente preenche a <b>Ficha de Início</b> pelo link e toca em <b>Enviar para a Exato</b>: as respostas chegam no WhatsApp do escritório.</li>
+      <li>Copie a mensagem inteira (do “RESPOSTAS DA FICHA DE INÍCIO” até o código no final).</li>
+      <li>Clique em <b>Novo diagnóstico</b>, cole e gere. O diagnóstico fica salvo aqui e aparece na lista acima.</li>
+    </ol>
+    <div class="row"><button class="btn" type="button" id="vNovo">+ Novo diagnóstico</button><button class="btn ghost" type="button" id="vEx">Ver um exemplo pronto</button></div>
+    <p class="note">O exemplo é uma empresa fictícia; depois de olhar, dá para excluir em Ações › Respostas do cliente › Excluir diagnóstico.</p>
+  </section>
 
   <div class="cols" id="area" hidden>
     <aside class="side">
@@ -191,6 +200,7 @@ function ouvirLista(){
     S.lista=q.docs.map(d=>({_id:d.id,...d.data()})).sort((a,b)=>String(b.criado_em||"").localeCompare(String(a.criado_em||"")));
     const sel=$("sel"), v=S.id||sel.value;
     sel.innerHTML='<option value="">—</option>'+S.lista.map(d=>`<option value="${esc(d._id)}">${esc(d.empresa||"Empresa sem nome")} · ${esc(d.tipo||"")} · nota ${d.nota??"—"} · ${esc(F.fmtData(d.criado_em))}</option>`).join("");
+    $("vazioTit").textContent=S.lista.length?`${S.lista.length} diagnóstico(s) salvo(s): escolha na lista acima ou faça um novo`:"Nenhum diagnóstico ainda";
     if(v&&S.lista.some(d=>d._id===v)) sel.value=v;
     if(!S.id&&S.pend&&S.lista.some(d=>d._id===S.pend)&&S.E&&S.E.pronto.clientes){ const id=S.pend; S.pend=null; sel.value=id; abrir(id); }
     if(S.id){ const d=S.lista.find(x=>x._id===S.id); if(d&&!S.editando) { S.doc=d; render(); } }
@@ -330,6 +340,8 @@ async function cadastrarCliente(){
 }
 // ---------- eventos ----------
 $("btnNovo").onclick=()=>{ $("novo").hidden=false; $("vazio").hidden=true; $("n-txt").focus(); };
+$("vNovo").onclick=()=>$("btnNovo").click();
+$("vEx").onclick=()=>{ $("btnNovo").click(); $("btnEx").click(); gerar(); };
 $("btnCancelar").onclick=()=>{ $("novo").hidden=true; $("vazio").hidden=!!S.doc; };
 $("btnEx").onclick=()=>{ $("n-txt").value=D.EXEMPLO; $("n-tipo").value="Prospect"; $("n-orig").value="Exemplo (empresa fictícia)"; };
 $("btnGerar").onclick=gerar;
