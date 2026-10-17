@@ -63,6 +63,20 @@ r=C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado',feriasVencid
 eq('férias vencidas: 1 simples + 1 em dobro + 1/3 de 3 salários',[v(r,'fv'),v(r,'fvd'),v(r,'fv13')],[2000,4000,2000]);
 eq('saída antes da admissão',C.calcularRescisao({...base,saida:'2023-01-01',motivo:'pedido'},T).erros.length,1);
 
+// --- adicionais fixos na rescisão: insalubridade, periculosidade, quebra de caixa ---
+r=C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado',insal:{grau:20},quebra:{tipo:'pct',valor:'10'}},T);
+eq('remuneração = salário + insalubridade 20% do mínimo + quebra 10%',r.rem,2524.2);
+eq('saldo dos adicionais proporcional a 15 dias',[v(r,'saldo'),v(r,'saldo_ins'),v(r,'saldo_qc')],[1000,162.1,100]);
+eq('adicionais no saldo têm INSS, IR e FGTS',r.verbas.find(x=>x.cod==='saldo_ins').inc,{inss:1,ir:1,fgts:1});
+eq('aviso e 13º sobre a remuneração',[v(r,'aviso'),v(r,'13')],[Math.round(2524.2/30*36*100)/100,Math.round(2524.2/12*11*100)/100]);
+eq('INSS sobre saldo + adicionais',d(r,'INSS sobre saldo'),A.inssEmpregado(1262.1,T));
+r=C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado',insal:{grau:20},peric:true},T);
+eq('insalubridade × periculosidade: fica a maior (30% de 2.000 = 600)',[v(r,'saldo_ins'),v(r,'saldo_per'),r.rem],[0,300,2600]);
+r=C.calcularRescisao({...base,motivo:'pedido',aviso:'dispensado',quebra:{tipo:'valor',valor:'150,00'}},T);
+eq('quebra de caixa em valor',[r.rem,v(r,'saldo_qc')],[2150,75]);
+let q=C.simularSalario({salario:'2000',quebra:{tipo:'pct',valor:'10'}},T);
+eq('simulador: quebra de caixa no bruto e na base',[q.quebra,q.baseTrib],[200,2200]);
+
 // --- salário ---
 let s=C.simularSalario({salario:'2.500',insal:{grau:20},he:[{pct:50,horas:10},{pct:60,horas:2},{pct:100,horas:4}],comp:'2026-10',feriados:1},T);
 const vh=(2500+324.2)/220;

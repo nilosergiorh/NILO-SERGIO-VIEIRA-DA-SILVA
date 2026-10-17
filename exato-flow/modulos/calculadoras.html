@@ -103,6 +103,8 @@ tr.liq td{font-weight:800;color:var(--red-hi);font-size:1rem}
         <label class="fld">Base da insalubridade<select id="s-insb"><option value="minimo">Salário mínimo</option><option value="salario">Salário base</option><option value="valor">Outro valor (CCT)</option></select></label>
         <label class="fld" id="s-insvw" hidden>Valor da base (R$)<input id="s-insv" inputmode="decimal"></label>
         <label class="chk full"><input type="checkbox" id="s-per"> Periculosidade (30% do salário base)</label>
+        <label class="fld">Quebra de caixa<select id="s-qct"><option value="valor">Valor fixo (R$)</option><option value="pct">% do salário</option></select></label>
+        <label class="fld">Valor ou %<input id="s-qcv" inputmode="decimal" placeholder="vazio = não tem"></label>
       </div>
       <h3>Horas extras</h3>
       <div id="s-he" style="display:grid;gap:8px"></div>
@@ -145,6 +147,12 @@ tr.liq td{font-weight:800;color:var(--red-hi);font-size:1rem}
         <label class="fld">Média de variáveis (R$/mês)<input id="r-med" inputmode="decimal" placeholder="HE, comissões, adicionais"><small>média dos últimos 12 meses</small></label>
         <label class="fld">Admissão<input id="r-adm" type="date"></label>
         <label class="fld">Último dia trabalhado<input id="r-sai" type="date"></label>
+        <label class="fld">Insalubridade<select id="r-ins"><option value="0">Não tem</option><option value="10">Grau mínimo (10%)</option><option value="20">Grau médio (20%)</option><option value="40">Grau máximo (40%)</option></select></label>
+        <label class="fld">Base da insalubridade<select id="r-insb"><option value="minimo">Salário mínimo</option><option value="salario">Salário base</option><option value="valor">Outro valor (CCT)</option></select></label>
+        <label class="fld" id="r-insvw" hidden>Valor da base (R$)<input id="r-insv" inputmode="decimal"></label>
+        <label class="chk full"><input type="checkbox" id="r-per"> Periculosidade (30% do salário base)</label>
+        <label class="fld">Quebra de caixa<select id="r-qct"><option value="valor">Valor fixo (R$)</option><option value="pct">% do salário</option></select></label>
+        <label class="fld">Valor ou %<input id="r-qcv" inputmode="decimal" placeholder="vazio = não tem"></label>
         <label class="fld full">Motivo<select id="r-mot"></select></label>
         <label class="fld full" id="r-avw">Aviso prévio<select id="r-av"></select></label>
         <label class="fld full" id="r-fimw" hidden>Fim previsto do contrato a prazo<input id="r-fim" type="date"></label>
@@ -205,7 +213,7 @@ function calcSalario(){
   const T=A.TABELAS[$("s-ano").value];
   $("s-insvw").hidden=$("s-insb").value!=="valor";
   document.querySelectorAll(".s-fora").forEach(x=>x.hidden=$("s-reg").value!=="fora");
-  const e={salario:$("s-sal").value,horasMes:$("s-hm").value,insal:{grau:$("s-ins").value,base:$("s-insb").value,valorBase:$("s-insv").value},peric:$("s-per").checked,
+  const e={salario:$("s-sal").value,horasMes:$("s-hm").value,insal:{grau:$("s-ins").value,base:$("s-insb").value,valorBase:$("s-insv").value},peric:$("s-per").checked,quebra:{tipo:$("s-qct").value,valor:$("s-qcv").value},
     he:ler("s-he","he"),noturno:{horas:$("s-noth").value,pct:$("s-notp").value},comp:$("s-comp").value,feriados:$("s-fer").value,
     outrosTrib:ler("s-out","o"),naoTrib:ler("s-out","n"),dependentes:$("s-dep").value,pensao:$("s-pen").value,vt:{usa:$("s-vt").checked,custo:$("s-vtc").value},
     descontos:ler("s-desc","d"),regime:$("s-reg").value,rat:$("s-rat").value,terceiros:$("s-ter").value};
@@ -214,6 +222,7 @@ function calcSalario(){
   const P=[["Salário base",`${C.num(e.horasMes)||220} h`,C.num(e.salario)]];
   if(r.insal) P.push(["Adicional de insalubridade",`${e.insal.grau}% de ${e.insal.base==="salario"?"salário base":e.insal.base==="valor"?"base informada":"salário mínimo"}`,r.insal]);
   if(r.peric) P.push(["Adicional de periculosidade","30% do salário",r.peric]);
+  if(r.quebra) P.push(["Quebra de caixa",r.qTxt,r.quebra]);
   r.he.forEach(h=>P.push([`Horas extras ${h.pct}%`,`${String(h.horas).replace(".",",")} h × ${b2(r.vh*(1+h.pct/100))}`,h.valor]));
   if(r.noturno.valor) P.push([`Adicional noturno ${r.noturno.pct}%`,`${r.noturno.horas} h`,r.noturno.valor]);
   if(r.dsr) P.push(["DSR sobre horas extras e adicional noturno",`÷ ${r.dias.uteis} úteis × ${r.dias.dsr}`,r.dsr]);
@@ -256,7 +265,8 @@ function calcRescisao(){
   const T=A.TABELAS[$("r-ano").value], quem=$("r-quem").value.trim();
   const adm=$("r-adm").value, sai=$("r-sai").value;
   if(adm&&sai&&sai>=adm){ const n=C.anosCompletos(adm,sai); $("r-fvh").textContent=n?`O contrato tem ${n} período(s) completo(s): informe os que ele ainda não tirou`:"Menos de 1 ano: sem férias vencidas"; } else $("r-fvh").textContent="";
-  const e={salario:$("r-sal").value,medias:$("r-med").value,admissao:adm,saida:sai,motivo:$("r-mot").value,aviso:$("r-av").value,fimContrato:$("r-fim").value,
+  $("r-insvw").hidden=$("r-insb").value!=="valor";
+  const e={salario:$("r-sal").value,medias:$("r-med").value,insal:{grau:$("r-ins").value,base:$("r-insb").value,valorBase:$("r-insv").value},peric:$("r-per").checked,quebra:{tipo:$("r-qct").value,valor:$("r-qcv").value},admissao:adm,saida:sai,motivo:$("r-mot").value,aviso:$("r-av").value,fimContrato:$("r-fim").value,
     feriasVencidas:$("r-fv").value,feriasDobro:$("r-fd").value,faltas:$("r-fal").value,adiant13:$("r-ad13").value,dependentes:$("r-dep").value,pensao:$("r-pen").value,
     saldoFgts:$("r-fgts").value,outrosProv:ler("r-out","ro"),outrosDesc:ler("r-out","rd")};
   if(!C.num(e.salario)||!adm||!sai){ $("r-res").innerHTML='<p class="note">Preencha o salário, a admissão, o último dia trabalhado e o motivo.</p>'; TXT=""; return; }
@@ -267,6 +277,7 @@ function calcRescisao(){
   $("r-res").innerHTML=`
     <div class="only-print"><b style="font:800 15px var(--f-disp)">EXATO SOLUÇÕES CONTÁBEIS · Simulação de rescisão</b><div class="note">${esc(quem)} · tabelas de ${$("r-ano").value} · ${new Date().toLocaleDateString("pt-BR")}</div></div>
     <div class="row no-print" style="justify-content:space-between"><h2>Rescisão simulada${quem?" · "+esc(quem):""}</h2><div class="row"><button class="btn sm" type="button" data-print>Imprimir / PDF</button><button class="btn ghost sm" type="button" data-copy>Copiar para WhatsApp</button></div></div>
+    <p class="note">Remuneração para aviso, 13º e férias: <b>${brl(r.rem)}</b>${r.rem>C.num(e.salario)?` (salário ${b2(C.num(e.salario))}${r.adicionais.insal?" + insalubridade "+b2(r.adicionais.insal):""}${r.adicionais.peric?" + periculosidade "+b2(r.adicionais.peric):""}${r.adicionais.quebra?" + quebra de caixa "+b2(r.adicionais.quebra):""}${C.num(e.medias)?" + médias "+b2(C.num(e.medias)):""})`:""}</p>
     <p class="note"><b>${esc(r.motivo)}</b> · admissão ${fmt(e.admissao)} · último dia ${fmt(e.saida)} · ${r.anos} ano(s) e ${r.tempo.meses%12} mês(es)${r.avisoTxt?" · "+esc(r.avisoTxt):""}${r.diasInd?" · data projetada "+fmt(r.proj):""}</p>
     <div class="kpis"><div class="kpi"><b>${b2(r.bruto)}</b><span>total bruto</span></div><div class="kpi main"><b>${b2(r.liquido)}</b><span>líquido a receber</span></div>
       <div class="kpi"><b>${b2(f.guia)}</b><span>FGTS a depositar (mês + multa)</span></div><div class="kpi"><b>${b2(r.custo)}</b><span>desembolso da empresa</span></div></div>
@@ -278,7 +289,7 @@ function calcRescisao(){
       <tr class="tot"><td>Total de descontos</td><td></td><td class="n">− ${b2(r.totDesc)}</td></tr><tr class="liq"><td>Líquido a receber</td><td></td><td class="n">${b2(r.liquido)}</td></tr></tbody></table></div>
     <div class="tbox"><table><thead><tr><th>FGTS</th><th>Cálculo</th><th class="n">Valor</th></tr></thead><tbody>
       <tr><td>Depósito do mês rescisório</td><td>8% × ${b2(f.base)} (saldo, aviso indenizado, 13º)</td><td class="n">${b2(f.mes)}</td></tr>
-      <tr><td>Saldo do FGTS do contrato${f.saldoInformado?"":" <small>estimado</small>"}</td><td>${f.saldoInformado?"informado (extrato)":`8% × ${b2(C.num(e.salario))} × ${f.mesesContrato} meses × 13/12`}</td><td class="n">${b2(f.saldo)}</td></tr>
+      <tr><td>Saldo do FGTS do contrato${f.saldoInformado?"":" <small>estimado</small>"}</td><td>${f.saldoInformado?"informado (extrato)":`8% × ${b2(f.baseEstimativa)} × ${f.mesesContrato} meses × 13/12`}</td><td class="n">${b2(f.saldo)}</td></tr>
       <tr><td>Multa rescisória</td><td>${f.pctMulta?`${f.pctMulta*100}% × (saldo + depósito do mês)`:"não há multa neste motivo"}</td><td class="n">${b2(f.multa)}</td></tr>
       <tr class="tot"><td>Guia rescisória (FGTS Digital)</td><td>depósito do mês + multa</td><td class="n">${b2(f.guia)}</td></tr>
       <tr><td>O empregado pode sacar</td><td>${f.saquePct?(f.saquePct<1?"até 80% do saldo + multa (acordo)":"saldo + depósito do mês + multa"):"não há saque neste motivo"}</td><td class="n">${b2(f.saque)}</td></tr></tbody></table></div>

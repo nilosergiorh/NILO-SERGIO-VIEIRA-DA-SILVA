@@ -38,17 +38,30 @@
     return {...r,base,ded,simpl};
   }
 
+  // ---------- adicionais fixos (salário e rescisão) ----------
+  // insalubridade: % do salário mínimo (Súmula Vinculante 4 do STF), salvo base maior prevista em CCT/contrato;
+  // periculosidade: 30% do salário base (art. 193 §1º); não se acumulam (art. 193 §2º).
+  // quebra de caixa: valor fixo ou % do salário; tem natureza salarial (Súmula 247 do TST).
+  function adicionais(e,sal,T){
+    const sm=T.salarioMinimo.valor, avisos=[];
+    const g=num(e.insal&&e.insal.grau), bIns=e.insal&&e.insal.base;
+    const baseIns=bIns==="salario"?sal:bIns==="valor"?num(e.insal.valorBase):sm;
+    let insal=g?r2(baseIns*g/100):0, peric=e.peric?r2(sal*0.30):0;
+    if(insal&&peric){ avisos.push("Insalubridade e periculosidade não se acumulam (art. 193 §2º da CLT): o empregado escolhe a mais vantajosa. Ficou a maior."); if(insal>peric) peric=0; else insal=0; }
+    if(insal&&bIns!=="salario"&&bIns!=="valor") avisos.push(`Insalubridade sobre o salário mínimo (${A.brl(sm)}). Se a CCT ou o contrato prevê outra base, troque a base.`);
+    const q=e.quebra||{}, qv=num(q.valor), quebra=qv?r2(q.tipo==="pct"?sal*qv/100:qv):0;
+    const insTxt=g?`${g}% de ${bIns==="salario"?"salário base":bIns==="valor"?"base informada":"salário mínimo"}`:"";
+    const qTxt=quebra?(q.tipo==="pct"?`${String(qv).replace(".",",")}% do salário`:"valor fixo"):"";
+    return {insal,peric,quebra,avisos,insTxt,qTxt,grau:g};
+  }
+
   // ---------- 1) salário ----------
   // e: {salario, horasMes, insal:{grau,base,valorBase}, peric, he:[{pct,horas}], noturno:{horas,pct}, comp:"AAAA-MM", feriados,
   //     outrosTrib:[{desc,valor}], naoTrib:[{desc,valor}], dependentes, pensao, vt:{usa,custo}, descontos:[{desc,valor}],
   //     regime:"simples"|"fora", rat, terceiros}
   function simularSalario(e,T){
-    const sal=num(e.salario), hm=num(e.horasMes)||220, sm=T.salarioMinimo.valor, avisos=[];
-    // insalubridade: % do salário mínimo (Súmula Vinculante 4 do STF), salvo base maior prevista em CCT/contrato
-    const g=num(e.insal&&e.insal.grau);
-    const baseIns=e.insal&&e.insal.base==="salario"?sal:e.insal&&e.insal.base==="valor"?num(e.insal.valorBase):sm;
-    let insal=g?r2(baseIns*g/100):0, peric=e.peric?r2(sal*0.30):0;
-    if(insal&&peric){ avisos.push("Insalubridade e periculosidade não se acumulam (art. 193 §2º da CLT): o empregado escolhe a mais vantajosa. Ficou a maior."); if(insal>peric) peric=0; else insal=0; }
+    const sal=num(e.salario), hm=num(e.horasMes)||220, sm=T.salarioMinimo.valor;
+    const ad=adicionais(e,sal,T), {insal,peric,quebra}=ad, avisos=[...ad.avisos];
     const vh=(sal+insal+peric)/hm;              // hora normal sobre salário + adicional (OJ 47 SDI-1 e Súmula 132 do TST); sem arredondar antes de multiplicar
     const he=(e.he||[]).filter(x=>num(x.horas)>0).map(x=>{ const p=num(x.pct), h=num(x.horas); return {pct:p,horas:h,valor:r2(h*vh*(1+p/100))}; });
     const noth=num(e.noturno&&e.noturno.horas), notp=num(e.noturno&&e.noturno.pct)||20, not=noth?r2(noth*vh*notp/100):0;
@@ -62,7 +75,7 @@
     }
     const outrosT=(e.outrosTrib||[]).filter(x=>num(x.valor)).map(x=>({desc:x.desc||"Outros proventos",valor:r2(num(x.valor))}));
     const naoT=(e.naoTrib||[]).filter(x=>num(x.valor)).map(x=>({desc:x.desc||"Verba indenizatória",valor:r2(num(x.valor))}));
-    const baseTrib=r2(sal+insal+peric+variaveis+dsr+outrosT.reduce((s,x)=>s+x.valor,0));
+    const baseTrib=r2(sal+insal+peric+quebra+variaveis+dsr+outrosT.reduce((s,x)=>s+x.valor,0));
     const bruto=r2(baseTrib+naoT.reduce((s,x)=>s+x.valor,0));
     const inss=A.inssEmpregado(baseTrib,T), dep=Math.max(0,parseInt(e.dependentes)||0), pen=r2(num(e.pensao));
     const ir=irrf(baseTrib,inss+dep*T.irrf.dependente+pen,T);
@@ -73,10 +86,9 @@
     // custo mensal para a empresa (estimativa): salário + FGTS + encargos patronais fora do Simples (20% + RAT×FAP + terceiros) + provisões de férias e 13º
     const fora=e.regime==="fora", pat=fora?r2(baseTrib*(0.20+num(e.rat)/100+num(e.terceiros)/100)):0;
     const prov=r2(baseTrib*(1/12+1/12+1/36)), provEnc=r2(prov*(T.fgts.aliquota+(fora?0.20+num(e.rat)/100+num(e.terceiros)/100:0)));
-    if(g&&e.insal.base!=="salario"&&e.insal.base!=="valor") avisos.push(`Insalubridade sobre o salário mínimo (${A.brl(sm)}). Se a CCT ou o contrato prevê outra base, troque a base.`);
     if(sal&&sal<sm*hm/220-0.005) avisos.push(`Salário abaixo do mínimo nacional proporcional a ${hm} h (${A.brl(r2(sm*hm/220))}).`);
     if(he.some(x=>x.pct<50)) avisos.push("Hora extra com adicional abaixo de 50% contraria a Constituição (art. 7º, XVI).");
-    return {vh:r2(vh),insal,peric,he,noturno:{horas:noth,pct:notp,valor:not},dsr,dias,outrosT,naoT,baseTrib,bruto,inss,ir,dep,pen,vt,desc,totDesc,
+    return {vh:r2(vh),insal,peric,quebra,insTxt:ad.insTxt,qTxt:ad.qTxt,he,noturno:{horas:noth,pct:notp,valor:not},dsr,dias,outrosT,naoT,baseTrib,bruto,inss,ir,dep,pen,vt,desc,totDesc,
       liquido:r2(bruto-totDesc),fgts,custo:{fgts,patronal:pat,provisoes:prov,encProv:provEnc,total:r2(bruto+fgts+pat+prov+provEnc)},avisos};
   }
 
@@ -91,7 +103,8 @@
   // e: {salario, medias, admissao, saida, motivo, aviso ("indenizado"|"trabalhado"|"dispensado"|"nao_cumprido"), fimContrato,
   //     feriasVencidas, feriasDobro, faltas, adiant13, dependentes, pensao, saldoFgts, outrosProv, outrosDesc}
   function calcularRescisao(e,T){
-    const sal=num(e.salario), med=num(e.medias), rem=r2(sal+med), adm=e.admissao, sai=e.saida, mot=e.motivo, erros=[], avisos=[];
+    const sal=num(e.salario), med=num(e.medias), adm=e.admissao, sai=e.saida, mot=e.motivo, erros=[];
+    const ad=adicionais(e,sal,T), fixo=r2(sal+ad.insal+ad.peric+ad.quebra), rem=r2(fixo+med), avisos=[...ad.avisos];
     if(!sal) erros.push("Informe o salário.");
     if(!D(adm)||!D(sai)) erros.push("Informe a admissão e o último dia trabalhado.");
     else if(sai<adm) erros.push("O desligamento é anterior à admissão.");
@@ -123,6 +136,9 @@
     const verbas=[], descontos=[];
     const V=(cod,desc,ref,valor,inc,memoria)=>{ if(valor>0.004) verbas.push({cod,desc,ref,valor:r2(valor),inc,memoria}); };
     V("saldo","Saldo de salário",`${diasSaldo} dia(s)`,saldo,{inss:1,ir:1,fgts:1},`${A.brl(sal)} ÷ 30 × ${diasSaldo}`);
+    if(ad.insal) V("saldo_ins","Insalubridade (saldo)",`${diasSaldo} dia(s)`,ad.insal/30*diasSaldo,{inss:1,ir:1,fgts:1},`${A.brl(ad.insal)} (${ad.insTxt}) ÷ 30 × ${diasSaldo}`);
+    if(ad.peric) V("saldo_per","Periculosidade (saldo)",`${diasSaldo} dia(s)`,ad.peric/30*diasSaldo,{inss:1,ir:1,fgts:1},`${A.brl(ad.peric)} (30% do salário) ÷ 30 × ${diasSaldo}`);
+    if(ad.quebra) V("saldo_qc","Quebra de caixa (saldo)",`${diasSaldo} dia(s)`,ad.quebra/30*diasSaldo,{inss:1,ir:1,fgts:1},`${A.brl(ad.quebra)} (${ad.qTxt}) ÷ 30 × ${diasSaldo}`);
     if(valAviso) V("aviso","Aviso prévio indenizado",`${diasInd} dia(s)${metade?" × 50%":""}`,valAviso,{fgts:1},`${A.brl(rem)} ÷ 30 × ${diasInd}${metade?" × 50%":""}`);
 
     // 13º proporcional: meses do ano com 15 dias ou mais trabalhados (Lei 4.090/1962), até a data projetada
@@ -185,13 +201,14 @@
     const baseF=soma(x=>x.inc.fgts), fgtsMes=A.trunc(baseF*T.fgts.aliquota);
     const informado=num(e.saldoFgts)>0;
     const mesesContrato=tempo.meses+(tempo.dias>=15?1:0);
-    const saldoF=informado?r2(num(e.saldoFgts)):r2(sal*T.fgts.aliquota*mesesContrato*13/12);
+    const saldoF=informado?r2(num(e.saldoFgts)):r2(fixo*T.fgts.aliquota*mesesContrato*13/12);
     const pctMulta=["sem_justa","indireta","antecipada_emp"].includes(mot)?0.40:mot==="acordo"?0.20:0;
     const multa=r2((saldoF+fgtsMes)*pctMulta);
     const saque={sem_justa:1,indireta:1,antecipada_emp:1,termino:1,acordo:0.8}[mot]||0;
     const fgts={base:baseF,mes:fgtsMes,saldo:saldoF,saldoInformado:informado,mesesContrato,pctMulta,multa,
-      saque:saque?r2((saldoF+fgtsMes)*saque+multa):0,saquePct:saque,guia:r2(fgtsMes+multa)};
-    if(!informado) avisos.push(`Saldo do FGTS estimado (8% do salário atual × ${mesesContrato} meses × 13/12). Para o valor certo da multa, use o saldo para fins rescisórios do extrato do FGTS Digital.`);
+      saque:saque?r2((saldoF+fgtsMes)*saque+multa):0,baseEstimativa:fixo,saquePct:saque,guia:r2(fgtsMes+multa)};
+    if(!informado) avisos.push(`Saldo do FGTS estimado (8% da remuneração fixa atual, ${A.brl(fixo)}, × ${mesesContrato} meses × 13/12). Para o valor certo da multa, use o saldo para fins rescisórios do extrato do FGTS Digital.`);
+    if(fixo>sal) avisos.push(`Remuneração usada no aviso, no 13º e nas férias: ${A.brl(rem)} (salário${ad.insal?" + insalubridade":""}${ad.peric?" + periculosidade":""}${ad.quebra?" + quebra de caixa":""}${med?" + médias":""}).`);
     if(med) avisos.push("Médias de variáveis entram no aviso, nas férias e no 13º; o saldo de salário usa só o salário fixo (lance variáveis do mês em outros proventos).");
     if(["sem_justa","indireta"].includes(mot)) avisos.push("Seguro-desemprego: o empregado pode ter direito se cumprir a carência; o valor é calculado pelo Ministério do Trabalho.");
     if(mot==="justa") avisos.push("Justa causa: guarde as provas da falta grave e valide com o advogado antes de aplicar.");
@@ -200,7 +217,7 @@
 
     const prazo=addDias(sai,10);
     return {erros,avisos,motivo:MOTIVOS[mot],anos,tempo,avisoProp,diasInd,avisoTxt,proj,verbas,descontos,bruto,totDesc,liquido:Math.max(0,liquido),
-      encargos:{inss,inss13,ir,ir13},fgts,prazo,custo:r2(bruto+fgts.guia)};
+      encargos:{inss,inss13,ir,ir13},fgts,prazo,custo:r2(bruto+fgts.guia),rem,adicionais:ad};
   }
 
   const API={simularSalario,calcularRescisao,MOTIVOS,diasFeriasPorFaltas,num,addDias,anosCompletos,mesesEDias};
