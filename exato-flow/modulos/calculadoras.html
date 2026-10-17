@@ -120,6 +120,7 @@ tr.liq td{font-weight:800;color:var(--red-hi);font-size:1rem}
       <div class="row"><button class="btn ghost sm" type="button" id="s-addO">+ provento (comissão, prêmio…)</button><button class="btn ghost sm" type="button" id="s-addN">+ verba sem desconto (ajuda de custo)</button></div>
       <h3>Descontos</h3>
       <div class="fgrid">
+        <label class="chk full"><input type="checkbox" id="s-inss" checked> Calcular INSS</label>
         <label class="fld">Dependentes para IR<input id="s-dep" inputmode="numeric" value="0"></label>
         <label class="fld">Pensão alimentícia (R$)<input id="s-pen" inputmode="decimal"></label>
         <label class="chk"><input type="checkbox" id="s-vt"> Vale-transporte (6%)</label>
@@ -166,6 +167,7 @@ tr.liq td{font-weight:800;color:var(--red-hi);font-size:1rem}
       </div>
       <h3>Encargos e FGTS</h3>
       <div class="fgrid">
+        <label class="chk full"><input type="checkbox" id="r-inss" checked> Calcular INSS</label>
         <label class="fld">Dependentes para IR<input id="r-dep" inputmode="numeric" value="0"></label>
         <label class="fld">Pensão alimentícia (R$)<input id="r-pen" inputmode="decimal"></label>
         <label class="fld full">Saldo do FGTS para fins rescisórios (R$)<input id="r-fgts" inputmode="decimal" placeholder="do extrato do FGTS Digital; vazio = estimativa"></label>
@@ -215,7 +217,7 @@ function calcSalario(){
   document.querySelectorAll(".s-fora").forEach(x=>x.hidden=$("s-reg").value!=="fora");
   const e={salario:$("s-sal").value,horasMes:$("s-hm").value,insal:{grau:$("s-ins").value,base:$("s-insb").value,valorBase:$("s-insv").value},peric:$("s-per").checked,quebra:{tipo:$("s-qct").value,valor:$("s-qcv").value},
     he:ler("s-he","he"),noturno:{horas:$("s-noth").value,pct:$("s-notp").value},comp:$("s-comp").value,feriados:$("s-fer").value,
-    outrosTrib:ler("s-out","o"),naoTrib:ler("s-out","n"),dependentes:$("s-dep").value,pensao:$("s-pen").value,vt:{usa:$("s-vt").checked,custo:$("s-vtc").value},
+    outrosTrib:ler("s-out","o"),naoTrib:ler("s-out","n"),semInss:!$("s-inss").checked,dependentes:$("s-dep").value,pensao:$("s-pen").value,vt:{usa:$("s-vt").checked,custo:$("s-vtc").value},
     descontos:ler("s-desc","d"),regime:$("s-reg").value,rat:$("s-rat").value,terceiros:$("s-ter").value};
   if(!C.num(e.salario)){ $("s-res").innerHTML='<p class="note">Digite o salário base para ver o holerite simulado.</p>'; TXT=""; return; }
   const r=C.simularSalario(e,T), quem=$("s-quem").value.trim();
@@ -227,7 +229,7 @@ function calcSalario(){
   if(r.noturno.valor) P.push([`Adicional noturno ${r.noturno.pct}%`,`${r.noturno.horas} h`,r.noturno.valor]);
   if(r.dsr) P.push(["DSR sobre horas extras e adicional noturno",`÷ ${r.dias.uteis} úteis × ${r.dias.dsr}`,r.dsr]);
   r.outrosT.forEach(o=>P.push([o.desc,"",o.valor])); r.naoT.forEach(o=>P.push([o.desc,"sem INSS/IR/FGTS",o.valor]));
-  const Dd=[["INSS",`${(r.inss/r.baseTrib*100).toFixed(2).replace(".",",")}% efetivo`,r.inss],["IRRF",`base ${b2(r.ir.base)}`,r.ir.devido]];
+  const Dd=[["INSS",e.semInss?"não calculado":`${(r.inss/r.baseTrib*100).toFixed(2).replace(".",",")}% efetivo`,r.inss],["IRRF",`base ${b2(r.ir.base)}`,r.ir.devido]];
   if(r.pen) Dd.push(["Pensão alimentícia","",r.pen]); if(r.vt) Dd.push(["Vale-transporte","6% do salário",r.vt]); r.desc.forEach(d=>Dd.push([d.desc,"",d.valor]));
   const L=([a,b,c],neg)=>`<tr><td>${esc(a)}</td><td>${esc(b)}</td><td class="n">${neg?"− ":""}${b2(c)}</td></tr>`;
   $("s-res").innerHTML=`
@@ -267,7 +269,7 @@ function calcRescisao(){
   if(adm&&sai&&sai>=adm){ const n=C.anosCompletos(adm,sai); $("r-fvh").textContent=n?`O contrato tem ${n} período(s) completo(s): informe os que ele ainda não tirou`:"Menos de 1 ano: sem férias vencidas"; } else $("r-fvh").textContent="";
   $("r-insvw").hidden=$("r-insb").value!=="valor";
   const e={salario:$("r-sal").value,medias:$("r-med").value,insal:{grau:$("r-ins").value,base:$("r-insb").value,valorBase:$("r-insv").value},peric:$("r-per").checked,quebra:{tipo:$("r-qct").value,valor:$("r-qcv").value},admissao:adm,saida:sai,motivo:$("r-mot").value,aviso:$("r-av").value,fimContrato:$("r-fim").value,
-    feriasVencidas:$("r-fv").value,feriasDobro:$("r-fd").value,faltas:$("r-fal").value,adiant13:$("r-ad13").value,dependentes:$("r-dep").value,pensao:$("r-pen").value,
+    feriasVencidas:$("r-fv").value,feriasDobro:$("r-fd").value,faltas:$("r-fal").value,adiant13:$("r-ad13").value,semInss:!$("r-inss").checked,dependentes:$("r-dep").value,pensao:$("r-pen").value,
     saldoFgts:$("r-fgts").value,outrosProv:ler("r-out","ro"),outrosDesc:ler("r-out","rd")};
   if(!C.num(e.salario)||!adm||!sai){ $("r-res").innerHTML='<p class="note">Preencha o salário, a admissão, o último dia trabalhado e o motivo.</p>'; TXT=""; return; }
   const r=C.calcularRescisao(e,T);

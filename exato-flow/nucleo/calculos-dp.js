@@ -77,7 +77,7 @@
     const naoT=(e.naoTrib||[]).filter(x=>num(x.valor)).map(x=>({desc:x.desc||"Verba indenizatória",valor:r2(num(x.valor))}));
     const baseTrib=r2(sal+insal+peric+quebra+variaveis+dsr+outrosT.reduce((s,x)=>s+x.valor,0));
     const bruto=r2(baseTrib+naoT.reduce((s,x)=>s+x.valor,0));
-    const inss=A.inssEmpregado(baseTrib,T), dep=Math.max(0,parseInt(e.dependentes)||0), pen=r2(num(e.pensao));
+    const inss=e.semInss?0:A.inssEmpregado(baseTrib,T), dep=Math.max(0,parseInt(e.dependentes)||0), pen=r2(num(e.pensao));
     const ir=irrf(baseTrib,inss+dep*T.irrf.dependente+pen,T);
     let vt=0; if(e.vt&&e.vt.usa){ vt=r2(sal*0.06); const c=num(e.vt.custo); if(c>0) vt=Math.min(vt,c); }
     const desc=(e.descontos||[]).filter(x=>num(x.valor)).map(x=>({desc:x.desc||"Outros descontos",valor:r2(num(x.valor))}));
@@ -87,6 +87,7 @@
     const fora=e.regime==="fora", pat=fora?r2(baseTrib*(0.20+num(e.rat)/100+num(e.terceiros)/100)):0;
     const prov=r2(baseTrib*(1/12+1/12+1/36)), provEnc=r2(prov*(T.fgts.aliquota+(fora?0.20+num(e.rat)/100+num(e.terceiros)/100:0)));
     if(sal&&sal<sm*hm/220-0.005) avisos.push(`Salário abaixo do mínimo nacional proporcional a ${hm} h (${A.brl(r2(sm*hm/220))}).`);
+    if(e.semInss) avisos.push("INSS não calculado (opção marcada): o IRRF foi calculado sem a dedução do INSS.");
     if(he.some(x=>x.pct<50)) avisos.push("Hora extra com adicional abaixo de 50% contraria a Constituição (art. 7º, XVI).");
     return {vh:r2(vh),insal,peric,quebra,insTxt:ad.insTxt,qTxt:ad.qTxt,he,noturno:{horas:noth,pct:notp,valor:not},dsr,dias,outrosT,naoT,baseTrib,bruto,inss,ir,dep,pen,vt,desc,totDesc,
       liquido:r2(bruto-totDesc),fgts,custo:{fgts,patronal:pat,provisoes:prov,encProv:provEnc,total:r2(bruto+fgts+pat+prov+provEnc)},avisos};
@@ -179,7 +180,7 @@
     // encargos: mês (saldo e outros) e 13º separados; aviso, férias indenizadas e art. 479 são isentos de INSS e IRRF
     const soma=f=>r2(verbas.filter(f).reduce((s,x)=>s+x.valor,0));
     const baseInss=soma(x=>x.inc.inss&&x.cod!=="13"), base13=soma(x=>x.cod==="13");
-    const inss=A.inssEmpregado(baseInss,T), inss13=base13?A.inssEmpregado(base13,T):0;
+    const inss=e.semInss?0:A.inssEmpregado(baseInss,T), inss13=base13&&!e.semInss?A.inssEmpregado(base13,T):0;
     const dep=Math.max(0,parseInt(e.dependentes)||0), pen=r2(num(e.pensao));
     const ir=baseInss?irrf(baseInss,inss+dep*T.irrf.dependente+pen,T):null;
     const ir13=base13?irrf(base13,inss13+dep*T.irrf.dependente,T,false):null;   // 13º: tributação exclusiva, só deduções legais
@@ -208,6 +209,7 @@
     const fgts={base:baseF,mes:fgtsMes,saldo:saldoF,saldoInformado:informado,mesesContrato,pctMulta,multa,
       saque:saque?r2((saldoF+fgtsMes)*saque+multa):0,baseEstimativa:fixo,saquePct:saque,guia:r2(fgtsMes+multa)};
     if(!informado) avisos.push(`Saldo do FGTS estimado (8% da remuneração fixa atual, ${A.brl(fixo)}, × ${mesesContrato} meses × 13/12). Para o valor certo da multa, use o saldo para fins rescisórios do extrato do FGTS Digital.`);
+    if(e.semInss) avisos.push("INSS não calculado (opção marcada): o IRRF foi calculado sem a dedução do INSS. Use quando o INSS já foi retido em outra folha ou não se aplica ao caso.");
     if(fixo>sal) avisos.push(`Remuneração usada no aviso, no 13º e nas férias: ${A.brl(rem)} (salário${ad.insal?" + insalubridade":""}${ad.peric?" + periculosidade":""}${ad.quebra?" + quebra de caixa":""}${med?" + médias":""}).`);
     if(med) avisos.push("Médias de variáveis entram no aviso, nas férias e no 13º; o saldo de salário usa só o salário fixo (lance variáveis do mês em outros proventos).");
     if(["sem_justa","indireta"].includes(mot)) avisos.push("Seguro-desemprego: o empregado pode ter direito se cumprir a carência; o valor é calculado pelo Ministério do Trabalho.");

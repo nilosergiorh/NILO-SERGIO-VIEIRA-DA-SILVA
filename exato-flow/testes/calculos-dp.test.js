@@ -77,6 +77,14 @@ eq('quebra de caixa em valor',[r.rem,v(r,'saldo_qc')],[2150,75]);
 let q=C.simularSalario({salario:'2000',quebra:{tipo:'pct',valor:'10'}},T);
 eq('simulador: quebra de caixa no bruto e na base',[q.quebra,q.baseTrib],[200,2200]);
 
+// --- opção de não calcular o INSS ---
+r=C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado',semInss:true},T);
+eq('rescisão sem INSS: nenhum desconto de INSS',r.descontos.filter(x=>/INSS/.test(x.desc)).length,0);
+eq('rescisão sem INSS: FGTS igual',r.fgts.mes,418.66);
+eq('rescisão sem INSS: líquido = bruto',r.liquido,r.bruto);
+let si=C.simularSalario({salario:'6000',semInss:true},T), ci=C.simularSalario({salario:'6000'},T);
+eq('salário sem INSS: INSS zero e IRRF maior (sem a dedução)',[si.inss,si.ir.devido>ci.ir.devido],[0,true]);
+
 // --- salário ---
 let s=C.simularSalario({salario:'2.500',insal:{grau:20},he:[{pct:50,horas:10},{pct:60,horas:2},{pct:100,horas:4}],comp:'2026-10',feriados:1},T);
 const vh=(2500+324.2)/220;
