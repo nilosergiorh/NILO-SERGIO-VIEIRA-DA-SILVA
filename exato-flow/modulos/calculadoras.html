@@ -1,0 +1,306 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Calculadoras · Exato Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: abas Salário | Rescisão; à esquerda o formulário, à direita o demonstrativo (holerite ou TRCT simulado) com memória de cálculo. */
+:root{
+  --red:#C00000; --red-hi:#e01515; --red-soft:rgba(192,0,0,.07);
+  --bg:#f3f3f5; --surf:#ffffff; --surf2:#f7f7f9; --ink:#16171a; --mute:#5f626b; --line:#e2e3e8; --hover:#fbf4f4;
+  --ok:#14804f; --ok-bg:#e2f4ea; --at:#9a5b00; --at-bg:#fff1d6; --er:#b00000; --er-bg:#fde6e6;
+  --f-disp:"Sora","Segoe UI",system-ui,sans-serif; --f-body:"Manrope","Segoe UI",system-ui,sans-serif; --f-mono:"JetBrains Mono",Consolas,ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09); --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09); --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.5 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--red-hi);outline-offset:2px}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:24px;padding-block:22px 60px;display:grid;gap:16px}
+h1{margin:0;font:800 1.6rem/1.15 var(--f-disp);letter-spacing:-.02em}
+h2{margin:0;font:700 1.05rem/1.3 var(--f-disp)}
+h3{margin:0;font:700 .74rem var(--f-disp);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.lead{margin:4px 0 0;color:var(--mute);font-size:.9rem;max-width:84ch}
+.note{font-size:.8rem;color:var(--mute);margin:0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tab{border:0;background:none;padding:10px 16px;font:700 .92rem var(--f-disp);color:var(--mute);cursor:pointer;border-bottom:3px solid transparent}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--red-hi)}
+.cols{display:grid;grid-template-columns:minmax(0,430px) minmax(0,1fr);gap:16px;align-items:start}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:12px;min-width:0}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.fgrid .full{grid-column:1/-1}
+.fld{display:grid;gap:4px;font-size:.74rem;font-weight:700;color:var(--mute);min-width:0}
+.fld input,.fld select{background:var(--surf2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:.92rem;font-weight:500;color:var(--ink);width:100%;min-width:0}
+.fld small{font-weight:500}
+.chk{display:flex;gap:8px;align-items:center;font-size:.86rem;font-weight:600;color:var(--ink)}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:10px;padding:9px 16px;font:700 .86rem var(--f-disp);cursor:pointer;background:var(--red);color:#fff;white-space:nowrap}
+.btn:hover{background:var(--red-hi)}
+.btn.ghost{background:var(--surf);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--red-hi);color:var(--red-hi)}
+.btn.sm{padding:5px 10px;font-size:.78rem}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lin{display:grid;grid-template-columns:minmax(0,1fr) 90px auto;gap:8px;align-items:end}
+.lin.v{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto}
+.x{border:1px solid var(--line);background:var(--surf);border-radius:8px;width:34px;height:36px;cursor:pointer;color:var(--mute)}
+.x:hover{color:var(--er);border-color:var(--er)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surf2);min-width:0}
+.kpi b{display:block;font:700 1.2rem var(--f-mono);white-space:nowrap}
+.kpi span{font-size:.74rem;color:var(--mute)}
+.kpi.main{border-color:var(--red-hi)} .kpi.main b{color:var(--red-hi)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th{font:700 10px var(--f-disp);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:left;padding:8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;font-family:var(--f-mono);white-space:nowrap}
+td small{display:block;color:var(--mute);font-size:.74rem}
+tr.tot td{font-weight:800;border-top:2px solid var(--line)}
+tr.liq td{font-weight:800;color:var(--red-hi);font-size:1rem}
+.tbox{overflow-x:auto}
+.avisos{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.avisos li{display:flex;gap:8px;font-size:.84rem} .avisos li::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--at)}
+.avisos li.er::before{background:var(--er)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:min(92vw,620px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.88rem;z-index:40}
+.only-print{display:none}
+@media (max-width:1000px){.cols{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.wrap{padding-inline:16px}.fgrid{grid-template-columns:1fr}}
+@media print{
+  @page{size:A4;margin:14mm 12mm}
+  body{background:#fff!important;color:#111!important;font-size:11.5px}
+  .no-print,.tabs,.toast,.fx-bg{display:none!important}
+  .wrap{padding:0;max-width:none}
+  .cols{display:block} .cols>.card:first-child{display:none}
+  .card{border:0;padding:0}
+  .only-print{display:block}
+}
+</style>
+<link rel="stylesheet" href="../nucleo/tema-exato.css">
+</head><body>
+<div class="wrap">
+  <header class="no-print">
+    <h1>Calculadoras de DP</h1>
+    <p class="lead">Para qualquer pessoa ou empresa, cliente ou não: nada é gravado nem precisa de cadastro. Use as tabelas oficiais do ano e gere o demonstrativo em PDF ou o texto para o WhatsApp.</p>
+  </header>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="t-sal" aria-selected="true" data-aba="sal">Salário bruto e líquido</button>
+    <button class="tab" role="tab" id="t-res" aria-selected="false" data-aba="res">Rescisão</button>
+  </div>
+
+  <!-- ====== SALÁRIO ====== -->
+  <div class="cols" id="aba-sal">
+    <div class="card">
+      <div class="fgrid">
+        <label class="fld full">Para quem é a simulação (opcional)<input id="s-quem" placeholder="ex.: Empresa X · cargo de auxiliar"></label>
+        <label class="fld">Salário base (R$)<input id="s-sal" inputmode="decimal" placeholder="ex.: 2.500,00"></label>
+        <label class="fld">Horas por mês<input id="s-hm" inputmode="numeric" value="220"><small>220 = 44h semanais</small></label>
+        <label class="fld">Insalubridade<select id="s-ins"><option value="0">Não tem</option><option value="10">Grau mínimo (10%)</option><option value="20">Grau médio (20%)</option><option value="40">Grau máximo (40%)</option></select></label>
+        <label class="fld">Base da insalubridade<select id="s-insb"><option value="minimo">Salário mínimo</option><option value="salario">Salário base</option><option value="valor">Outro valor (CCT)</option></select></label>
+        <label class="fld" id="s-insvw" hidden>Valor da base (R$)<input id="s-insv" inputmode="decimal"></label>
+        <label class="chk full"><input type="checkbox" id="s-per"> Periculosidade (30% do salário base)</label>
+      </div>
+      <h3>Horas extras</h3>
+      <div id="s-he" style="display:grid;gap:8px"></div>
+      <div class="row"><button class="btn ghost sm" type="button" data-he="50">+ HE 50%</button><button class="btn ghost sm" type="button" data-he="60">+ HE 60%</button><button class="btn ghost sm" type="button" data-he="100">+ HE 100%</button><button class="btn ghost sm" type="button" data-he="">+ outro %</button></div>
+      <div class="fgrid">
+        <label class="fld">Horas noturnas<input id="s-noth" inputmode="decimal" placeholder="já reduzidas"></label>
+        <label class="fld">Adicional noturno (%)<input id="s-notp" inputmode="decimal" value="20"></label>
+        <label class="fld">Mês (para o DSR)<input id="s-comp" type="month"></label>
+        <label class="fld">Feriados no mês (fora domingo)<input id="s-fer" inputmode="numeric" value="0"></label>
+      </div>
+      <h3>Outros proventos</h3>
+      <div id="s-out" style="display:grid;gap:8px"></div>
+      <div class="row"><button class="btn ghost sm" type="button" id="s-addO">+ provento (comissão, prêmio…)</button><button class="btn ghost sm" type="button" id="s-addN">+ verba sem desconto (ajuda de custo)</button></div>
+      <h3>Descontos</h3>
+      <div class="fgrid">
+        <label class="fld">Dependentes para IR<input id="s-dep" inputmode="numeric" value="0"></label>
+        <label class="fld">Pensão alimentícia (R$)<input id="s-pen" inputmode="decimal"></label>
+        <label class="chk"><input type="checkbox" id="s-vt"> Vale-transporte (6%)</label>
+        <label class="fld">Custo do VT no mês (R$)<input id="s-vtc" inputmode="decimal" placeholder="limita o desconto"></label>
+      </div>
+      <div id="s-desc" style="display:grid;gap:8px"></div>
+      <div class="row"><button class="btn ghost sm" type="button" id="s-addD">+ desconto (adiantamento, plano…)</button></div>
+      <h3>Custo para a empresa</h3>
+      <div class="fgrid">
+        <label class="fld">Regime<select id="s-reg"><option value="simples">Simples Nacional (anexos I a III e V)</option><option value="fora">Fora do Simples ou Anexo IV</option></select></label>
+        <label class="fld">Ano das tabelas<select id="s-ano"></select></label>
+        <label class="fld s-fora">RAT × FAP (%)<input id="s-rat" inputmode="decimal" value="2"></label>
+        <label class="fld s-fora">Terceiros (%)<input id="s-ter" inputmode="decimal" value="5,8"></label>
+      </div>
+    </div>
+    <div class="card" id="s-res"></div>
+  </div>
+
+  <!-- ====== RESCISÃO ====== -->
+  <div class="cols" id="aba-res" hidden>
+    <div class="card">
+      <div class="fgrid">
+        <label class="fld full">Empregado / empresa (opcional)<input id="r-quem" placeholder="ex.: João · Empresa X"></label>
+        <label class="fld">Último salário (R$)<input id="r-sal" inputmode="decimal" placeholder="ex.: 2.500,00"></label>
+        <label class="fld">Média de variáveis (R$/mês)<input id="r-med" inputmode="decimal" placeholder="HE, comissões, adicionais"><small>média dos últimos 12 meses</small></label>
+        <label class="fld">Admissão<input id="r-adm" type="date"></label>
+        <label class="fld">Último dia trabalhado<input id="r-sai" type="date"></label>
+        <label class="fld full">Motivo<select id="r-mot"></select></label>
+        <label class="fld full" id="r-avw">Aviso prévio<select id="r-av"></select></label>
+        <label class="fld full" id="r-fimw" hidden>Fim previsto do contrato a prazo<input id="r-fim" type="date"></label>
+      </div>
+      <h3>Férias e 13º</h3>
+      <div class="fgrid">
+        <label class="fld">Períodos de férias vencidas não gozadas<input id="r-fv" inputmode="numeric" value="0"><small id="r-fvh"></small></label>
+        <label class="fld">Desses, quantos já em dobro<input id="r-fd" inputmode="numeric" value="0"><small>período concessivo vencido</small></label>
+        <label class="fld">Faltas injustificadas no período atual<input id="r-fal" inputmode="numeric" value="0"><small>reduzem as férias (art. 130)</small></label>
+        <label class="fld">1ª parcela do 13º já paga (R$)<input id="r-ad13" inputmode="decimal"></label>
+      </div>
+      <h3>Encargos e FGTS</h3>
+      <div class="fgrid">
+        <label class="fld">Dependentes para IR<input id="r-dep" inputmode="numeric" value="0"></label>
+        <label class="fld">Pensão alimentícia (R$)<input id="r-pen" inputmode="decimal"></label>
+        <label class="fld full">Saldo do FGTS para fins rescisórios (R$)<input id="r-fgts" inputmode="decimal" placeholder="do extrato do FGTS Digital; vazio = estimativa"></label>
+        <label class="fld">Ano das tabelas<select id="r-ano"></select></label>
+      </div>
+      <div id="r-out" style="display:grid;gap:8px"></div>
+      <div class="row"><button class="btn ghost sm" type="button" id="r-addO">+ outro provento</button><button class="btn ghost sm" type="button" id="r-addD">+ outro desconto</button></div>
+    </div>
+    <div class="card" id="r-res"></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="../nucleo/folha-auditoria.js" charset="utf-8"></script>
+<script src="../nucleo/calculos-dp.js" charset="utf-8"></script>
+<script>
+"use strict";
+const A=window.FolhaAuditoria, C=window.CalculosDP;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const brl=A.brl, b2=v=>brl(v).replace("R$ ",""), fmt=s=>s?s.split("-").reverse().join("/"):"—";
+function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,4200);}
+const ANOS=Object.keys(A.TABELAS).sort(), ULT=ANOS[ANOS.length-1];
+["s-ano","r-ano"].forEach(id=>{ $(id).innerHTML=ANOS.map(a=>`<option>${a}</option>`).join(""); $(id).value=ULT; });
+const hoje=new Date(); $("s-comp").value=hoje.getFullYear()+"-"+String(hoje.getMonth()+1).padStart(2,"0");
+let ABA="sal", TXT="";
+
+// ---------- linhas dinâmicas ----------
+function linha(box,tipo,dados){
+  const d=document.createElement("div"); d.className="lin"+(tipo==="he"?"":" v"); d.dataset.t=tipo;
+  d.innerHTML=tipo==="he"
+    ?`<label class="fld">Adicional (%)<input data-k="pct" inputmode="decimal" value="${esc(dados.pct??"")}" placeholder="ex.: 75"></label><label class="fld">Horas<input data-k="horas" inputmode="decimal" placeholder="ex.: 10"></label><button class="x" type="button" aria-label="Remover">×</button>`
+    :`<label class="fld">${tipo==="n"?"Verba sem desconto":tipo==="d"||tipo==="rd"?"Desconto":"Provento"}<input data-k="desc" value="${esc(dados.desc||"")}" placeholder="descrição"></label><label class="fld">Valor (R$)<input data-k="valor" inputmode="decimal"></label><button class="x" type="button" aria-label="Remover">×</button>`;
+  d.querySelector(".x").onclick=()=>{ d.remove(); calcular(); };
+  box.append(d); const f=d.querySelector(tipo==="he"&&dados.pct!==""&&dados.pct!=null?'[data-k="horas"]':"input"); f&&f.focus();
+}
+const ler=(box,tipo)=>[...$(box).querySelectorAll(`.lin[data-t="${tipo}"]`)].map(l=>Object.fromEntries([...l.querySelectorAll("input")].map(i=>[i.dataset.k,i.value])));
+document.querySelectorAll("[data-he]").forEach(b=>b.onclick=()=>linha($("s-he"),"he",{pct:b.dataset.he}));
+$("s-addO").onclick=()=>linha($("s-out"),"o",{}); $("s-addN").onclick=()=>linha($("s-out"),"n",{});
+$("s-addD").onclick=()=>linha($("s-desc"),"d",{});
+$("r-addO").onclick=()=>linha($("r-out"),"ro",{}); $("r-addD").onclick=()=>linha($("r-out"),"rd",{});
+linha($("s-he"),"he",{pct:50}); $("s-sal").focus();
+
+// ---------- salário ----------
+function calcSalario(){
+  const T=A.TABELAS[$("s-ano").value];
+  $("s-insvw").hidden=$("s-insb").value!=="valor";
+  document.querySelectorAll(".s-fora").forEach(x=>x.hidden=$("s-reg").value!=="fora");
+  const e={salario:$("s-sal").value,horasMes:$("s-hm").value,insal:{grau:$("s-ins").value,base:$("s-insb").value,valorBase:$("s-insv").value},peric:$("s-per").checked,
+    he:ler("s-he","he"),noturno:{horas:$("s-noth").value,pct:$("s-notp").value},comp:$("s-comp").value,feriados:$("s-fer").value,
+    outrosTrib:ler("s-out","o"),naoTrib:ler("s-out","n"),dependentes:$("s-dep").value,pensao:$("s-pen").value,vt:{usa:$("s-vt").checked,custo:$("s-vtc").value},
+    descontos:ler("s-desc","d"),regime:$("s-reg").value,rat:$("s-rat").value,terceiros:$("s-ter").value};
+  if(!C.num(e.salario)){ $("s-res").innerHTML='<p class="note">Digite o salário base para ver o holerite simulado.</p>'; TXT=""; return; }
+  const r=C.simularSalario(e,T), quem=$("s-quem").value.trim();
+  const P=[["Salário base",`${C.num(e.horasMes)||220} h`,C.num(e.salario)]];
+  if(r.insal) P.push(["Adicional de insalubridade",`${e.insal.grau}% de ${e.insal.base==="salario"?"salário base":e.insal.base==="valor"?"base informada":"salário mínimo"}`,r.insal]);
+  if(r.peric) P.push(["Adicional de periculosidade","30% do salário",r.peric]);
+  r.he.forEach(h=>P.push([`Horas extras ${h.pct}%`,`${String(h.horas).replace(".",",")} h × ${b2(r.vh*(1+h.pct/100))}`,h.valor]));
+  if(r.noturno.valor) P.push([`Adicional noturno ${r.noturno.pct}%`,`${r.noturno.horas} h`,r.noturno.valor]);
+  if(r.dsr) P.push(["DSR sobre horas extras e adicional noturno",`÷ ${r.dias.uteis} úteis × ${r.dias.dsr}`,r.dsr]);
+  r.outrosT.forEach(o=>P.push([o.desc,"",o.valor])); r.naoT.forEach(o=>P.push([o.desc,"sem INSS/IR/FGTS",o.valor]));
+  const Dd=[["INSS",`${(r.inss/r.baseTrib*100).toFixed(2).replace(".",",")}% efetivo`,r.inss],["IRRF",`base ${b2(r.ir.base)}`,r.ir.devido]];
+  if(r.pen) Dd.push(["Pensão alimentícia","",r.pen]); if(r.vt) Dd.push(["Vale-transporte","6% do salário",r.vt]); r.desc.forEach(d=>Dd.push([d.desc,"",d.valor]));
+  const L=([a,b,c],neg)=>`<tr><td>${esc(a)}</td><td>${esc(b)}</td><td class="n">${neg?"− ":""}${b2(c)}</td></tr>`;
+  $("s-res").innerHTML=`
+    <div class="only-print"><b style="font:800 15px var(--f-disp)">EXATO SOLUÇÕES CONTÁBEIS · Simulação de salário</b><div class="note">${esc(quem)} · tabelas de ${$("s-ano").value} · ${new Date().toLocaleDateString("pt-BR")}</div></div>
+    <div class="row no-print" style="justify-content:space-between"><h2>Holerite simulado${quem?" · "+esc(quem):""}</h2><div class="row"><button class="btn sm" type="button" data-print>Imprimir / PDF</button><button class="btn ghost sm" type="button" data-copy>Copiar para WhatsApp</button></div></div>
+    <div class="kpis"><div class="kpi"><b>${b2(r.bruto)}</b><span>salário bruto</span></div><div class="kpi main"><b>${b2(r.liquido)}</b><span>salário líquido</span></div>
+      <div class="kpi"><b>${b2(r.totDesc)}</b><span>descontos</span></div><div class="kpi"><b>${b2(r.custo.total)}</b><span>custo mensal estimado</span></div></div>
+    <div class="tbox"><table><thead><tr><th>Proventos</th><th>Referência</th><th class="n">Valor</th></tr></thead><tbody>${P.map(x=>L(x)).join("")}
+      <tr class="tot"><td>Total bruto</td><td></td><td class="n">${b2(r.bruto)}</td></tr></tbody></table></div>
+    <div class="tbox"><table><thead><tr><th>Descontos</th><th>Referência</th><th class="n">Valor</th></tr></thead><tbody>${Dd.map(x=>L(x,1)).join("")}
+      <tr class="tot"><td>Total de descontos</td><td></td><td class="n">− ${b2(r.totDesc)}</td></tr><tr class="liq"><td>Salário líquido</td><td></td><td class="n">${b2(r.liquido)}</td></tr></tbody></table></div>
+    <div class="tbox"><table><thead><tr><th>Custo para a empresa (estimativa mensal)</th><th></th><th class="n">Valor</th></tr></thead><tbody>
+      ${L(["Salário bruto","",r.bruto])}${L(["FGTS","8% (não sai do salário)",r.custo.fgts])}${r.custo.patronal?L(["INSS patronal + RAT×FAP + terceiros",`${(20+C.num(e.rat)+C.num(e.terceiros)).toFixed(1).replace(".",",")}%`,r.custo.patronal]):""}
+      ${L(["Provisão de férias + 1/3 e 13º","19,44% ao mês",r.custo.provisoes])}${L(["Encargos sobre as provisões","",r.custo.encProv])}
+      <tr class="tot"><td>Custo mensal estimado</td><td></td><td class="n">${b2(r.custo.total)}</td></tr></tbody></table></div>
+    <p class="note"><b>Memória:</b> hora normal = (salário${r.insal?" + insalubridade":""}${r.peric?" + periculosidade":""}) ÷ ${C.num(e.horasMes)||220} h = ${brl(r.vh)} (OJ 47 SDI-1 e Súmula 132 do TST).
+      ${r.dsr?`DSR = variáveis ÷ ${r.dias.uteis} dias úteis × ${r.dias.dsr} (${r.dias.domingos} domingos + ${r.dias.feriados} feriado(s)) — Súmula 172 do TST. `:""}
+      IRRF: ${b2(r.baseTrib)} − ${r.ir.simpl?"desconto simplificado":"INSS"+(r.dep?" + dependentes":"")+(r.pen?" + pensão":"")} ${b2(r.ir.ded)} = base ${b2(r.ir.base)}; tabela ${brl(r.ir.bruto)}${r.ir.reducao?` − redução da Lei 15.270 ${brl(r.ir.reducao)}`:""} = ${brl(r.ir.devido)}.
+      ${r.custo.patronal?"":"No Simples (exceto Anexo IV) o INSS patronal já está no DAS. "}Percentuais de HE, insalubridade e adicional noturno podem ser maiores na CCT.</p>
+    ${r.avisos.length?`<ul class="avisos">${r.avisos.map(a=>`<li>${esc(a)}</li>`).join("")}</ul>`:""}`;
+  TXT=[`*Simulação de salário*${quem?" – "+quem:""}`,...P.map(([a,,c])=>`${a}: R$ ${b2(c)}`),`*Bruto: R$ ${b2(r.bruto)}*`,...Dd.map(([a,,c])=>`(−) ${a}: R$ ${b2(c)}`),`*Líquido: R$ ${b2(r.liquido)}*`,
+    `FGTS (empresa): R$ ${b2(r.fgts)}`,"",`Simulação com as tabelas de ${$("s-ano").value}. Exato Soluções Contábeis.`].join("\n");
+}
+
+// ---------- rescisão ----------
+$("r-mot").innerHTML=Object.entries(C.MOTIVOS).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join("");
+function opcoesAviso(){
+  const m=$("r-mot").value, sel=$("r-av"), v=sel.value;
+  const o=["sem_justa","indireta","acordo"].includes(m)?[["indenizado","Indenizado"],["trabalhado","Trabalhado"]]:m==="pedido"?[["trabalhado","Trabalhado pelo empregado"],["dispensado","Dispensado pela empresa (sem desconto)"],["nao_cumprido","Não cumprido (desconto de 30 dias)"]]:[];
+  $("r-avw").hidden=!o.length; sel.innerHTML=o.map(([k,t])=>`<option value="${k}">${t}</option>`).join(""); if(o.some(([k])=>k===v)) sel.value=v;
+  $("r-fimw").hidden=!["antecipada_emp","antecipada_func"].includes(m);
+}
+function calcRescisao(){
+  opcoesAviso();
+  const T=A.TABELAS[$("r-ano").value], quem=$("r-quem").value.trim();
+  const adm=$("r-adm").value, sai=$("r-sai").value;
+  if(adm&&sai&&sai>=adm){ const n=C.anosCompletos(adm,sai); $("r-fvh").textContent=n?`O contrato tem ${n} período(s) completo(s): informe os que ele ainda não tirou`:"Menos de 1 ano: sem férias vencidas"; } else $("r-fvh").textContent="";
+  const e={salario:$("r-sal").value,medias:$("r-med").value,admissao:adm,saida:sai,motivo:$("r-mot").value,aviso:$("r-av").value,fimContrato:$("r-fim").value,
+    feriasVencidas:$("r-fv").value,feriasDobro:$("r-fd").value,faltas:$("r-fal").value,adiant13:$("r-ad13").value,dependentes:$("r-dep").value,pensao:$("r-pen").value,
+    saldoFgts:$("r-fgts").value,outrosProv:ler("r-out","ro"),outrosDesc:ler("r-out","rd")};
+  if(!C.num(e.salario)||!adm||!sai){ $("r-res").innerHTML='<p class="note">Preencha o salário, a admissão, o último dia trabalhado e o motivo.</p>'; TXT=""; return; }
+  const r=C.calcularRescisao(e,T);
+  if(r.erros.length){ $("r-res").innerHTML=`<ul class="avisos">${r.erros.map(x=>`<li class="er">${esc(x)}</li>`).join("")}</ul>`; TXT=""; return; }
+  const inc=v=>[v.inc.inss?"INSS":"",v.inc.ir||v.inc.ir13?"IR":"",v.inc.fgts?"FGTS":""].filter(Boolean).join(" · ")||"isento";
+  const f=r.fgts;
+  $("r-res").innerHTML=`
+    <div class="only-print"><b style="font:800 15px var(--f-disp)">EXATO SOLUÇÕES CONTÁBEIS · Simulação de rescisão</b><div class="note">${esc(quem)} · tabelas de ${$("r-ano").value} · ${new Date().toLocaleDateString("pt-BR")}</div></div>
+    <div class="row no-print" style="justify-content:space-between"><h2>Rescisão simulada${quem?" · "+esc(quem):""}</h2><div class="row"><button class="btn sm" type="button" data-print>Imprimir / PDF</button><button class="btn ghost sm" type="button" data-copy>Copiar para WhatsApp</button></div></div>
+    <p class="note"><b>${esc(r.motivo)}</b> · admissão ${fmt(e.admissao)} · último dia ${fmt(e.saida)} · ${r.anos} ano(s) e ${r.tempo.meses%12} mês(es)${r.avisoTxt?" · "+esc(r.avisoTxt):""}${r.diasInd?" · data projetada "+fmt(r.proj):""}</p>
+    <div class="kpis"><div class="kpi"><b>${b2(r.bruto)}</b><span>total bruto</span></div><div class="kpi main"><b>${b2(r.liquido)}</b><span>líquido a receber</span></div>
+      <div class="kpi"><b>${b2(f.guia)}</b><span>FGTS a depositar (mês + multa)</span></div><div class="kpi"><b>${b2(r.custo)}</b><span>desembolso da empresa</span></div></div>
+    <div class="tbox"><table><thead><tr><th>Verba</th><th>Referência</th><th>Incide</th><th class="n">Valor</th></tr></thead><tbody>
+      ${r.verbas.map(v=>`<tr><td>${esc(v.desc)}<small>${esc(v.memoria)}</small></td><td>${esc(v.ref)}</td><td><small>${inc(v)}</small></td><td class="n">${b2(v.valor)}</td></tr>`).join("")}
+      <tr class="tot"><td>Total bruto</td><td></td><td></td><td class="n">${b2(r.bruto)}</td></tr></tbody></table></div>
+    <div class="tbox"><table><thead><tr><th>Desconto</th><th>Referência</th><th class="n">Valor</th></tr></thead><tbody>
+      ${r.descontos.map(v=>`<tr><td>${esc(v.desc)}<small>${esc(v.memoria)}</small></td><td>${esc(v.ref)}</td><td class="n">− ${b2(v.valor)}</td></tr>`).join("")||'<tr><td colspan="3" class="note">Sem descontos.</td></tr>'}
+      <tr class="tot"><td>Total de descontos</td><td></td><td class="n">− ${b2(r.totDesc)}</td></tr><tr class="liq"><td>Líquido a receber</td><td></td><td class="n">${b2(r.liquido)}</td></tr></tbody></table></div>
+    <div class="tbox"><table><thead><tr><th>FGTS</th><th>Cálculo</th><th class="n">Valor</th></tr></thead><tbody>
+      <tr><td>Depósito do mês rescisório</td><td>8% × ${b2(f.base)} (saldo, aviso indenizado, 13º)</td><td class="n">${b2(f.mes)}</td></tr>
+      <tr><td>Saldo do FGTS do contrato${f.saldoInformado?"":" <small>estimado</small>"}</td><td>${f.saldoInformado?"informado (extrato)":`8% × ${b2(C.num(e.salario))} × ${f.mesesContrato} meses × 13/12`}</td><td class="n">${b2(f.saldo)}</td></tr>
+      <tr><td>Multa rescisória</td><td>${f.pctMulta?`${f.pctMulta*100}% × (saldo + depósito do mês)`:"não há multa neste motivo"}</td><td class="n">${b2(f.multa)}</td></tr>
+      <tr class="tot"><td>Guia rescisória (FGTS Digital)</td><td>depósito do mês + multa</td><td class="n">${b2(f.guia)}</td></tr>
+      <tr><td>O empregado pode sacar</td><td>${f.saquePct?(f.saquePct<1?"até 80% do saldo + multa (acordo)":"saldo + depósito do mês + multa"):"não há saque neste motivo"}</td><td class="n">${b2(f.saque)}</td></tr></tbody></table></div>
+    <p class="note"><b>Prazo de pagamento:</b> até ${fmt(r.prazo)} (10 dias do término, art. 477 §6º); atraso gera multa de um salário (art. 477 §8º). Aviso indenizado e férias indenizadas não têm INSS nem IRRF; o 13º tem INSS e IRRF calculados à parte. Simulação: confira CCT, médias, estabilidades e o saldo do FGTS antes do TRCT.</p>
+    <ul class="avisos">${r.avisos.map(a=>`<li>${esc(a)}</li>`).join("")}</ul>`;
+  TXT=[`*Simulação de rescisão*${quem?" – "+quem:""}`,`${r.motivo}`,`Admissão ${fmt(e.admissao)} · último dia ${fmt(e.saida)}${r.avisoTxt?"\n"+r.avisoTxt:""}`,"",
+    ...r.verbas.map(v=>`${v.desc} (${v.ref}): R$ ${b2(v.valor)}`),`*Bruto: R$ ${b2(r.bruto)}*`,...r.descontos.map(v=>`(−) ${v.desc}: R$ ${b2(v.valor)}`),`*Líquido: R$ ${b2(r.liquido)}*`,"",
+    `FGTS: depósito do mês R$ ${b2(f.mes)} · multa R$ ${b2(f.multa)}${f.saldoInformado?"":" (saldo estimado)"}`,f.saquePct?`Saque do FGTS: R$ ${b2(f.saque)}`:"Sem saque do FGTS neste motivo",`Pagamento até ${fmt(r.prazo)}`,"",
+    `Simulação com as tabelas de ${$("r-ano").value}; valores finais dependem da CCT e dos documentos. Exato Soluções Contábeis.`].join("\n");
+}
+function calcular(){ ABA==="sal"?calcSalario():calcRescisao(); }
+function aba(a){ ABA=a; $("aba-sal").hidden=a!=="sal"; $("aba-res").hidden=a!=="res"; $("t-sal").setAttribute("aria-selected",a==="sal"); $("t-res").setAttribute("aria-selected",a==="res"); calcular(); }
+document.querySelectorAll("[data-aba]").forEach(b=>b.onclick=()=>aba(b.dataset.aba));
+document.addEventListener("input",e=>{ if(e.target.closest(".cols")) calcular(); });
+document.addEventListener("change",e=>{ if(e.target.closest(".cols")) calcular(); });
+document.addEventListener("click",async e=>{
+  if(e.target.closest("[data-print]")) window.print();
+  if(e.target.closest("[data-copy]")){ if(!TXT) return; try{ await navigator.clipboard.writeText(TXT); toast("Copiado: cole no WhatsApp ou e-mail."); }catch(x){ prompt("Copie o texto:",TXT); } }
+});
+// atalho do Painel: {flow:"simular"} abre a aba de salário; {flow:"rescisao"} a de rescisão
+window.addEventListener("message",e=>{ if(e.origin===location.origin&&e.data&&e.data.flow){ if(e.data.flow==="simular") aba("sal"); if(e.data.flow==="rescisao") aba("res"); } });
+if(/rescis/.test(location.hash)) aba("res"); else calcular();
+</script>
+<script src="../nucleo/tema-exato.js" data-mod="calculadoras"></script>
+</body></html>
