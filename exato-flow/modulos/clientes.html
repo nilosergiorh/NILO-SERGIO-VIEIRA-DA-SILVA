@@ -166,6 +166,7 @@ td small{display:block;color:var(--mute);font-family:var(--f-mono);font-size:.72
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="../nucleo/flow-dados.js" charset="utf-8"></script>
+<script src="../nucleo/sst.js" charset="utf-8"></script>
 <script src="../nucleo/dominio-relatorios.js" charset="utf-8"></script>
 <script>
 const F=window.FlowDados;
@@ -281,6 +282,7 @@ function ficha(id){
       <button class="link" type="button" data-modulo="sindical">Alterar no Painel Sindical →</button></div>
     <div class="box"><h3>Auditoria de guias</h3>${aud(a)}<button class="link" type="button" data-modulo="guias">Abrir a Auditoria de Guias →</button></div>
     ${diagBox(c)}
+    ${sstBox(c)}
     ${docsHtml(c)}`:""}`;
   $("drawer").hidden=false;
   if(c){ abrirFuncionarios(c); renderRev(); }
@@ -288,6 +290,17 @@ function ficha(id){
   $("fCli").addEventListener("submit",ev=>{ev.preventDefault(); salvar(c);});
 }
 
+// SST da empresa: situação de cada programa (detalhes e leitura dos PDFs no módulo SST)
+function sstBox(c){
+  if(!window.SST) return "";
+  const reg=F.sstDoCliente(c), r=SST.resumo(reg,new Date().toISOString().slice(0,10),F.semEmpregados(c));
+  const cls={vencido:"p-er",falta:"p-er",vence:"p-at",sem_data:"p-at",vigente:"p-ok",dispensado:"p-nt",na:"p-nt"};
+  const it=r.itens.filter(i=>i.t.obrig||i.d);
+  return `<div class="box"><h3>SST (segurança e saúde do trabalho)</h3>
+    <dl class="kv">${it.map(i=>`<dt>${esc(i.t.curto)}</dt><dd><span class="pill ${cls[i.st]}">${esc(SST.ROTULO[i.st])}</span> <span class="meta">${esc(i.txt)}</span></dd>`).join("")}
+    <dt>Empresa de SST</dt><dd>${esc(reg&&reg.prestador&&reg.prestador.nome||"—")}</dd></dl>
+    <button class="link" type="button" data-sst="${esc(c._id)}">Abrir no módulo SST →</button></div>`;
+}
 // diagnóstico de DP da empresa: nota atual, riscos em aberto, evolução e prazo de revisão
 function diagBox(c){
   const d=F.diagDoCliente(c);
@@ -574,6 +587,8 @@ $("drawer").addEventListener("click",async e=>{
   if(del){ if(!del.dataset.arm){ del.dataset.arm=1; del.textContent="confirmar?"; setTimeout(()=>{ if(del.isConnected){ delete del.dataset.arm; del.textContent="remover"; } },3500); return; }
     const L=(DOC.funcs||[]).filter((_,i)=>i!==+del.dataset.fdel); try{ await F.salvarFuncionarios(DOC.cnpj,L); DOC.funcs=L; renderFuncs(); toast("Funcionário removido do cadastro."); }catch(x){ toast("Não foi possível remover."); } return; }
   if(e.target===$("drawer")||e.target.closest("[data-fechar]")) fechar();
+  const ss=e.target.closest("[data-sst]");
+  if(ss){ try{ window.parent.postMessage({flow:"abrir",tela:"sst",dados:{cliente:ss.dataset.sst}},location.origin); }catch(x){} return; }
   const dg=e.target.closest("[data-diag]");
   if(dg){ try{ window.parent.postMessage({flow:"abrir",tela:"diagnostico",dados:{diag:dg.dataset.diag}},location.origin); }catch(x){} return; }
   const m=e.target.closest("[data-modulo]");

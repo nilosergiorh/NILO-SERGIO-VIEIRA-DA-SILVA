@@ -1,0 +1,340 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SST · Exato Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: visão geral (todas as empresas, situação de cada documento) e ficha da empresa (empresa de SST, leitura dos PDFs, documentos com validade). */
+:root{
+  --red:#C00000; --red-hi:#e01515; --red-soft:rgba(192,0,0,.07);
+  --bg:#f3f3f5; --surf:#ffffff; --surf2:#f7f7f9; --ink:#16171a; --mute:#5f626b; --line:#e2e3e8; --hover:#fbf4f4; --sel:#fdeeee;
+  --ok:#14804f; --ok-bg:#e2f4ea; --at:#9a5b00; --at-bg:#fff1d6; --er:#b00000; --er-bg:#fde6e6; --nt:#3d5a80; --nt-bg:#e7edf5;
+  --scrim:rgba(17,17,17,.5);
+  --f-disp:"Sora","Segoe UI",system-ui,sans-serif; --f-body:"Manrope","Segoe UI",system-ui,sans-serif; --f-mono:"JetBrains Mono",Consolas,ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09); --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b; --sel:#2c1a1a;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#8fb0db; --nt-bg:rgba(143,176,219,.14);
+  --scrim:rgba(0,0,0,.65); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --red-hi:#ff3b3b; --red-soft:rgba(255,59,59,.09); --bg:#141416; --surf:#1d1d20; --surf2:#232327; --ink:#f1f1f3; --mute:#a3a5ad; --line:#2f2f34; --hover:#261b1b; --sel:#2c1a1a;
+  --ok:#3fbf86; --ok-bg:rgba(63,191,134,.14); --at:#e8a531; --at-bg:rgba(232,165,49,.14); --er:#ff6b6b; --er-bg:rgba(255,90,90,.14); --nt:#8fb0db; --nt-bg:rgba(143,176,219,.14);
+  --scrim:rgba(0,0,0,.65); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.5 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--red-hi);outline-offset:2px}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:24px;padding-block:22px 48px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;position:relative;z-index:1}
+h1{margin:0;font:800 1.6rem/1.15 var(--f-disp);letter-spacing:-.02em}
+h2{margin:0;font:700 1.05rem/1.3 var(--f-disp)}
+h3{margin:0;font:700 .76rem var(--f-disp);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.lead{margin:4px 0 0;color:var(--mute);font-size:.9rem;max-width:90ch}
+.meta,.note{font-size:.8rem;color:var(--mute);margin:0}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.fld{display:grid;gap:4px;font-size:.74rem;font-weight:700;color:var(--mute);min-width:0}
+.fld input,.fld select,.fld textarea{background:var(--surf2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:.92rem;font-weight:500;color:var(--ink);min-width:0;width:100%}
+.fld.grow{flex:1 1 340px}
+.bar .st{margin-left:auto;display:flex;gap:8px;align-items:center}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mute)}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--mute)} .sync.on i{background:var(--ok)} .sync.err i{background:var(--er)}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:10px;padding:9px 16px;font:700 .86rem var(--f-disp);cursor:pointer;background:var(--red);color:#fff;white-space:nowrap}
+.btn:hover{background:var(--red-hi)}
+.btn.ghost{background:var(--surf);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--red-hi);color:var(--red-hi)}
+.btn.sm{padding:6px 11px;font-size:.78rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:12px;min-width:0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:8px 14px;font:700 .9rem var(--f-disp);color:var(--mute);cursor:pointer}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--red-hi)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-left:4px solid var(--nt);border-radius:12px;padding:10px 12px;background:var(--surf);cursor:pointer;text-align:left}
+.kpi b{display:block;font:800 1.6rem var(--f-disp)} .kpi span{font-size:.78rem;color:var(--mute)}
+.kpi.er{border-left-color:var(--er)} .kpi.er b{color:var(--er)} .kpi.at{border-left-color:var(--at)} .kpi.at b{color:var(--at)} .kpi.ok{border-left-color:var(--ok)} .kpi.ok b{color:var(--ok)}
+.kpi[aria-pressed="true"]{outline:2px solid var(--red-hi)}
+.tbox{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:.84rem}
+th{font:600 10px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr{cursor:pointer} tbody tr:hover td{background:var(--hover)}
+.pill{display:inline-block;font:600 10.5px var(--f-mono);letter-spacing:.03em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.s-vencido,.s-falta{background:var(--er-bg);color:var(--er)} .s-vence,.s-sem_data{background:var(--at-bg);color:var(--at)} .s-vigente{background:var(--ok-bg);color:var(--ok)} .s-dispensado,.s-na{background:var(--nt-bg);color:var(--nt)}
+.docs{display:grid;gap:10px}
+.doc{border:1px solid var(--line);border-left:5px solid var(--nt);border-radius:12px;padding:12px 14px;display:grid;gap:10px;background:var(--surf)}
+.doc.vencido,.doc.falta{border-left-color:var(--er)} .doc.vence,.doc.sem_data{border-left-color:var(--at)} .doc.vigente{border-left-color:var(--ok)}
+.doc .hd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.doc .hd b{font:700 .98rem var(--f-disp)}
+.fgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.fgrid .w2{grid-column:span 2} .fgrid .full{grid-column:1/-1}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:.82rem;font-weight:600;color:var(--ink)}
+details summary{cursor:pointer;font-size:.8rem;color:var(--mute)}
+.riscos{width:100%;font-size:.8rem} .riscos td{padding:5px 8px;cursor:default} .riscos tr:hover td{background:none}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:18px;text-align:center;display:grid;gap:6px;justify-items:center;background:var(--surf2)}
+.drop.over{border-color:var(--red-hi)}
+.lido{border:1px solid var(--at);border-radius:12px;padding:12px 14px;display:grid;gap:8px;background:var(--surf)}
+.lido ul{margin:0;padding-left:18px;font-size:.84rem}
+.rasc{position:sticky;top:8px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border:1px solid var(--at);border-left:5px solid var(--at);border-radius:12px;background:var(--surf);box-shadow:0 10px 24px -14px rgba(0,0,0,.6)}
+.rasc b{color:var(--at)}
+.banner{border-radius:10px;padding:10px 14px;font-size:.88rem;background:var(--at-bg);color:var(--at)}
+.vazio{padding:28px;text-align:center;color:var(--mute)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,620px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.88rem;z-index:40}
+@media (max-width:900px){.fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.wrap{padding-inline:16px}.fgrid{grid-template-columns:minmax(0,1fr)}.fgrid .w2{grid-column:auto}.bar .st{margin-left:0}}
+</style>
+<link rel="stylesheet" href="../nucleo/tema-exato.css">
+</head><body>
+<div class="wrap">
+  <header>
+    <h1>SST das empresas</h1>
+    <p class="lead">Controle dos programas e laudos de <b>segurança e saúde do trabalho</b> de cada cliente: PGR, PCMSO, CIPA ou designado, LTCAT, laudos de insalubridade/periculosidade e ergonomia. Anexe o PDF que a empresa de SST mandou: o Flow lê as datas, o responsável e os riscos e avisa antes de vencer. O arquivo não fica guardado, só as informações.</p>
+  </header>
+  <div class="aviso banner" id="aviso" hidden></div>
+  <div class="tabs" role="tablist">
+    <button class="tab" type="button" role="tab" data-t="geral" aria-selected="true">Visão geral</button>
+    <button class="tab" type="button" role="tab" data-t="emp" aria-selected="false">Empresa</button>
+    <span class="st" style="margin-left:auto;align-self:center"><span class="sync" id="sync"><i></i><span>Conectando…</span></span></span>
+  </div>
+
+  <section id="t-geral" style="display:grid;gap:14px">
+    <div class="kpis" id="kpis"></div>
+    <div class="bar">
+      <label class="fld grow">Buscar<input id="busca" placeholder="Nome, código ou CNPJ"></label>
+      <label class="fld"><span>Mostrar</span><select id="fMostra"><option value="emp">Clientes com empregados</option><option value="todos">Todos os clientes ativos</option></select></label>
+    </div>
+    <div class="tbox"><table><thead><tr><th>Cód.</th><th>Cliente</th><th>Situação</th><th>PGR</th><th>PCMSO</th><th>CIPA</th><th>LTCAT</th><th>Laudo</th><th>Próximo vencimento</th><th>Empresa de SST</th></tr></thead><tbody id="tb"></tbody></table></div>
+    <p class="note">Situação = o pior documento da empresa. Documentos sem validade escrita vencem pela regra de cada tipo (PGR 2 anos, PCMSO e CIPA 1 ano; LTCAT e laudos: revisão anual por prática). Avisa 60 dias antes.</p>
+  </section>
+
+  <section id="t-emp" hidden style="display:grid;gap:14px">
+    <div class="bar">
+      <label class="fld grow">Cliente<input id="cli" list="lcli" placeholder="Digite o nome, código ou CNPJ" autocomplete="off"></label>
+      <datalist id="lcli"></datalist>
+      <div class="row"><button class="btn ghost sm" type="button" id="btnCobrar" disabled>Copiar cobrança para o cliente</button></div>
+    </div>
+    <div id="emp"></div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="../nucleo/flow-dados.js" charset="utf-8"></script>
+<script src="../nucleo/dominio-relatorios.js" charset="utf-8"></script>
+<script src="../nucleo/sst.js" charset="utf-8"></script>
+<script>
+"use strict";
+const F=window.FlowDados, X=window.SST, DR=window.DominioRel;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function toast(m,ms){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,ms||4200);}
+function setSync(c,t){ const s=$("sync"); s.className="sync "+c; s.lastElementChild.textContent=t; }
+const hoje=()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const S={E:null,db:null,sst:{},filtro:"",cli:null,rasc:null,lidos:[]};
+const nomeCli=c=>c.fant||c.nome||"Cliente";
+const rotCli=c=>`${c.cod?c.cod+" · ":""}${c.nome||""}${c.fant&&c.fant!==c.nome?" ("+c.fant+")":""}`;
+const semEmp=c=>c.temEmp==="Não"||c.dp_func===0||c.dp_func==="0";
+const regDe=c=>c?S.sst[F.digitos(c.cnpj)]||null:null;
+const pill=(st,txt)=>`<span class="pill s-${st}" title="${esc(txt||"")}">${esc(X.ROTULO[st]||st)}</span>`;
+
+// ---------- abas ----------
+function aba(t){ document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===t?"true":"false")); $("t-geral").hidden=t!=="geral"; $("t-emp").hidden=t!=="emp"; }
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ if(b.dataset.t==="geral"&&S.rasc&&!confirm("Há alterações não salvas nesta empresa. Sair mesmo assim?")) return; if(b.dataset.t==="geral") S.rasc=null; aba(b.dataset.t); renderGeral(); });
+
+// ---------- visão geral ----------
+function linhas(){
+  const L=(S.E.clientes||[]).filter(c=>F.ativo(c)&&($("fMostra").value==="todos"||!semEmp(c)));
+  return L.map(c=>({c,reg:regDe(c),r:X.resumo(regDe(c),hoje(),semEmp(c))}));
+}
+function renderGeral(){
+  if(!S.E) return;
+  const L=linhas(), q=F.digitos($("busca").value)||$("busca").value.trim().toLowerCase();
+  const n=k=>L.filter(x=>k(x)).length;
+  const K=[["vencido","er","com documento vencido",x=>x.r.cont.vencido],["falta","er","com documento faltando",x=>x.r.cont.falta],["vence","at",`vencem em ${X.AVISO_DIAS} dias`,x=>x.r.cont.vence],["ok","ok","em dia",x=>["vigente"].includes(x.r.pior)]];
+  $("kpis").innerHTML=K.map(([k,c,t,f])=>`<button class="kpi ${c}" type="button" data-k="${k}" aria-pressed="${S.filtro===k}"><b>${n(f)}</b><span>empresas ${t}</span></button>`).join("");
+  const f=K.find(k=>k[0]===S.filtro);
+  let V=L.filter(x=>!f||f[4](x));
+  if(q) V=V.filter(({c})=>(String(c.cod)===q)||F.digitos(c.cnpj).includes(q)||String(c.nome+" "+(c.fant||"")).toLowerCase().includes(q));
+  V.sort((a,b)=>X.PESO[b.r.pior]-X.PESO[a.r.pior]||String(nomeCli(a.c)).localeCompare(nomeCli(b.c),"pt-BR"));
+  const cel=(r,id)=>{ const i=r.itens.find(x=>x.tipo===id); return `<td>${pill(i.st,i.txt)}</td>`; };
+  $("tb").innerHTML=V.map(({c,reg,r})=>`<tr data-c="${esc(c._id)}"><td class="meta">${esc(c.cod||"")}</td><td><b>${esc(nomeCli(c))}</b><br><span class="meta">${esc(c.mun||"")}${semEmp(c)?" · sem empregados":""}</span></td>
+    <td>${pill(r.pior)}</td>${["PGR","PCMSO","CIPA","LTCAT","INSAL"].map(id=>cel(r,id)).join("")}
+    <td>${r.prox?`${esc(r.prox.t.curto)} · ${esc(X.fmt(r.prox.venc))}`:"—"}</td><td>${esc(reg&&reg.prestador&&reg.prestador.nome||"—")}</td></tr>`).join("")
+    ||`<tr><td colspan="10" class="vazio">${L.length?"Nenhum cliente neste filtro.":"Nenhum cliente ativo com empregados."}</td></tr>`;
+}
+$("kpis").addEventListener("click",e=>{ const b=e.target.closest("[data-k]"); if(!b) return; S.filtro=S.filtro===b.dataset.k?"":b.dataset.k; renderGeral(); });
+$("busca").addEventListener("input",renderGeral); $("fMostra").addEventListener("change",renderGeral);
+$("tb").addEventListener("click",e=>{ const tr=e.target.closest("tr[data-c]"); if(tr) abrirCli(tr.dataset.c); });
+
+// ---------- empresa ----------
+function abrirCli(id){
+  const c=(S.E.clientes||[]).find(x=>x._id===id); if(!c) return;
+  if(S.cli&&S.cli._id!==id&&S.rasc&&!confirm("Há alterações não salvas nesta empresa. Descartar?")) return;
+  S.cli=c; S.rasc=null; S.lidos=[]; $("cli").value=rotCli(c); aba("emp"); renderEmp();
+  try{ localStorage.setItem("flow.sst.cli",id); }catch(e){}
+}
+$("cli").addEventListener("change",()=>{ const v=$("cli").value.trim(); const c=(S.E.clientes||[]).find(x=>rotCli(x)===v)||(S.E.clientes||[]).find(x=>String(x.cod)===v||F.digitos(x.cnpj)===F.digitos(v)&&F.digitos(v)); if(c) abrirCli(c._id); });
+const atual=()=>S.rasc||JSON.parse(JSON.stringify(regDe(S.cli)||{cnpj:F.digitos(S.cli.cnpj),cliente_id:S.cli._id,prestador:{},docs:{}}));
+// texto livre não redesenha a tela (para não perder o foco ao passar de campo); datas, marcações e listas redesenham
+function mexer(fn,leve){ const r=atual(); r.docs=r.docs||{}; r.prestador=r.prestador||{}; fn(r); const tinha=!!S.rasc; S.rasc=r; if(!leve||!tinha) renderEmp(); }
+function renderEmp(){
+  const c=S.cli, box=$("emp"); $("btnCobrar").disabled=!c;
+  if(!c){ box.innerHTML=`<div class="card vazio">Escolha um cliente acima ou clique numa linha da visão geral.</div>`; return; }
+  const r=atual(), R=X.resumo(r,hoje(),semEmp(c)), p=r.prestador||{}, ro=!S.db;
+  const ad=X.adicionais(r);
+  box.innerHTML=`
+  ${S.rasc?`<div class="rasc" role="status"><span><b>Alterações não salvas</b> · nada fica gravado até você salvar.</span><span class="row"><button class="btn ghost sm" type="button" id="rDesc">Descartar</button><button class="btn sm" type="button" id="rSalvar">Salvar</button></span></div>`:""}
+  <section class="card">
+    <div class="row" style="justify-content:space-between"><div><h2>${esc(c.nome||"")}</h2><p class="meta">${esc([F.fmtCnpj(c.cnpj),c.cnae,c.mun].filter(Boolean).join(" · "))}${c.dp_func!=null&&c.dp_func!==""?` · ${esc(c.dp_func)} empregado(s)`:""}</p></div>${pill(R.pior)}</div>
+    ${semEmp(c)?`<p class="banner" style="margin:0">Cadastro indica <b>sem empregados</b>: os programas passam a ser exigidos com a primeira admissão (o exame admissional já precisa do PCMSO).</p>`:""}
+    <h3>Empresa de SST</h3>
+    <div class="fgrid">
+      <label class="fld w2">Nome<input data-p="nome" value="${esc(p.nome||"")}" placeholder="Clínica / consultoria que faz o PGR e o PCMSO"></label>
+      <label class="fld">CNPJ<input data-p="cnpj" value="${esc(p.cnpj||"")}"></label>
+      <label class="fld">Grau de risco (NR-4)<select data-p="grau"><option value="">—</option>${[1,2,3,4].map(g=>`<option ${String(p.grau)===String(g)?"selected":""}>${g}</option>`).join("")}</select></label>
+      <label class="fld w2">Contato (telefone / e-mail da empresa de SST)<input data-p="contato" value="${esc(p.contato||"")}"></label>
+      <label class="fld w2">Observação<input data-p="obs" value="${esc(p.obs||"")}"></label>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Ler documentos em PDF</h2>
+    <label class="drop" id="drop"><b>Solte aqui o PGR, PCMSO, LTCAT, laudo ou ata da CIPA</b><span class="meta">ou clique para escolher (pode ser mais de um). O Flow lê as datas, o responsável técnico e os riscos; você confere antes de aplicar.</span>
+      <input type="file" id="arq" accept="application/pdf,.pdf,image/*" multiple hidden></label>
+    <p class="meta" id="lendo"></p>
+    ${S.lidos.map((l,i)=>lidoHtml(l,i)).join("")}
+  </section>
+  ${ad.length?`<section class="card"><h2>Adicionais indicados nos laudos</h2><p class="note">Confira na folha (Domínio) se quem trabalha nesses setores recebe o adicional. Insalubridade e periculosidade não se acumulam: vale o mais vantajoso (CLT, art. 193, § 2º).</p>
+    <table class="riscos"><tbody>${ad.map(a=>`<tr><td><b>${esc(a.setor||"—")}</b></td><td>${esc(a.agente)}</td><td>${esc(a.adicional)}</td><td class="meta">${esc(X.T[a.fonte].curto)}</td></tr>`).join("")}</tbody></table></section>`:""}
+  <section class="card"><h2>Documentos</h2><div class="docs">${R.itens.map(i=>docHtml(i,ro)).join("")}</div>
+    <p class="note">Prazos: o que está escrito no documento vale; sem validade escrita, o Flow calcula pela regra do tipo e marca como “calculado”. Confirme sempre com a empresa de SST. ${r.upd_at?"Última gravação: "+esc(new Date(r.upd_at).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}))+".":""}</p></section>`;
+}
+function docHtml(i,ro){
+  const d=i.d||{}, t=i.t, dis=!!(d.dispensa||d.naoAplica);
+  const rs=(d.riscos||[]);
+  return `<div class="doc ${i.st}" data-tipo="${t.id}">
+    <div class="hd"><b>${esc(t.nome)}</b><span class="row">${pill(i.st,i.txt)}<span class="meta">${esc(i.txt)}${i.calc?" · calculado":""}</span></span></div>
+    <div class="fgrid">
+      <label class="fld">${t.id==="CIPA"?"Início do mandato / designação":"Emissão"}<input type="date" data-f="emissao" value="${esc(d.emissao||"")}" ${dis?"disabled":""}></label>
+      <label class="fld">${t.id==="CIPA"?"Fim do mandato":"Validade (se escrita)"}<input type="date" data-f="validade" value="${esc(d.validade||"")}" ${dis?"disabled":""}></label>
+      <label class="fld">Responsável técnico<input data-f="responsavel" value="${esc(d.responsavel||"")}" ${dis?"disabled":""}></label>
+      <label class="fld">Registro (CREA/CRM/MTE)<input data-f="registro" value="${esc(d.registro||"")}" ${dis?"disabled":""}></label>
+      ${t.id==="CIPA"?`<label class="fld">Forma<select data-f="cipa_tipo" ${dis?"disabled":""}><option value="">—</option>${["CIPA","Designado"].map(o=>`<option ${d.cipa_tipo===o?"selected":""}>${o}</option>`).join("")}</select></label>`:""}
+      <label class="fld ${t.id==="CIPA"?"":"w2"}">Observação<input data-f="obs" value="${esc(d.obs||"")}"></label>
+      <div class="full row">
+        <label class="chk"><input type="checkbox" data-f="dispensa" ${d.dispensa?"checked":""}> Dispensado</label>
+        ${t.obrig?"":`<label class="chk"><input type="checkbox" data-f="naoAplica" ${d.naoAplica?"checked":""}> Não se aplica a esta empresa</label>`}
+        ${dis?`<label class="fld" style="flex:1 1 260px">Motivo<input data-f="motivo" value="${esc(d.motivo||"")}" placeholder="${t.id==="PGR"||t.id==="PCMSO"?"ex.: ME grau de risco 1, declaração digital feita em…":"ex.: sem exposição a agente nocivo"}"></label>`:""}
+        ${d.lido_de?`<span class="meta">Lido de: ${esc(d.lido_de)}</span>`:""}
+      </div>
+    </div>
+    ${rs.length?`<details><summary>${rs.length} risco(s) registrado(s)</summary><table class="riscos"><tbody>${rs.map(x=>`<tr><td>${esc(x.setor||"—")}</td><td>${esc(x.tipo)}</td><td>${esc(x.agente)}</td><td>${esc(x.adicional||"")}</td></tr>`).join("")}</tbody></table></details>`:""}
+    <details><summary>Regra e dispensa</summary><p class="note">${esc(t.fund)}${t.dispensa?"<br><b>Dispensa:</b> "+esc(t.dispensa):""}</p></details>
+  </div>`;
+}
+function lidoHtml(l,i){
+  if(l.erro) return `<div class="lido"><b>${esc(l.nome)}</b><span class="meta">${esc(l.erro)}</span><div class="row"><button class="btn ghost sm" type="button" data-ldesc="${i}">Fechar</button></div></div>`;
+  const j=l.j;
+  return `<div class="lido"><div class="row" style="justify-content:space-between"><b>${esc(l.nome)}</b>
+    <label class="fld" style="min-width:220px">Tipo de documento<select data-ltipo="${i}"><option value="">— escolha —</option>${X.TIPOS.map(t=>`<option value="${t.id}" ${j.tipo===t.id?"selected":""}>${esc(t.nome)}</option>`).join("")}</select></label></div>
+    <ul><li>Emissão: <b>${esc(X.fmt(j.emissao))}</b> · Validade escrita: <b>${esc(X.fmt(j.validade))}</b>${j.cipa_tipo?" · "+esc(j.cipa_tipo):""}</li>
+      <li>Responsável: ${esc(j.responsavel||"—")} ${j.registro?"("+esc(j.registro)+")":""} · Empresa de SST: ${esc(j.prestador||"—")}${j.grau_risco?" · grau de risco "+esc(j.grau_risco):""}</li>
+      ${j.cnpj&&F.digitos(j.cnpj)!==F.digitos(S.cli.cnpj)?`<li style="color:var(--er)"><b>CNPJ do documento (${esc(j.cnpj)}) é diferente deste cliente.</b></li>`:""}
+      ${j.riscos.length?`<li>${j.riscos.length} risco(s): ${esc(j.riscos.slice(0,6).map(r=>(r.setor?r.setor+": ":"")+r.agente+(r.adicional?" ("+r.adicional+")":"")).join("; "))}${j.riscos.length>6?"…":""}</li>`:""}
+      ${j.alertas.map(a=>`<li style="color:var(--at)">${esc(a)}</li>`).join("")}</ul>
+    <div class="row"><button class="btn sm" type="button" data-lapl="${i}">Aplicar no documento</button><button class="btn ghost sm" type="button" data-ldesc="${i}">Descartar leitura</button></div></div>`;
+}
+
+// edição: tudo vira rascunho até "Salvar"
+$("emp").addEventListener("change",e=>{
+  const el=e.target, doc=el.closest("[data-tipo]");
+  if(el.dataset.p!==undefined){ mexer(r=>{ r.prestador[el.dataset.p]=el.value.trim(); },el.tagName==="INPUT"); return; }
+  if(el.dataset.ltipo!==undefined){ S.lidos[+el.dataset.ltipo].j.tipo=el.value; return; }
+  if(doc&&el.dataset.f){ const k=el.dataset.f, v=el.type==="checkbox"?el.checked:el.value.trim();
+    mexer(r=>{ const d=r.docs[doc.dataset.tipo]={...(r.docs[doc.dataset.tipo]||{})}; if(v===""||v===false) delete d[k]; else d[k]=v;
+      if(k==="dispensa"&&v) delete d.naoAplica; if(k==="naoAplica"&&v) delete d.dispensa; if(!Object.keys(d).length) delete r.docs[doc.dataset.tipo]; },el.type==="text"||(el.tagName==="INPUT"&&!el.type)); }
+});
+$("emp").addEventListener("click",async e=>{
+  if(e.target.closest("#rDesc")){ S.rasc=null; renderEmp(); toast("Alterações descartadas."); return; }
+  if(e.target.closest("#rSalvar")){ await salvar(); return; }
+  const a=e.target.closest("[data-lapl]"); if(a){ aplicar(+a.dataset.lapl); return; }
+  const d=e.target.closest("[data-ldesc]"); if(d){ S.lidos.splice(+d.dataset.ldesc,1); renderEmp(); return; }
+});
+$("emp").addEventListener("change",e=>{ if(e.target.id==="arq"){ ler([...e.target.files]); e.target.value=""; } });
+$("emp").addEventListener("dragover",e=>{ const d=e.target.closest("#drop"); if(d){ e.preventDefault(); d.classList.add("over"); } });
+$("emp").addEventListener("dragleave",e=>{ const d=e.target.closest("#drop"); if(d) d.classList.remove("over"); });
+$("emp").addEventListener("drop",e=>{ const d=e.target.closest("#drop"); if(!d) return; e.preventDefault(); d.classList.remove("over"); ler([...e.dataTransfer.files]); });
+
+async function ler(files){
+  if(!files.length) return;
+  const sample=await F.use("sample");
+  if(!sample){ toast("A leitura de PDF precisa do Flow aberto pelo link do claude.ai. Você ainda pode digitar as datas."); return; }
+  for(const f of files){
+    $("lendo").textContent=`Lendo ${f.name}…`;
+    try{
+      let j;
+      if(/\.pdf$/i.test(f.name)||f.type==="application/pdf"){
+        const t=await DR.pdfText(f);
+        if(t.replace(/\s/g,"").length>300) j=await sample.json(X.PROMPT+"\n\nDocumento:\n"+t.slice(0,90000),{modelTier:"default"});
+        else { $("lendo").textContent=`${f.name} é escaneado: lendo as páginas como imagem…`;
+          const ims=await DR.pdfImagens(f,4), env=[]; for(const im of ims) env.push(await F.imagemClaude(im));
+          j=await sample.json(X.PROMPT+"\n\n(veja as páginas anexas)",{images:env,modelTier:"complex"}); }
+      } else if(/^image\//.test(f.type)) j=await sample.json(X.PROMPT+"\n\n(veja a imagem anexa)",{images:[await F.imagemClaude(f)],modelTier:"complex"});
+      else { S.lidos.push({nome:f.name,erro:"Tipo de arquivo não aceito: envie PDF ou foto."}); continue; }
+      S.lidos.push({nome:f.name,j:X.normalizar(j)});
+    }catch(err){ console.error(err); S.lidos.push({nome:f.name,erro:"Não consegui ler este arquivo"+(err&&(err.code||err.message)?" ("+(err.code||err.message)+")":"")+". Digite as datas no documento abaixo."}); }
+    renderEmp();
+  }
+  $("lendo").textContent=""; renderEmp();
+}
+function aplicar(i){
+  const l=S.lidos[i]; if(!l||!l.j) return; const j=l.j;
+  if(!j.tipo){ toast("Escolha o tipo de documento antes de aplicar."); return; }
+  mexer(r=>{ const d={...(r.docs[j.tipo]||{})};
+    if(d.emissao&&j.emissao&&d.emissao!==j.emissao) d.anteriores=[...(d.anteriores||[]),{emissao:d.emissao,validade:d.validade||"",responsavel:d.responsavel||""}].slice(-6);
+    for(const k of ["emissao","validade","responsavel","registro","cipa_tipo"]) if(j[k]) d[k]=j[k];
+    if(j.riscos.length) d.riscos=j.riscos; if(j.exames.length) d.exames=j.exames;
+    delete d.dispensa; delete d.naoAplica; d.lido_de=l.nome; d.lido_em=new Date().toISOString();
+    r.docs[j.tipo]=d;
+    if(j.prestador&&!r.prestador.nome) r.prestador.nome=j.prestador;
+    if(j.prestador_cnpj&&!r.prestador.cnpj) r.prestador.cnpj=j.prestador_cnpj;
+    if(j.grau_risco&&!r.prestador.grau) r.prestador.grau=j.grau_risco;
+  });
+  S.lidos.splice(i,1); renderEmp(); toast(`${X.T[j.tipo].curto} preenchido. Confira e clique em Salvar.`);
+}
+async function salvar(){
+  if(!S.rasc||!S.db||!S.cli) return;
+  const dg=F.digitos(S.cli.cnpj); if(!dg){ toast("Este cliente está sem CNPJ no cadastro."); return; }
+  const novo={...S.rasc,cnpj:dg,cliente_id:S.cli._id,...(await F.carimbo())};
+  try{ await S.db.doc("sst/"+dg).set(novo); S.sst[dg]={...novo,_id:dg}; S.rasc=null; setSync("on","Salvo"); renderEmp(); renderGeral(); toast("SST da empresa salva."); }
+  catch(e){ toast("Não foi possível salvar. As alterações continuam na tela."); }
+}
+// mensagem de cobrança para o cliente (WhatsApp/e-mail)
+$("btnCobrar").onclick=async()=>{
+  const c=S.cli; if(!c) return; const R=X.resumo(atual(),hoje(),semEmp(c));
+  const pend=R.itens.filter(i=>["vencido","falta","vence","sem_data"].includes(i.st));
+  const t=pend.length?`Olá! Aqui é da Exato Soluções Contábeis (Departamento Pessoal). Na nossa conferência de SST da ${nomeCli(c)}, encontramos:\n${pend.map(i=>`• ${i.t.nome}: ${i.txt}`).join("\n")}\n\nPode pedir à empresa de segurança do trabalho${(atual().prestador||{}).nome?" ("+atual().prestador.nome+")":""} a renovação e nos enviar o PDF? Esses programas são exigidos pelas NRs e alimentam o eSocial; sem eles a empresa fica sujeita a multa na fiscalização.`
+    :`Olá! Conferimos a SST da ${nomeCli(c)}: todos os documentos estão em dia. Obrigado!`;
+  try{ await navigator.clipboard.writeText(t); toast("Mensagem copiada: cole no WhatsApp ou e-mail do cliente."); }catch(e){ prompt("Copie a mensagem:",t); }
+};
+window.addEventListener("beforeunload",e=>{ if(S.rasc){ e.preventDefault(); e.returnValue=""; } });
+// outro módulo (ficha do cliente) pede para abrir uma empresa
+window.addEventListener("message",e=>{ if(e.origin!==location.origin||!e.data||e.data.flow!=="dados"||!e.data.cliente) return;
+  if(S.E&&S.E.pronto.clientes) abrirCli(e.data.cliente); else S.pend=e.data.cliente; });
+
+// ---------- dados ----------
+F.assinar(est=>{
+  S.E=est;
+  if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }
+  if(est.db&&!S.db){ S.db=est.db;
+    S.db.collection("sst").onSnapshot(q=>{ S.sst=Object.fromEntries(q.docs.map(d=>[d.id,{...d.data(),_id:d.id}])); setSync("on","Sincronizado"); renderGeral(); if(S.cli&&!S.rasc) renderEmp(); },()=>setSync("err","Erro ao ler")); }
+  if(est.pronto.clientes){
+    $("lcli").innerHTML=(est.clientes||[]).filter(c=>F.ativo(c)).map(c=>`<option value="${esc(rotCli(c))}">`).join("");
+    if(S.pend){ const id=S.pend; S.pend=null; abrirCli(id); }
+    else if(!S.cli){ let id=""; try{ id=localStorage.getItem("flow.sst.cli")||""; }catch(e){} if(id&&(est.clientes||[]).some(c=>c._id===id)){ S.cli=est.clientes.find(c=>c._id===id); $("cli").value=rotCli(S.cli); } }
+    else S.cli=(est.clientes||[]).find(c=>c._id===S.cli._id)||S.cli;
+    renderGeral(); if(!S.rasc) renderEmp();
+  }
+});
+renderEmp();
+</script>
+<script src="../nucleo/tema-exato.js" data-mod="sst"></script>
+</body></html>

@@ -99,6 +99,19 @@ function parseExtrato(text){
     return out.join('\n\f\n');
   }
 
+  // páginas como imagem JPEG (PDF escaneado, sem texto): até "max" páginas
+  async function pdfImagens(file,max){
+    const lib=await getPdfjs(); max=max||4;
+    const doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer()),verbosity:0}).promise, out=[];
+    for(let i=1;i<=Math.min(doc.numPages,max);i++){
+      const p=await doc.getPage(i), vp0=p.getViewport({scale:1}), k=Math.min(2,1600/Math.max(vp0.width,vp0.height)), vp=p.getViewport({scale:k});
+      const cv=document.createElement("canvas"); cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
+      await p.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
+      const b=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.85)); if(b) out.push(b);
+    }
+    await doc.destroy(); return out;
+  }
+
   // texto com posição (para relatórios em colunas, como o espelho do Ponto System Web).
   // Cada palavra vira {s, x0, x1, y}; trechos com espaços são divididos com a largura proporcional aos caracteres.
   async function pdfItens(file){
@@ -291,6 +304,6 @@ Responda s\u00f3 com JSON: {"afastamentos":[{"codigo":"","nome":"","motivo":"","
     return {afastamentos:out,alertas};
   }
 
-  const API={itemsToLines,parseExtrato,pdfText,pdfItens,rubricasDoExtrato,classificarRubricas,empregadosDoExtrato,semAcento,chaveNome,idade,lerRelatorios,lerFichaEmpresa,CAMPOS_EMPRESA,lerAfastamentos,tipoAfast};
+  const API={itemsToLines,parseExtrato,pdfText,pdfItens,pdfImagens,rubricasDoExtrato,classificarRubricas,empregadosDoExtrato,semAcento,chaveNome,idade,lerRelatorios,lerFichaEmpresa,CAMPOS_EMPRESA,lerAfastamentos,tipoAfast};
   if(typeof module!=="undefined"&&module.exports) module.exports=API; else raiz.DominioRel=API;
 })(typeof window!=="undefined"?window:globalThis);

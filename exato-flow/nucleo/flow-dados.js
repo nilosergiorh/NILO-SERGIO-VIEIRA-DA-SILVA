@@ -167,7 +167,7 @@
 
   // ---------- conex\u00e3o com a base ----------
   // Assina clientes, ccts e auditorias uma \u00fanica vez e avisa quem pediu.
-  const estado={clientes:[],ccts:[],auditorias:[],funcionarios:[],diagnosticos:[],pronto:{},erro:null,db:null};
+  const estado={clientes:[],ccts:[],auditorias:[],funcionarios:[],diagnosticos:[],sst:[],pronto:{},erro:null,db:null};
   const ouvintes=new Set();
   let iniciado=null;
   function avisar(){ ouvintes.forEach(fn=>{ try{ fn(estado); }catch(e){ console.error(e); } }); }
@@ -177,7 +177,7 @@
       const db=await use("db");
       if(!db){ estado.erro="sem_base"; avisar(); return null; }
       estado.db=db;
-      for(const col of ["clientes","ccts","auditorias","funcionarios","diagnosticos"]){
+      for(const col of ["clientes","ccts","auditorias","funcionarios","diagnosticos","sst"]){
         db.collection(col).onSnapshot(snap=>{
           estado[col]=snap.docs.map(d=>({...d.data(),_id:d.id}));
           estado.pronto[col]=true; avisar();
@@ -197,6 +197,10 @@
     return L.sort((a,b)=>dataDiag(b).localeCompare(dataDiag(a)))[0]||null; }
   function diagRevisao(d,hoje){ const ref=dataDiag(d); if(!ref) return {ref:"",dias:null,vencida:false};
     const dias=Math.floor(((hoje?Date.parse(hoje):Date.now())-Date.parse(ref))/864e5); return {ref,dias,vencida:dias>DIAG_REVISAO_DIAS}; }
+
+  // ---------- SST: registro da empresa (sst/{cnpj}) ----------
+  const sstDoCliente=c=>{ const dg=c&&digitos(c.cnpj); return dg?(estado.sst||[]).find(r=>r._id===dg||digitos(r.cnpj)===dg)||null:null; };
+  const semEmpregados=c=>!!c&&(c.temEmp==="Não"||c.dp_func===0||c.dp_func==="0");
 
   async function usuarioId(){ const u=await use("user"); if(!u) return ""; try{ return (await u.id())||""; }catch(e){ return ""; } }
   async function carimbo(){ return {upd_by:await usuarioId(), upd_at:new Date().toISOString()}; }
@@ -270,6 +274,6 @@
   const funcAtivo=(f,ref)=>!(f.rescisao&&ref&&f.rescisao<ref)&&!/demit|rescind|deslig/i.test(f.situacao||"");
 
   window.FlowDados={use,imagemClaude,digitos,fmtCnpj,cnpjValido,raiz,hoje,isoData,fmtData,statusCct,ROTULO_CCT,compChave,
-    REGIMES,SITUACOES,PONTO,ativo,pendencias,indices,conectar,assinar,estado,usuarioId,carimbo,DIAG_REVISAO_DIAS,diagDoCliente,diagRevisao,
+    REGIMES,SITUACOES,PONTO,ativo,pendencias,indices,conectar,assinar,estado,usuarioId,carimbo,DIAG_REVISAO_DIAS,diagDoCliente,diagRevisao,sstDoCliente,semEmpregados,
     chaveNome,assinarFuncionarios,mesclarFuncionarios,salvarFuncionarios,funcAtivo,experiencia,EXP_RESCISAO,EXP_AVISO,addDias};
 })();

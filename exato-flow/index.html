@@ -288,6 +288,10 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6"/><path d="M9 18c1-1.5 2-1.5 3 0s2 1.5 3 0"/></svg>
         <span class="t"><b>Contratos</b><small>Admissão e termos</small></span>
       </button>
+      <button class="nav" type="button" data-go="sst">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z"/><path d="M12 8.5v6M9 11.5h6"/></svg>
+        <span class="t"><b>SST</b><small>Programas e laudos</small></span><span class="badge" id="b-sst" hidden></span>
+      </button>
     </div>
 
     <div class="navg">
@@ -392,10 +396,12 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
     <section class="view" id="v-contratos" aria-label="Contratos de trabalho" hidden></section>
     <section class="view" id="v-calc" aria-label="Calculadoras de DP" hidden></section>
     <section class="view" id="v-diagnostico" aria-label="Diagnóstico de DP" hidden></section>
+    <section class="view" id="v-sst" aria-label="SST das empresas" hidden></section>
   </main>
 </div>
 
 <script src="nucleo/flow-dados.js" charset="utf-8"></script>
+<script src="nucleo/sst.js" charset="utf-8"></script>
 <script>
 // ---------- navegação ----------
 const MODS={
@@ -406,9 +412,10 @@ const MODS={
   folha:{src:"modulos/auditoria-folha.html",title:"Auditoria da folha"},
   contratos:{src:"modulos/contratos.html",title:"Contratos de trabalho"},
   diagnostico:{src:"modulos/diagnostico.html",title:"Diagnóstico de DP"},
+  sst:{src:"modulos/sst.html",title:"SST das empresas"},
   calc:{src:"modulos/calculadoras.html",title:"Calculadoras de DP"}
 };
-const VIEWS=["inicio","sindical","ponto","guias","folha","contratos","calc","diagnostico","clientes"];
+const VIEWS=["inicio","sindical","ponto","guias","folha","contratos","calc","sst","diagnostico","clientes"];
 function abrir(v){
   if(!VIEWS.includes(v)) v="inicio";
   const m=MODS[v], box=document.getElementById("v-"+v);
@@ -717,6 +724,14 @@ function listaAlertas(x){
   const diags=[]; for(const c of ((EE&&EE.clientes)||[]).filter(c=>F.ativo(c))){ const d=F.diagDoCliente&&F.diagDoCliente(c); if(d) diags.push({c,d,r:F.diagRevisao(d)}); }
   const rev=diags.filter(x=>x.r.vencida).sort((a,b)=>b.r.dias-a.r.dias);
   if(rev.length) add("warn","Diagnóstico para revisar",`${rev.slice(0,3).map(x=>`<b>${esc(x.c.fant||x.c.nome)}</b> (há ${x.r.dias} dias)`).join(", ")}${rev.length>3?` e mais ${rev.length-3}`:""}: diagnóstico de DP sem revisão há mais de ${F.DIAG_REVISAO_DIAS} dias.`,"diagnostico","Revisar no Diagnóstico");
+  // SST: documentos vencidos, faltando ou vencendo (clientes ativos com empregados)
+  if(window.SST){ const hj=new Date().toISOString().slice(0,10), sv=[];
+    for(const c of ((EE&&EE.clientes)||[]).filter(c=>F.ativo(c)&&!F.semEmpregados(c))){ const r=SST.resumo(F.sstDoCliente(c),hj,false); if(["vencido","falta","vence"].includes(r.pior)) sv.push({c,r}); }
+    const ruim=sv.filter(x=>x.r.pior!=="vence"), logo=sv.filter(x=>x.r.pior==="vence");
+    const nomes=L2=>L2.slice(0,3).map(x=>`<b>${esc(x.c.fant||x.c.nome)}</b> (${esc(x.r.itens.filter(i=>i.st===x.r.pior).map(i=>i.t.curto).join(", "))})`).join(", ")+(L2.length>3?` e mais ${L2.length-3}`:"");
+    if(ruim.length) add("crit","SST vencida ou faltando",`${nomes(ruim)}: programa de SST vencido ou não recebido. Cobre o cliente e a empresa de SST.`,"sst","Abrir SST");
+    if(logo.length) add("warn","SST vence em breve",`${nomes(logo)}: vence em até ${SST.AVISO_DIAS} dias.`,"sst","Ver SST");
+    const b=document.getElementById("b-sst"); if(b){ b.textContent=ruim.length; b.hidden=!ruim.length; } }
   const altos=diags.filter(x=>(x.d.contagem||{}).alta>0);
   if(altos.length) add("warn","Riscos altos no diagnóstico",`${altos.slice(0,3).map(x=>`<b>${esc(x.c.fant||x.c.nome)}</b> (${x.d.contagem.alta})`).join(", ")}${altos.length>3?` e mais ${altos.length-3}`:""}: risco alto ainda aberto no diagnóstico de DP.`,"diagnostico","Abrir Diagnóstico");
   const ordem={crit:0,warn:1,info:2}; L.sort((a,b)=>ordem[a.niv]-ordem[b.niv]);

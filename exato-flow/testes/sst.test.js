@@ -1,0 +1,20 @@
+// SST: vencimentos dos documentos da empresa e leitura do PDF
+const S=require('../nucleo/sst.js');
+let ok=0, fail=0;
+const eq=(n,a,b)=>{ const s=JSON.stringify(a)===JSON.stringify(b); s?ok++:fail++; if(!s) console.log('FALHA',n,'\n  obtido ',JSON.stringify(a),'\n  esperado',JSON.stringify(b)); };
+const H='2026-10-19';
+eq('somar meses no fim do mês',[S.addMeses('2024-01-31',1),S.addMeses('2024-10-19',24)],['2024-02-29','2026-10-19']);
+eq('PGR sem validade: emissão + 2 anos',S.status('PGR',{emissao:'2024-11-10'},H),{st:'vence',txt:'Vence em 10/11/2026 (em 22 dias)',venc:'2026-11-10',calc:true,dias:22});
+eq('validade escrita vale mais que o cálculo',S.status('PGR',{emissao:'2024-01-01',validade:'2027-01-01'},H).st,'vigente');
+eq('vencido',S.status('PCMSO',{emissao:'2025-09-01'},H).st,'vencido');
+eq('obrigatório sem documento = falta; opcional = não se aplica',[S.status('PGR',null,H).st,S.status('LTCAT',null,H).st],['falta','na']);
+eq('dispensa',S.status('PGR',{dispensa:true,motivo:'ME grau 1'},H).st,'dispensado');
+eq('sem data',S.status('INSAL',{responsavel:'X',emissao:'',validade:''},H).st,'na');
+let r=S.resumo({docs:{PGR:{emissao:'2025-01-10'},PCMSO:{emissao:'2025-09-01'}}},H,false);
+eq('resumo: pior = vencido; CIPA falta',[r.pior,r.cont.vencido,r.cont.falta],['vencido',1,1]);
+r=S.resumo({docs:{}},H,true);
+eq('sem empregados: nada é cobrado',[r.pior,r.cont.falta||0],['vigente',0]);
+const n=S.normalizar({tipo:'pgr',emissao:'2026-02-30x',validade:'2028-02-10',grau_risco:'Grau 3',cipa_tipo:'designado',riscos:[{setor:'Açougue',tipo:'físico',agente:'frio',adicional:'insalubridade 20%'},{}],alertas:['',' x ']});
+eq('normalizar: tipo, data inválida, grau, listas',[n.tipo,n.emissao,n.validade,n.grau_risco,n.cipa_tipo,n.riscos.length,n.alertas],['PGR','','2028-02-10','3','Designado',1,['x']]);
+eq('adicionais dos laudos',S.adicionais({docs:{PGR:n}}).map(a=>a.agente+' '+a.adicional),['frio insalubridade 20%']);
+console.log(`sst: ${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);
