@@ -58,11 +58,43 @@
     f.limits=(...a)=>s.limits(...a);
     return f;
   }
+  // Mesma regra para base de dados, arquivos, downloads, usuário e conectores: argumentos recriados na janela do
+  // runtime (cópia síncrona; com Blob no meio, a chamada vira assíncrona). Resultados que são referências
+  // (db.collection(), .doc(), .where()) também passam pelo adaptador.
+  const ehBlob=v=>(typeof Blob!=="undefined"&&v instanceof Blob);
+  function temBlob(v,n){ if(n>8||v==null||typeof v!=="object") return false; if(ehBlob(v)) return true; return Object.keys(v).some(k=>temBlob(v[k],(n||0)+1)); }
+  function copiaW(v,W){
+    if(v==null||typeof v!=="object"||typeof v==="function") return v;
+    if(Array.isArray(v)){ const a=new W.Array(); for(const x of v) a.push(copiaW(x,W)); return a; }
+    if(v instanceof Date) return new W.Date(v.getTime());
+    if(W.Blob&&v instanceof W.Blob) return v;
+    if(Object.getPrototypeOf(v)!==Object.prototype) return v;   // objeto da própria plataforma: passa como está
+    const o=new W.Object(); for(const k of Object.keys(v)) o[k]=copiaW(v[k],W); return o;
+  }
+  function adaptarObj(obj,W){
+    return new Proxy({},{
+      get(_,k){
+        const v=obj[k];
+        if(typeof v!=="function") return v;
+        return function(...args){
+          const devolver=r=>(r&&typeof r==="object"&&typeof r.then!=="function"&&Object.getPrototypeOf(r)!==W.Array.prototype)?adaptarObj(r,W):r;
+          if(args.some(a=>temBlob(a,0))) return (async()=>{ const a2=[]; for(const a of args) a2.push(typeof a==="function"?a:await paraRuntime(a,W)); return v.apply(obj,a2); })();
+          return devolver(v.apply(obj,args.map(a=>typeof a==="function"?a:copiaW(a,W))));
+        };
+      },
+      has(_,k){ return k in obj; }
+    });
+  }
   const memo={};
   function use(nome){
     const rt=runtime();
     if(!rt || !rt.use) return Promise.resolve(null);
-    if(!memo[nome]) memo[nome]=rt.use(nome).then(x=>nome==="sample"?adaptarSample(x):x).catch(()=>null);
+    if(!memo[nome]) memo[nome]=rt.use(nome).then(x=>{
+      const W=janelaRuntime();
+      if(!x||W===window) return x;
+      if(nome==="sample") return adaptarSample(x);
+      return typeof x==="object"?adaptarObj(x,W):x;
+    }).catch(()=>null);
     return memo[nome];
   }
 
