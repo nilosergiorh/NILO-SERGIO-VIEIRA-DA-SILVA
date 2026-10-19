@@ -75,6 +75,9 @@ textarea.resp{min-height:220px;font:12px/1.5 var(--f-mono);resize:vertical}
 .item>input{margin-top:4px;width:17px;height:17px;accent-color:var(--red)}
 .item .t{font-weight:700}
 .item.done{opacity:.6} .item.done .t{text-decoration:line-through}
+.rasc{position:sticky;top:8px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border:1px solid var(--at);border-left:5px solid var(--at);border-radius:12px;background:var(--surf);box-shadow:0 10px 24px -14px rgba(0,0,0,.6)}
+.rasc b{color:var(--at)}
+@media print{.rasc{display:none}}
 .item dl{grid-column:2;margin:4px 0 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 10px;font-size:.86rem}
 .item dt{color:var(--mute);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
 .item dd{margin:0} .item .law{font:12px var(--f-mono);color:var(--mute)}
@@ -207,6 +210,8 @@ function ouvirLista(){
   },()=>setSync("err","Erro ao ler"));
 }
 function abrir(id){
+  if(S.rasc&&id!==S.id&&!confirm("Há marcações não salvas neste diagnóstico. Descartar?")){ $("sel").value=S.id||""; return; }
+  if(id!==S.id) S.rasc=null;
   S.id=id||null; S.doc=S.lista.find(d=>d._id===id)||null;
   $("area").hidden=!S.doc; $("vazio").hidden=!!S.doc||!$("novo").hidden;
   try{ localStorage.setItem("flow.diag.sel",S.id||""); }catch(e){}
@@ -251,7 +256,7 @@ async function salvarDoc(campos,msg){
 function render(){
   const d=S.doc; if(!d) return;
   const comp={...(d.comp||{}),...(S.editando?lerComp():{})};
-  const feitos=d.feitos||{};
+  const feitos=S.rasc?S.rasc.feitos:(d.feitos||{}), notasAt=S.rasc?S.rasc.notas:(d.notas||{});
   const R=D.diagnosticar(d.texto,ctxDe(comp,feitos)); S.R=R;
   const v=R.L.v, N=R.nota, it=R.itens;
   const gc=N.valor>=80?"var(--ok)":N.valor>=50?"var(--at)":"var(--er)";
@@ -263,10 +268,12 @@ function render(){
       <dl><dt>Cliente</dt><dd>${esc(i.resp)}</dd><dt>Por quê</dt><dd>${esc(i.porque)}</dd><dt>Ação</dt><dd>${esc(i.fazer)}</dd>
       ${i.est?`<dt>Estimativa</dt><dd><span class="est">${D.brl(i.est.valor)}</span> ${esc(i.est.tipo)} <span class="meta">(${esc(i.est.memoria)})</span></dd>`:""}
       <dt>Base</dt><dd class="law">${esc(i.lei)}</dd></dl>
-      <input class="obs no-print-empty" data-obs="${esc(i.id)}" placeholder="Anotação (o que foi visto, data, quem resolveu)" value="${esc(f&&f.obs||(d.notas||{})[i.id]||"")}"></div>`; };
+      <input class="obs no-print-empty" data-obs="${esc(i.id)}" placeholder="Anotação (o que foi visto, data, quem resolveu)" value="${esc(notasAt[i.id]??(f&&f.obs)??"")}"></div>`; };
   const alta=it.filter(i=>i.p==="alta"&&!feitos[i.id]), media=it.filter(i=>i.p==="media"&&!feitos[i.id]), conf=it.filter(i=>i.p==="conf"&&!feitos[i.id]);
   const clt=D.n(v.qt_clt), outros=D.n(v.qt_estag)+D.n(v.qt_pj)+D.n(v.qt_terc)+D.n(v.qt_free);
+  const nAlt=S.rasc?difRasc():0;
   $("laudo").innerHTML=`
+  ${S.rasc?`<div class="rasc" role="status"><span><b>Alterações não salvas</b> · ${nAlt} item(ns) marcado(s) ou desmarcado(s). Nada fica definido até você salvar.</span><span class="row"><button class="btn ghost sm" type="button" id="rDesc">Descartar</button><button class="btn sm" type="button" id="rSalvar">Salvar marcações</button></span></div>`:""}
   <section class="card">
     <div class="only-print"><b style="font:800 16px var(--f-disp)">EXATO SOLUÇÕES CONTÁBEIS · Departamento Pessoal</b><div class="meta">Diagnóstico de início · ${esc(new Date().toLocaleDateString("pt-BR"))}</div></div>
     <div class="lhead">
@@ -356,16 +363,33 @@ $("btnPrint").onclick=()=>window.print();
 $("btnCopiar").onclick=async()=>{ const t=D.resumoCliente(S.R.L,S.R.itens,S.doc.feitos,S.R.L.v.razao);
   try{ await navigator.clipboard.writeText(t); toast("Resumo copiado: cole no WhatsApp ou e-mail do cliente."); }catch(e){ prompt("Copie o resumo:",t); } };
 $("btnCliente").onclick=cadastrarCliente;
+// marcar/desmarcar e anotações ficam num rascunho; só vão para a base em "Salvar marcações"
+function iniciarRasc(){ if(!S.rasc) S.rasc={feitos:{...(S.doc.feitos||{})},notas:{...(S.doc.notas||{})}}; }
+function difRasc(){ const a=S.doc.feitos||{}, b=S.rasc.feitos, ids=new Set([...Object.keys(a),...Object.keys(b)]); let n=0; ids.forEach(k=>{ if(!!a[k]!==!!b[k]) n++; });
+  const na=S.doc.notas||{}, nb=S.rasc.notas; new Set([...Object.keys(na),...Object.keys(nb)]).forEach(k=>{ if((na[k]||"")!==(nb[k]||"")&&!!a[k]===!!b[k]) n++; }); return n; }
 $("laudo").addEventListener("change",async e=>{
   const id=e.target.dataset.ck; if(id===undefined) return;
-  const feitos={...(S.doc.feitos||{})};
-  if(e.target.checked) feitos[id]={em:new Date().toISOString(),por:(await F.carimbo()).upd_by,obs:(S.doc.notas||{})[id]||""}; else delete feitos[id];
-  S.doc.feitos=feitos; render(); salvarDoc({feitos});
+  iniciarRasc(); const quem=(await F.carimbo()).upd_by;
+  if(e.target.checked) S.rasc.feitos[id]=(S.doc.feitos||{})[id]||{em:new Date().toISOString(),por:quem,obs:S.rasc.notas[id]||""}; else delete S.rasc.feitos[id];
+  if(!difRasc()) S.rasc=null;
+  render();
 });
 $("laudo").addEventListener("change",e=>{
   const id=e.target.dataset.obs; if(id===undefined) return;
-  const notas={...(S.doc.notas||{}),[id]:e.target.value.trim()}; S.doc.notas=notas; salvarDoc({notas});
+  iniciarRasc(); S.rasc.notas[id]=e.target.value.trim(); if(!difRasc()) S.rasc=null; render();
 });
+$("laudo").addEventListener("click",async e=>{
+  if(e.target.closest("#rDesc")){ S.rasc=null; render(); toast("Marcações descartadas."); return; }
+  if(!e.target.closest("#rSalvar")||!S.rasc||!S.db||!S.id) return;
+  const {_id,...base}=S.doc, feitos=S.rasc.feitos, notas=S.rasc.notas;
+  for(const k of Object.keys(feitos)) feitos[k]={...feitos[k],obs:notas[k]||""};
+  const N=S.R.nota;
+  // grava o documento inteiro: assim o que foi desmarcado sai da base (a gravação parcial mesclava e o item voltava)
+  const novo={...base,feitos,notas,nota:N.valor,contagem:{alta:N.alta,media:N.media,conf:N.conf,ok:N.ok},...(await F.carimbo())};
+  try{ await S.db.doc("diagnosticos/"+S.id).set(novo); S.doc={_id,...novo}; S.rasc=null; setSync("on","Salvo"); render(); toast("Marcações salvas."); }
+  catch(err){ toast("Não foi possível salvar. As marcações continuam na tela."); }
+});
+window.addEventListener("beforeunload",e=>{ if(S.rasc){ e.preventDefault(); e.returnValue=""; } });
 F.assinar(est=>{
   S.E=est;
   if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }
