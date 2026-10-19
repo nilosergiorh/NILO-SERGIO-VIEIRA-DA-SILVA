@@ -17,4 +17,22 @@ eq('sem empregados: nada é cobrado',[r.pior,r.cont.falta||0],['vigente',0]);
 const n=S.normalizar({tipo:'pgr',emissao:'2026-02-30x',validade:'2028-02-10',grau_risco:'Grau 3',cipa_tipo:'designado',riscos:[{setor:'Açougue',tipo:'físico',agente:'frio',adicional:'insalubridade 20%'},{}],alertas:['',' x ']});
 eq('normalizar: tipo, data inválida, grau, listas',[n.tipo,n.emissao,n.validade,n.grau_risco,n.cipa_tipo,n.riscos.length,n.alertas],['PGR','','2028-02-10','3','Designado',1,['x']]);
 eq('adicionais dos laudos',S.adicionais({docs:{PGR:n}}).map(a=>a.agente+' '+a.adicional),['frio insalubridade 20%']);
+// análise do adicional
+const A=S.analisar([
+  {setor:'Produção Madeiras',funcao:'Aux. Produção Madeira',agente:'Ruído',valor:81.9,unidade:'dB(A)',metodo:'NR-15',conclusao:'salubre',especial:'nao'},
+  {setor:'Produção Madeiras',funcao:'Aux. Produção Madeira',agente:'Ruído',valor:87.18,unidade:'dB(A)',metodo:'NHO-01',conclusao:'salubre',especial:'nao'},
+  {setor:'Produção Madeiras',funcao:'Aux. Produção Madeira',agente:'Poeira de madeira',conclusao:'nao_avaliado'},
+  {setor:'Montagem',funcao:'Aux. Montagem',agente:'Ruído',valor:73.8,unidade:'dB(A)',metodo:'NR-15',conclusao:'salubre'},
+  {setor:'Açougue',funcao:'Açougueiro',agente:'Frio (câmara fria)',conclusao:'insalubre',grau:'20%'},
+  {setor:'Serraria',funcao:'Operador',agente:'Ruído',valor:91,unidade:'dB(A)',metodo:'NR-15',conclusao:'salubre'},
+  {setor:'Manutenção',funcao:'Eletricista',agente:'Energia elétrica',conclusao:'perigoso'},
+  {setor:'Manutenção',funcao:'Eletricista',agente:'Ruído',valor:88,unidade:'dB(A)',metodo:'NR-15',conclusao:'insalubre',grau:'20%'},
+  {setor:'Pátio',funcao:'Abastecedor',agente:'Inflamáveis (diesel)',conclusao:''}].map(S.normRisco));
+const V=Object.fromEntries(A.map(a=>[a.funcao,a.veredito]));
+eq('vereditos por função',V,{'Açougueiro':'pagar','Operador':'pagar','Eletricista':'pagar','Aux. Produção Madeira':'verificar','Abastecedor':'verificar','Aux. Montagem':'nao_devido'});
+const op=A.find(a=>a.funcao==='Operador'), el=A.find(a=>a.funcao==='Eletricista'), md=A.find(a=>a.funcao==='Aux. Produção Madeira');
+eq('valor acima do limite com laudo "salubre" = divergência',[op.divergencia,op.grau],[true,'20%']);
+eq('insalubridade e periculosidade não acumulam',/não acumulam/.test(el.resumo),true);
+eq('NHO-01 acima de 85: alerta de aposentadoria especial',md.especial.length,1);
+eq('normRisco: conclusão e grau',[S.normRisco({conclusao:'Não avaliado',grau:'grau médio 20'}).conclusao,S.normRisco({grau:'grau médio 20'}).grau,S.normRisco({valor:'87,18'}).valor],['nao_avaliado','20%',87.18]);
 console.log(`sst: ${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);

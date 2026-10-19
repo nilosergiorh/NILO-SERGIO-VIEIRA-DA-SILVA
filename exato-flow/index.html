@@ -735,6 +735,11 @@ function listaAlertas(x){
     const nomes=L2=>L2.slice(0,3).map(x=>`<b>${esc(x.c.fant||x.c.nome)}</b> (${esc(x.r.itens.filter(i=>i.st===x.r.pior).map(i=>i.t.curto).join(", "))})`).join(", ")+(L2.length>3?` e mais ${L2.length-3}`:"");
     if(ruim.length) add("crit","SST vencida ou faltando",`${nomes(ruim)}: programa de SST vencido ou não recebido. Cobre o cliente e a empresa de SST.`,"sst","Abrir SST");
     if(logo.length) add("warn","SST vence em breve",`${nomes(logo)}: vence em até ${SST.AVISO_DIAS} dias.`,"sst","Ver SST");
+    // análise dos laudos: adicional a pagar (ou divergência) e funções sem avaliação
+    const adic=[], semAv=[]; for(const c of ((EE&&EE.clientes)||[]).filter(c=>F.ativo(c))){ const reg=F.sstDoCliente(c); if(!reg) continue; const an=SST.analiseEmpresa(reg);
+      const pg=an.filter(a=>a.veredito==="pagar"); if(pg.length) adic.push({c,pg}); if(an.some(a=>a.veredito==="verificar")) semAv.push(c); }
+    if(adic.length) add("crit","Adicional obrigatório (laudo)",`${adic.slice(0,3).map(x=>`<b>${esc(x.c.fant||x.c.nome)}</b> (${esc(x.pg.map(a=>(a.funcao||a.setor)+" "+a.grau).join(", "))})`).join(", ")}${adic.length>3?` e mais ${adic.length-3}`:""}: o laudo indica insalubridade ou periculosidade. Confira se a folha está pagando.`,"sst","Ver análise");
+    if(semAv.length) add("warn","Laudo sem avaliação completa",`${semAv.slice(0,3).map(c=>`<b>${esc(c.fant||c.nome)}</b>`).join(", ")}${semAv.length>3?` e mais ${semAv.length-3}`:""}: há agentes não avaliados no laudo; não dá para afirmar que não há adicional.`,"sst","Ver análise");
     const b=document.getElementById("b-sst"); if(b){ b.textContent=ruim.length; b.hidden=!ruim.length; } }
   const altos=diags.filter(x=>(x.d.contagem||{}).alta>0);
   if(altos.length) add("warn","Riscos altos no diagnóstico",`${altos.slice(0,3).map(x=>`<b>${esc(x.c.fant||x.c.nome)}</b> (${x.d.contagem.alta})`).join(", ")}${altos.length>3?` e mais ${altos.length-3}`:""}: risco alto ainda aberto no diagnóstico de DP.`,"diagnostico","Abrir Diagnóstico");

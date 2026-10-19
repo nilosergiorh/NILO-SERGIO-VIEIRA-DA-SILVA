@@ -298,7 +298,9 @@ function sstBox(c){
   const it=r.itens.filter(i=>i.t.obrig||i.d);
   return `<div class="box"><h3>SST (segurança e saúde do trabalho)</h3>
     <dl class="kv">${it.map(i=>`<dt>${esc(i.t.curto)}</dt><dd><span class="pill ${cls[i.st]}">${esc(SST.ROTULO[i.st])}</span> <span class="meta">${esc(i.txt)}</span></dd>`).join("")}
-    <dt>Empresa de SST</dt><dd>${esc(reg&&reg.prestador&&reg.prestador.nome||"—")}</dd></dl>
+    <dt>Empresa de SST</dt><dd>${esc(reg&&reg.prestador&&reg.prestador.nome||"—")}</dd>
+    ${(()=>{ const an=reg?SST.analiseEmpresa(reg):[]; if(!an.length) return ""; const pg=an.filter(a=>a.veredito==="pagar"), vf=an.filter(a=>a.veredito==="verificar");
+      return `<dt>Adicionais</dt><dd>${pg.length?`<span class="pill p-er">Pagar</span> ${esc(pg.map(a=>(a.funcao||a.setor)+" "+a.grau).join("; "))}`:vf.length?`<span class="pill p-at">Falta avaliação</span> ${esc(vf.map(a=>a.funcao||a.setor).join("; "))}`:`<span class="pill p-ok">Não devido</span> pelo laudo`}</dd>`; })()}</dl>
     <button class="link" type="button" data-sst="${esc(c._id)}">Abrir no módulo SST →</button></div>`;
 }
 // diagnóstico de DP da empresa: nota atual, riscos em aberto, evolução e prazo de revisão

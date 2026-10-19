@@ -71,6 +71,11 @@ tbody tr{cursor:pointer} tbody tr:hover td{background:var(--hover)}
 .fgrid .w2{grid-column:span 2} .fgrid .full{grid-column:1/-1}
 .chk{display:inline-flex;gap:6px;align-items:center;font-size:.82rem;font-weight:600;color:var(--ink)}
 details summary{cursor:pointer;font-size:.8rem;color:var(--mute)}
+.an{display:grid;gap:8px}
+.an .f{border:1px solid var(--line);border-left:5px solid var(--nt);border-radius:10px;padding:10px 12px;display:grid;gap:4px;background:var(--surf2)}
+.an .f.pagar{border-left-color:var(--er)} .an .f.verificar{border-left-color:var(--at)} .an .f.nao_devido{border-left-color:var(--ok)}
+.an .f b.v{font:800 .82rem var(--f-disp);letter-spacing:.02em} .an .f.pagar b.v{color:var(--er)} .an .f.verificar b.v{color:var(--at)} .an .f.nao_devido b.v{color:var(--ok)}
+.an ul{margin:2px 0 0;padding-left:18px;font-size:.82rem} .an li.esp{color:var(--nt)}
 .riscos{width:100%;font-size:.8rem} .riscos td{padding:5px 8px;cursor:default} .riscos tr:hover td{background:none}
 .drop{border:2px dashed var(--line);border-radius:14px;padding:18px;text-align:center;display:grid;gap:6px;justify-items:center;background:var(--surf2)}
 .drop.over{border-color:var(--red-hi)}
@@ -180,7 +185,7 @@ function renderEmp(){
   const c=S.cli, box=$("emp"); $("btnCobrar").disabled=!c;
   if(!c){ box.innerHTML=`<div class="card vazio">Escolha um cliente acima ou clique numa linha da visão geral.</div>`; return; }
   const r=atual(), R=X.resumo(r,hoje(),semEmp(c)), p=r.prestador||{}, ro=!S.db;
-  const ad=X.adicionais(r);
+  const an=X.analiseEmpresa(r);
   box.innerHTML=`
   ${S.rasc?`<div class="rasc" role="status"><span><b>Alterações não salvas</b> · nada fica gravado até você salvar.</span><span class="row"><button class="btn ghost sm" type="button" id="rDesc">Descartar</button><button class="btn sm" type="button" id="rSalvar">Salvar</button></span></div>`:""}
   <section class="card">
@@ -202,10 +207,21 @@ function renderEmp(){
     <p class="meta" id="lendo"></p>
     ${S.lidos.map((l,i)=>lidoHtml(l,i)).join("")}
   </section>
-  ${ad.length?`<section class="card"><h2>Adicionais indicados nos laudos</h2><p class="note">Confira na folha (Domínio) se quem trabalha nesses setores recebe o adicional. Insalubridade e periculosidade não se acumulam: vale o mais vantajoso (CLT, art. 193, § 2º).</p>
-    <table class="riscos"><tbody>${ad.map(a=>`<tr><td><b>${esc(a.setor||"—")}</b></td><td>${esc(a.agente)}</td><td>${esc(a.adicional)}</td><td class="meta">${esc(X.T[a.fonte].curto)}</td></tr>`).join("")}</tbody></table></section>`:""}
+  ${analiseHtml(an,"Insalubridade e periculosidade: é obrigatório pagar?")}
   <section class="card"><h2>Documentos</h2><div class="docs">${R.itens.map(i=>docHtml(i,ro)).join("")}</div>
     <p class="note">Prazos: o que está escrito no documento vale; sem validade escrita, o Flow calcula pela regra do tipo e marca como “calculado”. Confirme sempre com a empresa de SST. ${r.upd_at?"Última gravação: "+esc(new Date(r.upd_at).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}))+".":""}</p></section>`;
+}
+// análise por função: pagar / falta avaliação / não devido (base: conclusão do laudo + limites da NR-15)
+const VERED={pagar:"OBRIGATÓRIO PAGAR",verificar:"FALTA AVALIAÇÃO",nao_devido:"NÃO É DEVIDO (pelo laudo)"};
+function analiseHtml(an,titulo){
+  if(!an.length) return "";
+  const n=k=>an.filter(a=>a.veredito===k).length;
+  return `<section class="card"><div class="row" style="justify-content:space-between"><h2>${esc(titulo)}</h2>
+      <span class="row">${n("pagar")?`<span class="pill s-vencido">${n("pagar")} a pagar</span>`:""}${n("verificar")?`<span class="pill s-vence">${n("verificar")} sem avaliação</span>`:""}${n("nao_devido")?`<span class="pill s-vigente">${n("nao_devido")} não devido</span>`:""}</span></div>
+    <div class="an">${an.map(a=>`<div class="f ${a.veredito}"><div class="row" style="justify-content:space-between"><span><b>${esc(a.funcao||a.setor||"Função")}</b>${a.funcao&&a.setor?` <span class="meta">· ${esc(a.setor)}</span>`:""}</span><b class="v">${VERED[a.veredito]}${a.grau?" · "+esc(a.grau):""}</b></div>
+      <span style="font-size:.86rem">${esc(a.resumo)}.</span>
+      ${a.pagar.length||a.verificar.length||a.especial.length?`<ul>${a.pagar.map(p=>`<li>${esc(p.txt)}</li>`).join("")}${a.verificar.map(t=>`<li>${esc(t)}</li>`).join("")}${a.especial.map(t=>`<li class="esp"><b>Previdência:</b> ${esc(t)}</li>`).join("")}</ul>`:""}</div>`).join("")}</div>
+    <p class="note">A obrigação de pagar nasce da perícia (CLT, art. 195): vale a conclusão do laudo assinado. O Flow confere os valores medidos com os limites da NR-15 (ruído 85 dB(A); vibração de corpo inteiro 1,1 m/s² ou VDVR 21; mãos e braços 5,0 m/s²) e aponta divergência ou falta de avaliação. Insalubridade é sobre o salário mínimo (CLT, art. 192), salvo CCT; periculosidade, 30% do salário-base; não acumulam. Confira na folha do Domínio quem está nessas funções.</p></section>`;
 }
 function docHtml(i,ro){
   const d=i.d||{}, t=i.t, dis=!!(d.dispensa||d.naoAplica);
@@ -226,7 +242,7 @@ function docHtml(i,ro){
         ${d.lido_de?`<span class="meta">Lido de: ${esc(d.lido_de)}</span>`:""}
       </div>
     </div>
-    ${rs.length?`<details><summary>${rs.length} risco(s) registrado(s)</summary><table class="riscos"><tbody>${rs.map(x=>`<tr><td>${esc(x.setor||"—")}</td><td>${esc(x.tipo)}</td><td>${esc(x.agente)}</td><td>${esc(x.adicional||"")}</td></tr>`).join("")}</tbody></table></details>`:""}
+    ${rs.length?`<details><summary>${rs.length} risco(s) registrado(s)</summary><table class="riscos"><tbody>${rs.map(x=>`<tr><td>${esc(x.funcao||x.setor||"—")}</td><td>${esc(x.agente)}</td><td>${x.valor!=null?esc(String(x.valor).replace(".",",")+" "+(x.unidade||"")+(x.metodo?" ("+x.metodo+")":"")):""}</td><td>${esc(x.conclusao==="nao_avaliado"?"não avaliado":x.conclusao||x.adicional||"")}${x.grau?" "+esc(x.grau):""}</td></tr>`).join("")}</tbody></table></details>`:""}
     <details><summary>Regra e dispensa</summary><p class="note">${esc(t.fund)}${t.dispensa?"<br><b>Dispensa:</b> "+esc(t.dispensa):""}</p></details>
   </div>`;
 }
@@ -240,6 +256,7 @@ function lidoHtml(l,i){
       ${j.cnpj&&F.digitos(j.cnpj)!==F.digitos(S.cli.cnpj)?`<li style="color:var(--er)"><b>CNPJ do documento (${esc(j.cnpj)}) é diferente deste cliente.</b></li>`:""}
       ${j.riscos.length?`<li>${j.riscos.length} risco(s): ${esc(j.riscos.slice(0,6).map(r=>(r.setor?r.setor+": ":"")+r.agente+(r.adicional?" ("+r.adicional+")":"")).join("; "))}${j.riscos.length>6?"…":""}</li>`:""}
       ${j.alertas.map(a=>`<li style="color:var(--at)">${esc(a)}</li>`).join("")}</ul>
+    ${analiseHtml(X.analisar(j.riscos),"Análise deste documento: insalubridade e periculosidade")}
     <div class="row"><button class="btn sm" type="button" data-lapl="${i}">Aplicar no documento</button><button class="btn ghost sm" type="button" data-ldesc="${i}">Descartar leitura</button></div></div>`;
 }
 
