@@ -366,7 +366,8 @@ dialog::backdrop{background:var(--scrim)}
     <!-- TXT -->
     <section id="t-txt" hidden style="display:grid;gap:14px;margin-top:14px">
       <div class="card"><h3>Antes de gerar</h3><ul class="check" id="chk"></ul>
-        <div class="row"><button class="btn ghost" type="button" id="btnConferido">Marcar como conferido</button><span class="meta" id="confMeta"></span></div></div>
+        <div class="row"><button class="btn" type="button" id="btnGerarSalvar" title="Conclui a conferência e salva o arquivo .txt de uma vez">Gerar e salvar TXT (Bloco de Notas)</button><button class="btn ghost" type="button" id="btnConferido">Só marcar como conferido</button><span class="meta" id="confMeta"></span></div>
+        <p class="meta" style="margin:6px 0 0">O arquivo vai para a pasta Downloads; dê dois cliques nele para abrir no Bloco de Notas.</p></div>
       <div class="card"><div class="row" style="justify-content:space-between"><div><h3>Levar para o programa do computador</h3><p class="meta" style="margin:2px 0 0">Baixa as marcações conferidas (uma aba por funcionário, no formato do espelho). No programa: Cálculo de Ponto › mesmo cliente e competência › Arquivos › Planilha.</p></div><button class="btn ghost" type="button" data-espelho="1">Baixar transcrição em Excel</button></div></div>
       <div class="card"><h3>Lançamentos por funcionário</h3><div class="tbox" style="border:0"><table id="tRes"></table></div></div>
       <div class="card"><div class="row" style="justify-content:space-between"><h3>Arquivo TXT</h3><div class="row"><button class="btn ghost" type="button" id="btnCopiar">Copiar TXT</button><button class="btn" type="button" id="btnBaixar">Baixar TXT</button></div></div>
@@ -1419,6 +1420,8 @@ function renderTxt(){
   $("btnConferido").disabled=bloqueia||S.doc.status!=="rascunho";
   $("confMeta").textContent=S.doc.status==="rascunho"?(bloqueia?"Resolva os itens em vermelho para concluir.":"Tudo certo para concluir a conferência."):`Conferido${S.doc.conf_em?" em "+new Date(S.doc.conf_em).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):""}${S.doc.status==="exportado"?" · TXT gerado":""}.`;
   $("btnBaixar").disabled=$("btnCopiar").disabled=bloqueia||S.doc.status==="rascunho";
+  $("btnGerarSalvar").disabled=bloqueia;
+  $("btnGerarSalvar").textContent=S.doc.status==="exportado"?"Salvar o TXT de novo (Bloco de Notas)":"Gerar e salvar TXT (Bloco de Notas)";
   const cols=["he","he100","hf","not","fal","dsr"];
   const vRub=[]; S.doc.emps.forEach(e=>(e._ap.tot.valores||[]).forEach(v=>{ if(!vRub.some(x=>x.rub===String(v.rub))) vRub.push({rub:String(v.rub),desc:v.desc||"R$"}); }));
   const rs=c=>(c/100).toLocaleString("pt-BR",{minimumFractionDigits:2});
@@ -1734,11 +1737,19 @@ $("chk").addEventListener("click",async ev=>{
   if(S.doc.status!=="rascunho") S.doc.status="rascunho";
   sujo(); render();
 });
-$("btnBaixar").onclick=async()=>{
+async function salvarTxt(){
   const nome=`Lancamentos_Ponto_${S.cli.cod||F.digitos(S.cli.cnpj)}_${S.comp.replace("-","")}.txt`;
   const blob=new Blob([S.txt.linhas.join("\r\n")+"\r\n"],{type:"text/plain"});
   if(await baixar(nome,blob)){ if(S.doc.ignorar_pend){ const n=S.doc.emps.reduce((t,e)=>t+(e._ap.tot.pendentes||[]).length,0); if(n) setTimeout(()=>toast(`Lembrete: ${n} dia(s) sem marcação foram no TXT sem lançamento (dia normal). Confirme com o cliente.`,9000),400); }
-    S.doc.status="exportado"; S.doc.txt_em=new Date().toISOString(); S.doc.txt_linhas=S.txt.linhas.filter(l=>l.startsWith("10")); await salvarAgora(); render(); }   // txt_linhas: a Auditoria da folha compara a folha com estas linhas
+    S.doc.status="exportado"; S.doc.txt_em=new Date().toISOString(); S.doc.txt_linhas=S.txt.linhas.filter(l=>l.startsWith("10")); await salvarAgora(); render(); return true; }   // txt_linhas: a Auditoria da folha compara a folha com estas linhas
+  return false;
+}
+$("btnBaixar").onclick=()=>salvarTxt();
+// um clique: conclui a conferência (se ainda estiver em rascunho) e salva o .txt
+$("btnGerarSalvar").onclick=async()=>{
+  if(!S.podeExportar){ toast("Resolva os itens em vermelho antes de gerar o TXT."); return; }
+  if(S.doc.status==="rascunho"){ S.doc.status="conferido"; S.doc.conf_em=new Date().toISOString(); S.doc.conf_por=await F.usuarioId(); await salvarAgora(); render(); }
+  if(await salvarTxt()&&!S.doc.ignorar_pend) toast(`TXT salvo em Downloads. Abra com dois cliques (Bloco de Notas) ou importe direto no Domínio.`,7000);
 };
 $("btnCopiar").onclick=async()=>{ try{ await navigator.clipboard.writeText(S.txt.linhas.join("\r\n")+"\r\n"); toast("TXT copiado. Cole num arquivo .txt para importar."); }catch(e){ const r=document.createRange(); r.selectNodeContents($("txt")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("Texto selecionado: use Ctrl+C para copiar."); } };
 window.addEventListener("pagehide",()=>{ if(tSalvar) salvarAgora(); });
