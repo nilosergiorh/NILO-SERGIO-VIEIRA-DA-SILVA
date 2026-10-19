@@ -36,11 +36,33 @@
     try{ const W=janelaRuntime(); if(W!==window&&W.Blob) return new W.Blob([await blob.arrayBuffer()],{type:blob.type||"image/jpeg"}); }catch(e){}
     return blob;
   }
+  // A plataforma só aceita na chamada ao Claude um objeto de opções "puro" da janela principal (senão rejeita
+  // invalid_request) e imagens que sejam Blob dessa janela. Os módulos rodam em iframe: aqui as opções, as
+  // listas e as fotos são recriadas na janela do runtime antes de cada chamada.
+  async function paraRuntime(v,W){
+    if(v==null||typeof v!=="object") return v;
+    if((typeof Blob!=="undefined"&&v instanceof Blob)||(W.Blob&&v instanceof W.Blob)){
+      if(W.Blob&&v instanceof W.Blob) return v;
+      return new W.Blob([await v.arrayBuffer()],{type:v.type||"image/jpeg"});
+    }
+    if(typeof FileList!=="undefined"&&v instanceof FileList) v=Array.from(v);
+    if(Array.isArray(v)){ const a=new W.Array(); for(const x of v) a.push(await paraRuntime(x,W)); return a; }
+    if(typeof AbortSignal!=="undefined"&&v instanceof AbortSignal) return v;
+    const o=new W.Object(); for(const k of Object.keys(v)) o[k]=typeof v[k]==="function"?v[k]:await paraRuntime(v[k],W); return o;
+  }
+  function adaptarSample(s){
+    const W=janelaRuntime();
+    if(!s||W===window) return s;
+    const f=async(input,opcoes)=>s(await paraRuntime(input,W),opcoes===undefined?undefined:await paraRuntime(opcoes,W));
+    f.json=async(input,opcoes)=>s.json(await paraRuntime(input,W),opcoes===undefined?undefined:await paraRuntime(opcoes,W));
+    f.limits=(...a)=>s.limits(...a);
+    return f;
+  }
   const memo={};
   function use(nome){
     const rt=runtime();
     if(!rt || !rt.use) return Promise.resolve(null);
-    if(!memo[nome]) memo[nome]=rt.use(nome).catch(()=>null);
+    if(!memo[nome]) memo[nome]=rt.use(nome).then(x=>nome==="sample"?adaptarSample(x):x).catch(()=>null);
     return memo[nome];
   }
 
