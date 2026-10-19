@@ -1718,7 +1718,7 @@ window.addEventListener("pagehide",()=>{ if(tSalvar) salvarAgora(); });
 (function(){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); $("comp").value=d.toISOString().slice(0,7);
   try{ const u=JSON.parse(localStorage.getItem("flow.ponto.ult")||"null"); if(u){ $("cli").value=u.cli||""; if(u.comp) $("comp").value=u.comp; } }catch(e){} })();
 guia();
-F.use("sample").then(async s=>{ const lim=s&&s.limits?await s.limits().catch(()=>null):null; if(!lim||!lim.images){ $("lblF").classList.add("disabled"); $("inF").disabled=true; $("fotoAviso").hidden=false; $("fotoAviso").textContent="Leitura de fotos disponível só com o Flow aberto pelo link do claude.ai."; } });
+F.use("sample").then(async s=>{ const lim=s&&s.limits?await s.limits().catch(()=>null):null; if(!lim||!lim.images){ $("lblF").classList.add("disabled"); $("inF").disabled=true; $("fotoAviso").hidden=false; $("fotoAviso").textContent="Esta janela não permite enviar fotos ao Claude. Abra o Flow no navegador do computador (Chrome ou Edge) pelo link claude.ai/artifact/… com a sua conta, ou mande a foto para o Claude na conversa. Planilha em Excel funciona aqui normalmente."; } });
 F.assinar(est=>{
   S.E=est;
   if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }
