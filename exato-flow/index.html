@@ -181,6 +181,7 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
 /* prazos */
 .prz{display:grid;gap:2px}
 .prz .r{display:grid;grid-template-columns:48px minmax(0,1fr);gap:11px;align-items:center;padding:8px 6px;border-radius:9px}
+.prz .r.fixo .dt{border-style:dashed;border-color:var(--info)} .prz .r.fixo .dt b{color:var(--info)}
 .prz .r:hover{background:var(--panel-2)}
 .dt{display:grid;place-items:center;height:46px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line-2);line-height:1}
 .dt b{font:800 17px var(--f-disp)}
@@ -367,7 +368,7 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
             <div class="tbl"><table><thead><tr><th>Cód.</th><th>Cliente</th><th>Convenção</th><th>Pendência</th></tr></thead><tbody id="tbD"></tbody></table></div>
           </article>
           <article class="pn a3 przE">
-            <div class="pn-h"><div><h2>Próximos prazos</h2><p>Obrigações das convenções</p></div><button class="lnk" type="button" data-go="sindical">Agenda</button></div>
+            <div class="pn-h"><div><h2>Próximos prazos</h2><p>Folha, FGTS, INSS/IRRF e convenções</p></div><button class="lnk" type="button" data-go="sindical">Agenda</button></div>
             <div id="atrE"></div>
             <div class="prz" id="lsE"></div>
           </article>
@@ -402,6 +403,7 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
 
 <script src="nucleo/flow-dados.js" charset="utf-8"></script>
 <script src="nucleo/sst.js" charset="utf-8"></script>
+<script src="nucleo/agenda-dp.js" charset="utf-8"></script>
 <script>
 // ---------- navegação ----------
 const MODS={
@@ -691,9 +693,11 @@ function tabelaClientes(cli,pend,stDe,audComp){
 // ---------- lista E: próximos prazos ----------
 function listaPrazos(datados,atrasados,hoje){
   $("atrE").innerHTML=atrasados.length?`<div class="atraso"><span><b>${atrasados.length}</b> prazo${atrasados.length>1?"s":""} vencido${atrasados.length>1?"s":""} sem baixa</span><button class="lnk" type="button" data-go="sindical" style="color:inherit">Resolver</button></div>`:"";
-  const prox=datados.filter(p=>p.data>=hoje).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,5);
+  // vencimentos fixos do mês (salário, eSocial/DCTFWeb, FGTS, DARF, 13º) + prazos das convenções
+  const fixos=window.AgendaDP?AgendaDP.periodo(hoje,3):[];
+  const prox=[...datados,...fixos].filter(p=>p.data>=hoje).sort((a,b)=>a.data.localeCompare(b.data)||(b.fixo?1:0)-(a.fixo?1:0)).slice(0,7);
   $("lsE").innerHTML=prox.length?prox.map(p=>{ const [a,m,d]=p.data.slice(0,10).split("-");
-    return `<div class="r"><div class="dt${p.data.slice(0,10)===hoje?" hoje":""}"><b>${d}</b><small>${MESES[+m-1]}</small></div><div class="x"><span>${esc(p.obr||"Obrigação")}</span><small>${esc(p.cct||"")}${p.tipo?" · "+esc(p.tipo):""}</small></div></div>`; }).join(""):`<div class="vazio"><b>Sem prazos futuros</b>Nada vence nos próximos meses.</div>`;
+    return `<div class="r${p.fixo?" fixo":""}" title="${esc(p.fixo?p.fund+(p.ajuste?" "+p.ajuste+".":""):"")}"><div class="dt${p.data.slice(0,10)===hoje?" hoje":""}"><b>${d}</b><small>${MESES[+m-1]}</small></div><div class="x"><span>${esc(p.obr||"Obrigação")}</span><small>${p.fixo?`Todo mês · ${esc(p.tipo)}${p.ajuste?" · "+esc(p.ajuste):""}`:`${esc(p.cct||"")}${p.tipo?" · "+esc(p.tipo):""}`}</small></div></div>`; }).join(""):`<div class="vazio"><b>Sem prazos futuros</b>Nada vence nos próximos meses.</div>`;
 }
 
 // ---------- lista F: alertas ----------
