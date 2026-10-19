@@ -77,6 +77,18 @@ textarea.resp{min-height:220px;font:12px/1.5 var(--f-mono);resize:vertical}
 .item.done{opacity:.6} .item.done .t{text-decoration:line-through}
 .rasc{position:sticky;top:8px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border:1px solid var(--at);border-left:5px solid var(--at);border-radius:12px;background:var(--surf);box-shadow:0 10px 24px -14px rgba(0,0,0,.6)}
 .rasc b{color:var(--at)}
+.evo{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:820px){.evo{grid-template-columns:minmax(0,1fr)}}
+.evo svg{width:100%;height:auto;display:block}
+.evo .gl{stroke:var(--line);stroke-width:1} .evo .ax{fill:var(--mute);font:10px var(--f-mono)}
+.evo .ln{fill:none;stroke:var(--red-hi);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.evo .pt{fill:var(--red-hi);stroke:var(--surf);stroke-width:2} .evo .hit{fill:transparent;cursor:default}
+.evo .hit:hover+.pt,.evo .pt.on{r:6}
+.tl{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-height:260px;overflow:auto}
+.tl li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surf2);font-size:.85rem}
+.tl .n{font:800 1.05rem var(--f-disp);grid-row:span 2;align-self:center;min-width:44px;text-align:center}
+.tl .d{color:var(--mute);font-size:.75rem} .tl .up{color:var(--ok)} .tl .dn{color:var(--er)}
+.evo-tip{position:absolute;pointer-events:none;background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:.78rem;box-shadow:0 8px 20px -10px rgba(0,0,0,.6);white-space:nowrap}
 @media print{.rasc{display:none}}
 .item dl{grid-column:2;margin:4px 0 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 10px;font-size:.86rem}
 .item dt{color:var(--mute);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
@@ -292,6 +304,7 @@ function render(){
     ${R.areas.length?`<div class="areas">${R.areas.map(a=>`<span class="area ${a.alta?"alta":a.media?"media":""}"><i></i>${esc(a.area)} <b class="mono">${a.alta+a.media+a.conf}</b></span>`).join("")}</div>`:""}
     ${estT.length?`<p class="note"><b>Exposição estimada:</b> ${estT.map(i=>`${esc(i.t)}: ${D.brl(i.est.valor)} ${esc(i.est.tipo)}`).join(" · ")}. Estimativas para dimensionar o problema, não cálculo de passivo.</p>`:""}
   </section>
+  ${evolucaoHtml(d,R)}
   <section class="card"><h2>O que precisa de atenção</h2><div class="items">${riscos.map(item).join("")||'<p class="note">Nenhum ponto de atenção.</p>'}</div></section>
   ${oks.length?`<section class="card"><h2>O que já está em ordem</h2><div class="oks">${oks.map(i=>`<div class="okc"><b>${esc(i.t)}</b><span>${esc(i.resp)} · ${esc(i.porque)}</span></div>`).join("")}</div></section>`:""}
   <section class="card"><h2>Plano de ação</h2><div class="plan">
@@ -322,10 +335,10 @@ async function gerar(){
   const ja=dg&&S.lista.find(x=>F.digitos(x.cnpj)===dg);
   if(ja&&!confirm(`Já existe um diagnóstico de ${ja.empresa} (${F.fmtData(ja.criado_em)}). Criar outro mesmo assim?`)) return;
   const R=D.diagnosticar(txt,ctxDe({},{}));
-  const ref=S.db.collection("diagnosticos").doc();
+  const ref=S.db.collection("diagnosticos").doc(), f0=await foto(R,{},"criação");
   try{
     await ref.set({texto:txt,tipo:$("n-tipo").value,origem:$("n-orig").value.trim(),empresa:L.v.razao||"",cnpj:L.v.cnpj||"",cidade:L.v.cidade||"",
-      comp:{},feitos:{},notas:{},nota:R.nota.valor,contagem:{alta:R.nota.alta,media:R.nota.media,conf:R.nota.conf,ok:R.nota.ok},criado_em:new Date().toISOString(),...(await F.carimbo())});
+      comp:{},feitos:{},notas:{},nota:R.nota.valor,contagem:{alta:R.nota.alta,media:R.nota.media,conf:R.nota.conf,ok:R.nota.ok},criado_em:f0.em,hist:[f0],revisado_em:f0.em,...(await F.carimbo())});
     $("novo").hidden=true; $("n-txt").value=""; $("n-orig").value=""; $("n-st").textContent="";
     S.id=ref.id; S.lista.push({_id:ref.id,texto:txt,tipo:$("n-tipo").value,empresa:L.v.razao,cnpj:L.v.cnpj,comp:{},feitos:{},criado_em:new Date().toISOString()});
     abrir(ref.id); $("sel").value=ref.id; toast("Diagnóstico gerado e salvo.");
@@ -357,7 +370,9 @@ $("btnGerar").onclick=gerar;
 $("sel").onchange=()=>{ S.editando=false; abrir($("sel").value); };
 document.querySelector(".side").addEventListener("input",e=>{ if(e.target.id==="c-txt") return; S.editando=true; infoCct(); render(); });
 document.querySelector(".side").addEventListener("change",e=>{ if(e.target.id==="c-txt") return; S.editando=true; infoCct(); render(); });
-$("btnSalvar").onclick=async()=>{ const comp=lerComp(); await salvarDoc({comp,tipo:$("c-tipo").value},"Dados salvos."); S.doc.comp=comp; S.doc.tipo=$("c-tipo").value; S.editando=false; render(); };
+$("btnSalvar").onclick=async()=>{ const comp=lerComp();
+  try{ await gravarCompleto({comp,tipo:$("c-tipo").value},"dados do escritório"); $("c-st").textContent="Dados salvos."; setSync("on","Salvo"); }catch(e){ toast("Não foi possível salvar."); return; }
+  S.editando=false; render(); };
 $("btnRelerTxt").onclick=async()=>{ const t=$("c-txt").value.trim(); if(!t) return; await salvarDoc({texto:t,empresa:D.ler(t).v.razao||S.doc.empresa},"Respostas atualizadas."); S.doc.texto=t; render(); };
 $("btnExcluir").onclick=async()=>{ if(!S.doc||!confirm(`Excluir o diagnóstico de ${S.doc.empresa||"empresa"}? Não dá para desfazer.`)) return;
   try{ await S.db.doc("diagnosticos/"+S.id).delete(); S.id=null; S.doc=null; $("area").hidden=true; $("vazio").hidden=false; toast("Diagnóstico excluído."); }catch(e){ toast("Não foi possível excluir."); } };
@@ -412,6 +427,49 @@ $("btnPrint").onclick=baixarPdf;
 $("btnCopiar").onclick=async()=>{ const t=D.resumoCliente(S.R.L,S.R.itens,S.doc.feitos,S.R.L.v.razao);
   try{ await navigator.clipboard.writeText(t); toast("Resumo copiado: cole no WhatsApp ou e-mail do cliente."); }catch(e){ prompt("Copie o resumo:",t); } };
 $("btnCliente").onclick=cadastrarCliente;
+// ---------- evolução: uma "foto" por gravação (só números e itens resolvidos; nada da ficha é copiado) ----------
+async function foto(R,feitos,origem){ const N=R.nota;
+  return {em:new Date().toISOString(),por:(await F.carimbo()).upd_by,origem,nota:N.valor,alta:N.alta,media:N.media,conf:N.conf,ok:N.ok,feitos:Object.keys(feitos||{}).sort()}; }
+// grava o documento inteiro (a gravação parcial mesclava e o que foi desmarcado voltava) e acrescenta a foto ao histórico
+async function gravarCompleto(campos,origem){
+  const {_id,...base}=S.doc, comp=campos.comp??base.comp??{}, feitos=campos.feitos??base.feitos??{};
+  const R=D.diagnosticar(base.texto,ctxDe(comp,feitos)), f=await foto(R,feitos,origem);
+  let hist=histDe(base).slice();
+  const ult=hist[hist.length-1];
+  // mesma nota e mesmos itens resolvidos em menos de 1 hora: só atualiza a última foto
+  if(ult&&ult.nota===f.nota&&String(ult.feitos)===String(f.feitos)&&Date.parse(f.em)-Date.parse(ult.em)<36e5&&ult.origem!=="criação") hist[hist.length-1]={...f,origem:ult.origem===origem?origem:ult.origem+" e "+origem};
+  else hist.push(f);
+  hist=hist.slice(-80);
+  const novo={...base,...campos,nota:R.nota.valor,contagem:{alta:R.nota.alta,media:R.nota.media,conf:R.nota.conf,ok:R.nota.ok},hist,revisado_em:f.em,...(await F.carimbo())};
+  await S.db.doc("diagnosticos/"+S.id).set(novo);
+  S.doc={_id,...novo}; return novo;
+}
+// diagnósticos antigos não têm histórico: a criação vira o primeiro ponto
+function histDe(d){ if(Array.isArray(d.hist)&&d.hist.length) return d.hist;
+  const c=d.contagem||{}; return d.criado_em?[{em:d.criado_em,origem:"criação",nota:d.nota,alta:c.alta,media:c.media,conf:c.conf,ok:c.ok,feitos:[]}]:[]; }
+function evolucaoHtml(d,R){
+  const H=histDe(d); if(!H.length) return "";
+  const nomes=Object.fromEntries(R.itens.map(i=>[i.id,i.t])), nm=id=>nomes[id]||id;
+  const dt=x=>new Date(x).toLocaleDateString("pt-BR"), dth=x=>new Date(x).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
+  const W=420,Hh=150,ml=30,mr=12,mt=12,mb=24, n=H.length;
+  const X=i=>n===1?ml+(W-ml-mr)/2:ml+i*(W-ml-mr)/(n-1), Y=v=>mt+(100-(v??0))*(Hh-mt-mb)/100;
+  const grade=[0,50,80,100].map(v=>`<line class="gl" x1="${ml}" x2="${W-mr}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${ml-6}" y="${Y(v)+3}" text-anchor="end">${v}</text>`).join("");
+  const linha=n>1?`<polyline class="ln" points="${H.map((h,i)=>X(i)+","+Y(h.nota)).join(" ")}"/>`:"";
+  const pts=H.map((h,i)=>`<g data-i="${i}"><rect class="hit" x="${X(i)-14}" y="${mt}" width="28" height="${Hh-mt-mb}"/><circle class="pt" cx="${X(i)}" cy="${Y(h.nota)}" r="4.5"/></g>`).join("");
+  const eixo=[0,n-1].filter((v,i,a)=>a.indexOf(v)===i).map(i=>`<text class="ax" x="${X(i)}" y="${Hh-6}" text-anchor="${n===1?"middle":i===0?"start":"end"}">${dt(H[i].em)}</text>`).join("");
+  const lista=H.map((h,i)=>{ const a=H[i-1], dlt=a?h.nota-a.nota:null, fa=new Set(a?a.feitos||[]:[]), fb=new Set(h.feitos||[]);
+    const res=[...fb].filter(x=>!fa.has(x)), rea=[...fa].filter(x=>!fb.has(x));
+    const mud=[res.length?"Resolveu: "+res.map(nm).join(", "):"", rea.length?"Reabriu: "+rea.map(nm).join(", "):""].filter(Boolean).join(" · ")||(i===0?"Diagnóstico gerado":"Revisão sem mudança nos riscos");
+    return `<li><span class="n" style="color:${h.nota>=80?"var(--ok)":h.nota>=50?"var(--at)":"var(--er)"}">${h.nota??"—"}</span>
+      <span>${esc(mud)}${dlt?` <b class="${dlt>0?"up":"dn"}">${dlt>0?"+":""}${dlt}</b>`:""}</span>
+      <span class="d">${esc(dth(h.em))} · ${esc(h.origem||"")} · ${h.alta??0} alto(s), ${h.media??0} médio(s)</span></li>`; }).reverse().join("");
+  const u=H[H.length-1], dias=Math.floor((Date.now()-Date.parse(d.revisado_em||u.em))/864e5);
+  return `<section class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Evolução da empresa</h2>
+      <span class="meta">${n} registro(s) · última revisão ${esc(dt(d.revisado_em||u.em))}${dias>0?` (há ${dias} dia${dias>1?"s":""})`:""}${dias>F.DIAG_REVISAO_DIAS?' · <b style="color:var(--at)">revisar</b>':""}</span></div>
+    <div class="evo"><div style="position:relative"><svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Nota de conformidade ao longo do tempo: ${H.map(h=>h.nota).join(", ")}">${grade}${linha}${pts}${eixo}</svg><div class="evo-tip" id="evoTip" hidden></div>
+      <p class="note" style="margin:6px 0 0">Nota de conformidade a cada gravação (0 a 100). A lista ao lado mostra o que mudou em cada uma.</p></div>
+      <ul class="tl">${lista}</ul></div></section>`;
+}
 // marcar/desmarcar e anotações ficam num rascunho; só vão para a base em "Salvar marcações"
 function iniciarRasc(){ if(!S.rasc) S.rasc={feitos:{...(S.doc.feitos||{})},notas:{...(S.doc.notas||{})}}; }
 function difRasc(){ const a=S.doc.feitos||{}, b=S.rasc.feitos, ids=new Set([...Object.keys(a),...Object.keys(b)]); let n=0; ids.forEach(k=>{ if(!!a[k]!==!!b[k]) n++; });
@@ -430,15 +488,23 @@ $("laudo").addEventListener("change",e=>{
 $("laudo").addEventListener("click",async e=>{
   if(e.target.closest("#rDesc")){ S.rasc=null; render(); toast("Marcações descartadas."); return; }
   if(!e.target.closest("#rSalvar")||!S.rasc||!S.db||!S.id) return;
-  const {_id,...base}=S.doc, feitos=S.rasc.feitos, notas=S.rasc.notas;
+  const feitos=S.rasc.feitos, notas=S.rasc.notas;
   for(const k of Object.keys(feitos)) feitos[k]={...feitos[k],obs:notas[k]||""};
-  const N=S.R.nota;
-  // grava o documento inteiro: assim o que foi desmarcado sai da base (a gravação parcial mesclava e o item voltava)
-  const novo={...base,feitos,notas,nota:N.valor,contagem:{alta:N.alta,media:N.media,conf:N.conf,ok:N.ok},...(await F.carimbo())};
-  try{ await S.db.doc("diagnosticos/"+S.id).set(novo); S.doc={_id,...novo}; S.rasc=null; setSync("on","Salvo"); render(); toast("Marcações salvas."); }
+  try{ await gravarCompleto({feitos,notas},"marcações"); S.rasc=null; setSync("on","Salvo"); render(); toast("Marcações salvas. A evolução foi registrada."); }
   catch(err){ toast("Não foi possível salvar. As marcações continuam na tela."); }
 });
 window.addEventListener("beforeunload",e=>{ if(S.rasc){ e.preventDefault(); e.returnValue=""; } });
+$("laudo").addEventListener("pointerover",e=>{ const g=e.target.closest(".evo g[data-i]"), tip=$("evoTip"); if(!tip) return;
+  document.querySelectorAll(".evo .pt.on").forEach(c=>c.classList.remove("on"));
+  if(!g){ tip.hidden=true; return; }
+  const h=histDe(S.doc)[+g.dataset.i]; if(!h) return; g.querySelector(".pt").classList.add("on");
+  tip.innerHTML=`<b>Nota ${h.nota}</b> · ${esc(new Date(h.em).toLocaleDateString("pt-BR"))}<br>${h.alta??0} alto(s) · ${h.media??0} médio(s) · ${h.conf??0} a confirmar`;
+  const svg=g.ownerSVGElement, r=svg.getBoundingClientRect(), c=g.querySelector(".pt").getBoundingClientRect();
+  tip.hidden=false; tip.style.left=Math.min(r.width-tip.offsetWidth,Math.max(0,c.left-r.left-tip.offsetWidth/2))+"px"; tip.style.top=(c.top-r.top-tip.offsetHeight-8)+"px"; });
+$("laudo").addEventListener("pointerleave",()=>{ const t=$("evoTip"); if(t) t.hidden=true; },true);
+// outro módulo (ficha do cliente) pede para abrir um diagnóstico
+window.addEventListener("message",e=>{ if(e.origin!==location.origin||!e.data||e.data.flow!=="dados"||!e.data.diag) return;
+  const id=e.data.diag; if(S.lista.some(d=>d._id===id)){ $("sel").value=id; abrir(id); $("area").scrollIntoView({block:"start"}); } else S.pend=id; });
 F.assinar(est=>{
   S.E=est;
   if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }

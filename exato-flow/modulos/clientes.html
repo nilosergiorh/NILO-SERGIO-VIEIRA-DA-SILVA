@@ -280,6 +280,7 @@ function ficha(id){
       <dt>Confirmado</dt><dd>${c.confirmado==="Sim"?"Sim":"Ainda não"}${c.conf?` · confiança ${esc(c.conf)}`:""}</dd></dl>
       <button class="link" type="button" data-modulo="sindical">Alterar no Painel Sindical →</button></div>
     <div class="box"><h3>Auditoria de guias</h3>${aud(a)}<button class="link" type="button" data-modulo="guias">Abrir a Auditoria de Guias →</button></div>
+    ${diagBox(c)}
     ${docsHtml(c)}`:""}`;
   $("drawer").hidden=false;
   if(c){ abrirFuncionarios(c); renderRev(); }
@@ -287,6 +288,20 @@ function ficha(id){
   $("fCli").addEventListener("submit",ev=>{ev.preventDefault(); salvar(c);});
 }
 
+// diagnóstico de DP da empresa: nota atual, riscos em aberto, evolução e prazo de revisão
+function diagBox(c){
+  const d=F.diagDoCliente(c);
+  if(!d) return `<div class="box"><h3>Diagnóstico de DP</h3><p class="meta" style="margin:0">Nenhum diagnóstico desta empresa ainda. Faça pela Ficha de Início no módulo Diagnóstico.</p><button class="link" type="button" data-modulo="diagnostico">Abrir o Diagnóstico →</button></div>`;
+  const k=d.contagem||{}, r=F.diagRevisao(d), H=((Array.isArray(d.hist)&&d.hist.length)?d.hist:[{nota:d.nota}]).map(h=>h.nota).filter(v=>v!=null);
+  const cor=n=>n>=80?"var(--ok)":n>=50?"var(--at)":"var(--er)", faixa=n=>n>=80?"Boa":n>=50?"Atenção":"Crítica";
+  const evo=H.slice(-6).map(n=>`<b style="color:${cor(n)}">${n}</b>`).join(" → ")+(H.length>6?` <span class="meta">(${H.length} registros)</span>`:"");
+  return `<div class="box"><h3>Diagnóstico de DP</h3>
+    <dl class="kv"><dt>Nota atual</dt><dd><b style="font-size:1.15rem;color:${cor(d.nota)}">${d.nota??"—"}</b> / 100 · ${faixa(d.nota)}</dd>
+    <dt>Em aberto</dt><dd>${(k.alta??0)?`<span class="pill p-er">${k.alta} risco(s) alto(s)</span> `:""}${k.media??0} médio(s) · ${k.conf??0} a confirmar</dd>
+    <dt>Evolução</dt><dd>${evo}</dd>
+    <dt>Última revisão</dt><dd>${r.ref?F.fmtData(r.ref.slice(0,10)):"—"}${r.dias!=null?` (há ${r.dias} dia${r.dias===1?"":"s"})`:""} ${r.vencida?`<span class="pill p-at">revisar: mais de ${F.DIAG_REVISAO_DIAS} dias</span>`:""}</dd></dl>
+    <button class="link" type="button" data-diag="${esc(d._id)}">Abrir o diagnóstico completo →</button></div>`;
+}
 function aud(a){
   if(!a||!a.ultima) return '<p class="meta" style="margin:0">Nenhuma auditoria registrada ainda. O resultado entra aqui quando a empresa aparece numa auditoria feita dentro do Flow.</p>';
   const u=a.ultima, h=(a.hist||[]).slice().sort((x,y)=>String(y.chave).localeCompare(String(x.chave)));
@@ -559,6 +574,8 @@ $("drawer").addEventListener("click",async e=>{
   if(del){ if(!del.dataset.arm){ del.dataset.arm=1; del.textContent="confirmar?"; setTimeout(()=>{ if(del.isConnected){ delete del.dataset.arm; del.textContent="remover"; } },3500); return; }
     const L=(DOC.funcs||[]).filter((_,i)=>i!==+del.dataset.fdel); try{ await F.salvarFuncionarios(DOC.cnpj,L); DOC.funcs=L; renderFuncs(); toast("Funcionário removido do cadastro."); }catch(x){ toast("Não foi possível remover."); } return; }
   if(e.target===$("drawer")||e.target.closest("[data-fechar]")) fechar();
+  const dg=e.target.closest("[data-diag]");
+  if(dg){ try{ window.parent.postMessage({flow:"abrir",tela:"diagnostico",dados:{diag:dg.dataset.diag}},location.origin); }catch(x){} return; }
   const m=e.target.closest("[data-modulo]");
   if(m){ try{ window.parent.postMessage({flow:"abrir",tela:m.dataset.modulo},location.origin); }catch(x){} }
 });

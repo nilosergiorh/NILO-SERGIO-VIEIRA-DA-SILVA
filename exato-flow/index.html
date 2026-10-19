@@ -713,6 +713,12 @@ function listaAlertas(x){
   exps.sort((a,b)=>(a.e.dias??-99)-(b.e.dias??-99));
   for(const {c,f,e} of exps.slice(0,4)) add(e.nivel,"Contrato de experiência",`<b>${esc(f.nome)}</b> (${esc(c.fant||c.nome)}): ${esc(e.texto)}`,"clientes","Decidir na ficha do cliente");
   if(exps.length>4) add("warn","Contrato de experiência",`Mais ${exps.length-4} contrato${exps.length-4>1?"s":""} de experiência para decidir nos próximos dias.`,"clientes","Ver clientes");
+  // diagnóstico de DP: revisão a cada F.DIAG_REVISAO_DIAS dias e riscos altos ainda abertos (só clientes ativos)
+  const diags=[]; for(const c of ((EE&&EE.clientes)||[]).filter(c=>F.ativo(c))){ const d=F.diagDoCliente&&F.diagDoCliente(c); if(d) diags.push({c,d,r:F.diagRevisao(d)}); }
+  const rev=diags.filter(x=>x.r.vencida).sort((a,b)=>b.r.dias-a.r.dias);
+  if(rev.length) add("warn","Diagnóstico para revisar",`${rev.slice(0,3).map(x=>`<b>${esc(x.c.fant||x.c.nome)}</b> (há ${x.r.dias} dias)`).join(", ")}${rev.length>3?` e mais ${rev.length-3}`:""}: diagnóstico de DP sem revisão há mais de ${F.DIAG_REVISAO_DIAS} dias.`,"diagnostico","Revisar no Diagnóstico");
+  const altos=diags.filter(x=>(x.d.contagem||{}).alta>0);
+  if(altos.length) add("warn","Riscos altos no diagnóstico",`${altos.slice(0,3).map(x=>`<b>${esc(x.c.fant||x.c.nome)}</b> (${x.d.contagem.alta})`).join(", ")}${altos.length>3?` e mais ${altos.length-3}`:""}: risco alto ainda aberto no diagnóstico de DP.`,"diagnostico","Abrir Diagnóstico");
   const ordem={crit:0,warn:1,info:2}; L.sort((a,b)=>ordem[a.niv]-ordem[b.niv]);
   const crit=L.filter(a=>a.niv==="crit").length;
   $("subF").textContent=L.length?`${L.length} pontos de atenção · ${crit} crítico${crit===1?"":"s"}`:"Nada pendente agora";
