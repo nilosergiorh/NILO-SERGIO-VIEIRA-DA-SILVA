@@ -165,7 +165,7 @@ ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.9rem}
       </div>
       <div class="card"><h2>Ações</h2>
         <div class="row">
-          <button class="btn" type="button" id="btnPrint">Imprimir / PDF</button>
+          <button class="btn" type="button" id="btnPrint">Baixar PDF</button>
           <button class="btn ghost" type="button" id="btnCopiar">Copiar resumo para o cliente</button>
           <button class="btn ghost" type="button" id="btnCliente">Cadastrar como cliente</button>
         </div>
@@ -180,6 +180,8 @@ ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.9rem}
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="../nucleo/pdf-relatorio.js" charset="utf-8"></script>
 <script src="../nucleo/flow-dados.js" charset="utf-8"></script>
 <script src="../nucleo/folha-auditoria.js" charset="utf-8"></script>
 <script src="../nucleo/diagnostico.js" charset="utf-8"></script>
@@ -359,7 +361,54 @@ $("btnSalvar").onclick=async()=>{ const comp=lerComp(); await salvarDoc({comp,ti
 $("btnRelerTxt").onclick=async()=>{ const t=$("c-txt").value.trim(); if(!t) return; await salvarDoc({texto:t,empresa:D.ler(t).v.razao||S.doc.empresa},"Respostas atualizadas."); S.doc.texto=t; render(); };
 $("btnExcluir").onclick=async()=>{ if(!S.doc||!confirm(`Excluir o diagnóstico de ${S.doc.empresa||"empresa"}? Não dá para desfazer.`)) return;
   try{ await S.db.doc("diagnosticos/"+S.id).delete(); S.id=null; S.doc=null; $("area").hidden=true; $("vazio").hidden=false; toast("Diagnóstico excluído."); }catch(e){ toast("Não foi possível excluir."); } };
-$("btnPrint").onclick=()=>window.print();
+// PDF gerado no próprio Flow (a impressão do navegador fica bloqueada dentro do Flow)
+async function baixarPdf(){
+  if(!S.doc||!S.R) return;
+  if(!window.PdfRel||!window.PDFLib){ toast("O gerador de PDF não carregou. Confira a internet e recarregue a página."); return; }
+  const b=$("btnPrint"); b.disabled=true; const tx=b.textContent; b.textContent="Gerando PDF…";
+  try{
+    const d=S.doc, R=S.R, v=R.L.v, N=R.nota, feitos=S.rasc?S.rasc.feitos:(d.feitos||{}), notas=S.rasc?S.rasc.notas:(d.notas||{});
+    const comp={...(d.comp||{}),...(S.editando?lerComp():{})}, emp=v.razao||d.empresa||"Empresa";
+    const r=await PdfRel.criar({titulo:"Diagnóstico de DP – "+emp,sub:"Diagnóstico de início · "+new Date().toLocaleDateString("pt-BR"),rodape:emp});
+    r.h1(emp);
+    r.p([v.cnpj,v.atividade,v.cidade].filter(Boolean).join(" · "),{cor:"suave"});
+    r.p(`${d.tipo||""} · ${R.L.origem==="codigo"?"lido pelo código da ficha":"lido pelo texto da ficha"} · gerado em ${F.fmtData(d.criado_em)}`,{cor:"suave",tam:8.5,depois:8});
+    r.kpis([[String(N.valor),"nota · "+N.faixa,N.valor>=80?"ok":N.valor>=50?"media":"alta"],[String(N.alta),"riscos altos","alta"],[String(N.media),"riscos médios","media"],[String(N.conf),"a confirmar","conf"],[String(N.ok),"em ordem","ok"]]);
+    r.p("Nota de conformidade: 100 − 12 por risco alto − 5 por risco médio ainda abertos. Itens “Confirmar” e de rotina não descontam.",{cor:"suave",tam:8});
+    const clt=D.n(v.qt_clt), outros=D.n(v.qt_estag)+D.n(v.qt_pj)+D.n(v.qt_terc)+D.n(v.qt_free);
+    r.p(`${clt} CLT · ${D.n(v.qt_aprendiz)} aprendiz(es) · ${outros} outros vínculos · início: ${v.competencia||"—"} · contato: ${v.dp_interno_nome||v.resp||"—"}`,{tam:8.5});
+    const dados=[comp.regime&&"Regime: "+comp.regime,comp.porte&&"Porte: "+comp.porte,comp.cct_ramo&&"CCT: "+comp.cct_ramo].filter(Boolean);
+    if(dados.length) r.p(dados.join(" · "),{tam:8.5});
+    const riscos=R.itens.filter(i=>i.p!=="ok"), oks=R.itens.filter(i=>i.p==="ok"), estT=riscos.filter(i=>i.est&&!feitos[i.id]);
+    if(estT.length) r.p("Exposição estimada: "+estT.map(i=>`${i.t}: ${D.brl(i.est.valor)} ${i.est.tipo}`).join(" · ")+". Estimativas para dimensionar o problema, não cálculo de passivo.",{tam:8.5,cor:"alta"});
+    r.h2("O que precisa de atenção");
+    if(!riscos.length) r.p("Nenhum ponto de atenção.");
+    for(const i of riscos){ const f=feitos[i.id];
+      r.item({titulo:(f?"[RESOLVIDO] ":"")+i.t,tag:P[i.p]+" · "+i.area,cor:i.p,feito:!!f,linhas:[["Cliente",i.resp],["Por quê",i.porque],["Ação",i.fazer],
+        i.est?["Estimativa",`${D.brl(i.est.valor)} ${i.est.tipo} (${i.est.memoria})`,"alta"]:null,["Base",i.lei],["Anotação",notas[i.id]||(f&&f.obs)||""]]}); }
+    if(oks.length){ r.h2("O que já está em ordem"); r.lista(oks.map(i=>`${i.t}: ${i.resp}`)); }
+    const ab=p=>R.itens.filter(i=>i.p===p&&!feitos[i.id]);
+    r.h2("Plano de ação");
+    r.p("Antes da 1ª folha",{negrito:true}); r.lista([...ab("alta").map(i=>i.fazer),"Conferir cadastros importados e saldos (férias, banco de horas)."]);
+    r.p("Primeiros 30 dias",{negrito:true}); r.lista(ab("media").map(i=>i.t).concat(ab("media").length?[]:["—"]));
+    r.p("Confirmar na reunião",{negrito:true}); r.lista(ab("conf").map(i=>i.t).concat(ab("conf").length?[]:["—"]));
+    if(R.perguntas.length){ r.h2("Perguntas para a reunião"); r.lista(R.perguntas); }
+    r.h2("Documentos");
+    r.p("Pedir ao cliente",{negrito:true}); r.lista(R.L.docsFalta.length?R.L.docsFalta:["Nada pendente."]);
+    r.p("Cliente já tem",{negrito:true,cor:"ok"}); r.lista(R.L.docsOk.length?R.L.docsOk:["Nenhum marcado."]);
+    if(comp.obs){ r.h2("Anotações da reunião"); r.p(comp.obs); }
+    r.espaco(6);
+    r.p("Triagem a partir das respostas do cliente. Percentuais, prazos e obrigações dependem da CCT, do porte e do regime tributário e devem ser confirmados com documentos antes de qualquer orientação formal.",{cor:"suave",tam:8});
+    const bytes=await r.salvar();
+    const nome="Diagnostico_DP_"+(emp.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9]+/g,"_").replace(/^_|_$/g,"").slice(0,50)||"empresa")+"_"+new Date().toISOString().slice(0,10)+".pdf";
+    const dl=await F.use("downloads");
+    if(!dl){ toast("Download indisponível nesta visualização. Abra o Flow pelo link do claude.ai."); return; }
+    await dl.save({filename:nome,data:new Blob([bytes],{type:"application/pdf"})});
+    toast("PDF salvo: "+nome);
+  }catch(e){ console.error(e); toast(e&&e.code==="declined"?"Download cancelado.":"Não consegui gerar o PDF."+(e&&e.message?" ("+e.message+")":"")); }
+  finally{ b.disabled=false; b.textContent=tx; }
+}
+$("btnPrint").onclick=baixarPdf;
 $("btnCopiar").onclick=async()=>{ const t=D.resumoCliente(S.R.L,S.R.itens,S.doc.feitos,S.R.L.v.razao);
   try{ await navigator.clipboard.writeText(t); toast("Resumo copiado: cole no WhatsApp ou e-mail do cliente."); }catch(e){ prompt("Copie o resumo:",t); } };
 $("btnCliente").onclick=cadastrarCliente;
