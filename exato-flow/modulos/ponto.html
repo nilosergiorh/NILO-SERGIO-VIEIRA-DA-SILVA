@@ -480,12 +480,13 @@ function setSync(c,t){ const s=$("sync"); s.className="sync "+c; s.lastElementCh
 // ---------- funcionários ----------
 function novoEmp(nome,cod){
   const mem=infoFunc({nome,cod})||{};
-  return {id:"e"+Math.random().toString(36).slice(2,9),nome:String(nome||"").trim().toUpperCase(),cod:String(cod||mem.cod||""),jornada:mem.jornada||S.regras.jornadas[0].id,dias:{},origem:""};
+  return {id:"e"+Math.random().toString(36).slice(2,9),nome:String((mem._reg&&mem._reg.nome)||nome||"").trim().toUpperCase(),cod:String(cod||mem.cod||""),jornada:mem.jornada||S.regras.jornadas[0].id,dias:{},origem:""};
 }
 function acharEmp(nome,cod){
   const k=chave(nome);
   return S.doc.emps.find(e=>cod&&e.cod&&String(e.cod)===String(cod))||S.doc.emps.find(e=>chave(e.nome)===k)
-    ||S.doc.emps.find(e=>{const a=chave(e.nome).split(" "),b=k.split(" ");return a.length>1&&b.length>1&&a[0]===b[0]&&a[a.length-1]===b[b.length-1];})||null;
+    ||S.doc.emps.find(e=>{const a=chave(e.nome).split(" "),b=k.split(" ");return a.length>1&&b.length>1&&a[0]===b[0]&&a[a.length-1]===b[b.length-1];})
+    ||(S.doc.emps.filter(e=>parecido(e.nome,nome)).length===1?S.doc.emps.find(e=>parecido(e.nome,nome)):null);
 }
 function lembrar(e){ // guarda código e jornada do funcionário para os próximos meses
   const k=chave(e.nome), atual=S.regras.funcs[k]||{};
@@ -1014,6 +1015,12 @@ function rubAtual(p){ const R=S.regras; return ({he1:(R.he.faixas[0]||{}).rub,he
 const DIAS_K=[["seg",1],["ter",2],["qua",3],["qui",4],["sex",5],["sab",6],["dom",0]];
 const idade=(nasc,ref)=>D.idade(nasc,ref);
 // funcionário do cadastro (funcionarios/{cnpj}) que corresponde a um funcionário do ponto
+// nomes lidos de cartão manuscrito vêm com pequenas diferenças (WORMLING DA COSTA × WARMLING DA CUNHA):
+// mesmo primeiro nome e semelhança de pelo menos 75% no nome inteiro contam como a mesma pessoa
+function lev(a,b){ const m=a.length,n=b.length; if(!m||!n) return m||n; let p=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){ const c=[i]; for(let j=1;j<=n;j++) c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1)); p=c; } return p[n]; }
+function parecido(x,y){ const a=chave(x), b=chave(y); if(!a||!b) return false; if(a.split(" ")[0]!==b.split(" ")[0]) return false;
+  return 1-lev(a,b)/Math.max(a.length,b.length)>=0.75; }
 function regDe(e){
   const L=S.reg||[]; if(!L.length) return null;
   if(e.cod){ const x=L.find(f=>String(f.codigo)===String(e.cod)); if(x) return x; }
@@ -1022,7 +1029,9 @@ function regDe(e){
   const c=L.filter(f=>{ const a=chave(f.nome).split(" "); return a.length>1&&a[0]===b[0]&&a[a.length-1]===b[b.length-1]; });
   if(c.length===1) return c[0];
   const p=L.filter(f=>chave(f.nome)===b[0]);   // cadastro só com o primeiro nome
-  return p.length===1?p[0]:null;
+  if(p.length===1) return p[0];
+  const q=L.filter(f=>parecido(f.nome,e.nome));   // leitura com letras trocadas
+  return q.length===1?q[0]:null;
 }
 // jornada a partir do horário da ficha: id fixo pelo horário, criada nas regras na primeira vez que aparece
 function jornadaDoHorario(h){
