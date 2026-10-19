@@ -18,6 +18,24 @@
     try{ if(window.parent!==window && window.parent.claude && window.parent.claude.use) return window.parent.claude; }catch(e){}
     return window.claude || null;
   }
+  // Imagem pronta para o Claude: reduzida a no máximo 2000 px (JPEG) e recriada como Blob da janela que
+  // tem o runtime. Os módulos rodam em iframe: um File do iframe não é "Blob" para a janela principal
+  // e a plataforma recusava a foto.
+  function janelaRuntime(){
+    try{ if(window.parent!==window && window.parent.claude && window.parent.claude.use) return window.parent; }catch(e){}
+    return window;
+  }
+  async function imagemClaude(f,max){
+    max=max||2000; let blob=f;
+    try{
+      const bmp=await createImageBitmap(f), k=Math.min(1,max/Math.max(bmp.width,bmp.height));
+      const cv=document.createElement("canvas"); cv.width=Math.round(bmp.width*k); cv.height=Math.round(bmp.height*k);
+      cv.getContext("2d").drawImage(bmp,0,0,cv.width,cv.height);
+      const b2=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.88)); if(b2) blob=b2;
+    }catch(e){ /* formato que o navegador não abre (ex.: HEIC): vai como veio */ }
+    try{ const W=janelaRuntime(); if(W!==window&&W.Blob) return new W.Blob([await blob.arrayBuffer()],{type:blob.type||"image/jpeg"}); }catch(e){}
+    return blob;
+  }
   const memo={};
   function use(nome){
     const rt=runtime();
@@ -188,7 +206,7 @@
     "Avise o cliente antes do último dia: se o empregado trabalhar um dia a mais, o contrato vira por prazo indeterminado"];
   const funcAtivo=(f,ref)=>!(f.rescisao&&ref&&f.rescisao<ref)&&!/demit|rescind|deslig/i.test(f.situacao||"");
 
-  window.FlowDados={use,digitos,fmtCnpj,cnpjValido,raiz,hoje,isoData,fmtData,statusCct,ROTULO_CCT,compChave,
+  window.FlowDados={use,imagemClaude,digitos,fmtCnpj,cnpjValido,raiz,hoje,isoData,fmtData,statusCct,ROTULO_CCT,compChave,
     REGIMES,SITUACOES,PONTO,ativo,pendencias,indices,conectar,assinar,estado,usuarioId,carimbo,
     chaveNome,assinarFuncionarios,mesclarFuncionarios,salvarFuncionarios,funcAtivo,experiencia,EXP_RESCISAO,EXP_AVISO,addDias};
 })();

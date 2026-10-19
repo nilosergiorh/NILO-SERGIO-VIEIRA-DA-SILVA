@@ -206,7 +206,7 @@ Responda s\u00f3 com JSON:
       const partes=[]; let atual="";
       for(const t of textos) for(const pg of t.split("\f")){ if((atual+pg).length>45000&&atual){ partes.push(atual); atual=""; } atual+=pg.slice(0,45000)+"\n"; }
       if(atual) partes.push(atual);
-      const chamadas=[...partes.map(p=>()=>sample.json(PROMPT_FUNC+ctx+p,{modelTier:"default"})),...imagens.map(im=>()=>sample.json(PROMPT_FUNC+ctx+"(veja a imagem anexa)",{images:[im],modelTier:"default"}))];
+      const chamadas=[...partes.map(p=>()=>sample.json(PROMPT_FUNC+ctx+p,{modelTier:"default"})),...imagens.map(im=>async()=>sample.json(PROMPT_FUNC+ctx+"(veja a imagem anexa)",{images:[await (window.FlowDados&&window.FlowDados.imagemClaude?window.FlowDados.imagemClaude(im):im)],modelTier:"default"}))];
       let i=0;
       for(const ch of chamadas){
         prog(`O Claude est\u00e1 lendo os relat\u00f3rios (${++i} de ${chamadas.length})\u2026 pode levar at\u00e9 1 minuto.`);
@@ -274,7 +274,7 @@ Responda s\u00f3 com JSON: {"afastamentos":[{"codigo":"","nome":"","motivo":"","
     const partes=[]; let atual="";
     for(const t of textos) for(const pg of t.split("\f")){ if((atual+pg).length>48000&&atual){ partes.push(atual); atual=""; } atual+=pg.slice(0,48000)+"\n"; }
     if(atual) partes.push(atual);
-    const chamadas=[...partes.map(p=>()=>op.sample.json(PROMPT_AFAST+"\n\nRelat\u00f3rio:\n"+p,{modelTier:"default"})),...imagens.map(im=>()=>op.sample.json(PROMPT_AFAST+"\n\n(veja a imagem anexa)",{images:[im],modelTier:"default"}))];
+    const chamadas=[...partes.map(p=>()=>op.sample.json(PROMPT_AFAST+"\n\nRelat\u00f3rio:\n"+p,{modelTier:"default"})),...imagens.map(im=>async()=>op.sample.json(PROMPT_AFAST+"\n\n(veja a imagem anexa)",{images:[await (window.FlowDados&&window.FlowDados.imagemClaude?window.FlowDados.imagemClaude(im):im)],modelTier:"default"}))];
     let i=0;
     for(const ch of chamadas){
       prog(`O Claude est\u00e1 lendo o relat\u00f3rio de afastamentos (${++i} de ${chamadas.length})\u2026`);

@@ -792,7 +792,7 @@ async function arquivosF(files){
     const url=URL.createObjectURL(f);
     const item=registrar(f.name,"Foto","O Claude está lendo o cartão… (pode levar até 1 minuto)",url);
     try{
-      const j=await sample.json(PROMPT_BASE+`\nA imagem é a foto de um cartão ponto (ou de um lado dele). Período esperado: ${rotuloPeriodo()}. Se o cartão tiver colunas de manhã/tarde/extra, leia todas as entradas e saídas do dia em ordem.`,{images:[f],modelTier:"complex"});
+      const j=await sample.json(PROMPT_BASE+`\nA imagem é a foto de um cartão ponto (ou de um lado dele). Período esperado: ${rotuloPeriodo()}. Se o cartão tiver colunas de manhã/tarde/extra, leia todas as entradas e saídas do dia em ordem.`,{images:[await F.imagemClaude(f)],modelTier:"complex"});
       const lista=(j&&j.funcionarios)||[];
       if(!lista.length){ atualizar(item,"er","Não encontrei marcações nesta foto. Tire outra foto mais próxima e com luz."); continue; }
       const m=mesclar(lista,"foto");
@@ -808,7 +808,7 @@ async function arquivosF(files){
 }
 function msgErro(e,padrao){
   const c=e&&e.code;
-  return ({not_granted:"Você não autorizou o uso do Claude nesta página.",rate_limited:"Muitas leituras seguidas. Aguarde um pouco e envie de novo.",image_rejected:"Foto não aceita: use JPG ou PNG com menos de 20 MB.",invalid_json:"O Claude não devolveu uma leitura válida. Envie de novo.",images_unavailable:"Leitura de fotos indisponível nesta visualização.",refused:"O Claude não conseguiu ler este arquivo."})[c]||padrao;
+  return ({not_granted:"Você não autorizou o uso do Claude nesta página.",rate_limited:"Muitas leituras seguidas. Aguarde um pouco e envie de novo.",image_rejected:"Foto não aceita: use JPG ou PNG com menos de 20 MB.",invalid_json:"O Claude não devolveu uma leitura válida. Envie de novo.",images_unavailable:"Leitura de fotos indisponível nesta visualização.",refused:"O Claude não conseguiu ler este arquivo."})[c]||(padrao+(c?` (código: ${c})`:e&&e.message?` (${String(e.message).slice(0,120)})`:""));
 }
 function registrar(nome,tipo,txt,url){
   if(/lendo|organizando/i.test(txt)) falar(`Estou lendo <b>${esc(nome)}</b>… ${/foto/i.test(tipo)?"fotos podem levar até 1 minuto.":"já volto."}`);
