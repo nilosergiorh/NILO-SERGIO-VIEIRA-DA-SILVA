@@ -128,7 +128,7 @@ Responda só com JSON:
         o.pagar.push({tipo:"insalubridade",grau:L.grau,agente:nome,divergencia:r.conclusao==="salubre",txt:`${nome}: medido ${String(r.valor).replace(".",",")} ${r.unidade||""}, acima do limite de ${String(L.lim).replace(".",",")}. ${L.fund}${r.conclusao==="salubre"?" O laudo diz salubre: DIVERGÊNCIA, peça revisão à empresa de SST.":""}`});
       if(/ruido/.test(ag)&&r.metodo==="NHO-01"&&r.valor!=null&&r.valor>85) o.especial.push(`Ruído pelo NHO-01 = ${String(r.valor).replace(".",",")} dB(A), acima de 85: pode caracterizar atividade especial para a Previdência (Decreto 3.048, Anexo IV, 2.0.1), com adicional de 6% de INSS (FAE) e registro no S-2240${r.especial==="nao"?". O laudo diz não prejudicial: confirmar com a empresa de SST":""}.`);
       else if(r.especial==="sim") o.especial.push(`${nome}: o laudo enquadra como atividade especial (aposentadoria especial): FAE e S-2240.`);
-      if(PERIC.test(ag)&&r.conclusao!=="perigoso"&&r.conclusao!=="salubre") o.verificar.push(`${nome}: agente típico de periculosidade (NR-16). Confirme no laudo se há exposição permanente em área de risco.`);
+      if(PERIC.test(ag)&&!/solda|arco/.test(ag)&&r.conclusao!=="perigoso"&&r.conclusao!=="salubre") o.verificar.push(`${nome}: agente típico de periculosidade (NR-16). Confirme no laudo se há exposição permanente em área de risco.`);
     }
     return Object.values(porF).map(o=>{
       const ins=o.pagar.filter(p=>p.tipo==="insalubridade"), per=o.pagar.filter(p=>p.tipo==="periculosidade");

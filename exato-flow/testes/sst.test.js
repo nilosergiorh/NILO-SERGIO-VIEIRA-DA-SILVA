@@ -35,4 +35,5 @@ eq('valor acima do limite com laudo "salubre" = divergência',[op.divergencia,op
 eq('insalubridade e periculosidade não acumulam',/não acumulam/.test(el.resumo),true);
 eq('NHO-01 acima de 85: alerta de aposentadoria especial',md.especial.length,1);
 eq('normRisco: conclusão e grau',[S.normRisco({conclusao:'Não avaliado',grau:'grau médio 20'}).conclusao,S.normRisco({grau:'grau médio 20'}).grau,S.normRisco({valor:'87,18'}).valor],['nao_avaliado','20%',87.18]);
+eq('arco elétrico da solda não é periculosidade',S.analisar([S.normRisco({funcao:'Soldador',agente:'Radiação do arco elétrico',conclusao:'nao_avaliado'})])[0].verificar.length,1);
 console.log(`sst: ${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);
