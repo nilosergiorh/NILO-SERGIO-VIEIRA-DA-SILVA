@@ -98,6 +98,21 @@
           pag.drawText(limpa(r), { x:x+10, y:y-33, size:7.5, font:F.n, color:rgb(COR.suave) }); });
         y -= 50;
       },
+      // tabela de 3 colunas: descrição | referência | valor (à direita). linhas: [desc, ref, valor, {negrito, cor}]
+      tabela(cab, rows){
+        const tam = 9, cw = [W*0.48, W*0.32, W*0.20], h = 15;
+        const linhaT = (cols, neg, cor, fundo) => { cabe(h + 2);
+          if(fundo) pag.drawRectangle({ x:MARG, y:y-h+3, width:W, height:h, color:rgb(fundo) });
+          const f = neg ? F.b : F.n, c = cor ? (COR[cor] || cor) : COR.tinta;
+          const a = quebra(cols[0], f, tam, cw[0]-6)[0] || "", b = quebra(cols[1]||"", F.n, 8, cw[1]-6)[0] || "", v = limpa(cols[2]||"");
+          pag.drawText(a, { x:MARG+4, y:y-h+7, size:tam, font:f, color:rgb(c) });
+          pag.drawText(b, { x:MARG+cw[0], y:y-h+7, size:8, font:F.n, color:rgb(COR.suave) });
+          pag.drawText(v, { x:MARG+W-4-f.widthOfTextAtSize(v, tam), y:y-h+7, size:tam, font:f, color:rgb(c) });
+          y -= h; pag.drawLine({ start:{x:MARG,y:y+3}, end:{x:MARG+W,y:y+3}, thickness:0.4, color:rgb(COR.linha) }); };
+        if(cab) linhaT(cab, true, COR.suave, [0.95,0.95,0.96]);
+        for(const r of rows){ const o = r[3] || {}; linhaT(r, o.negrito, o.cor, o.fundo); }
+        y -= 8;
+      },
       espaco(h){ y -= h || 8; },
       async salvar(){
         const ps = doc.getPages(), tot = ps.length;

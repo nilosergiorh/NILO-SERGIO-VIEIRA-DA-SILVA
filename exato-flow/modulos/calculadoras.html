@@ -180,6 +180,9 @@ tr.liq td{font-weight:800;color:var(--red-hi);font-size:1rem}
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="../nucleo/pdf-relatorio.js" charset="utf-8"></script>
+<script src="../nucleo/flow-dados.js" charset="utf-8"></script>
 <script src="../nucleo/folha-auditoria.js" charset="utf-8"></script>
 <script src="../nucleo/calculos-dp.js" charset="utf-8"></script>
 <script>
@@ -192,7 +195,10 @@ function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout
 const ANOS=Object.keys(A.TABELAS).sort(), ULT=ANOS[ANOS.length-1];
 ["s-ano","r-ano"].forEach(id=>{ $(id).innerHTML=ANOS.map(a=>`<option>${a}</option>`).join(""); $(id).value=ULT; });
 const hoje=new Date(); $("s-comp").value=hoje.getFullYear()+"-"+String(hoje.getMonth()+1).padStart(2,"0");
-let ABA="sal", TXT="";
+let ABA="sal", TXT="", PDFDOC=null;
+// só redesenha o resultado quando ele muda: ao clicar num botão logo depois de digitar, o campo perde o foco,
+// o "change" recalculava e trocava o botão por outro igual, e o clique se perdia
+function pintar(id,html){ const el=$(id); if(el.__h===html&&el.innerHTML===el.__n) return; el.innerHTML=html; el.__h=html; el.__n=el.innerHTML; }
 
 // ---------- linhas dinâmicas ----------
 function linha(box,tipo,dados){
@@ -232,26 +238,38 @@ function calcSalario(){
   const Dd=[["INSS",e.semInss?"não calculado":`${(r.inss/r.baseTrib*100).toFixed(2).replace(".",",")}% efetivo`,r.inss],["IRRF",`base ${b2(r.ir.base)}`,r.ir.devido]];
   if(r.pen) Dd.push(["Pensão alimentícia","",r.pen]); if(r.vt) Dd.push(["Vale-transporte","6% do salário",r.vt]); r.desc.forEach(d=>Dd.push([d.desc,"",d.valor]));
   const L=([a,b,c],neg)=>`<tr><td>${esc(a)}</td><td>${esc(b)}</td><td class="n">${neg?"− ":""}${b2(c)}</td></tr>`;
-  $("s-res").innerHTML=`
+  const cu=r.custo, pctPat=(20+C.num(e.rat)+C.num(e.terceiros)).toFixed(1).replace(".",",")+"%";
+  const CU=[["Salário bruto","",r.bruto],["FGTS do mês","8% (não sai do salário)",cu.fgts],...(cu.patronal?[["INSS patronal + RAT×FAP + terceiros",pctPat,cu.patronal]]:[]),
+    ["Provisão de 13º salário","1/12 (8,33%)",cu.p13],["Provisão de férias","1/12 (8,33%)",cu.pFer],["Provisão de 1/3 de férias","1/36 (2,78%)",cu.pTer],
+    ["Total das provisões","19,44%",cu.provisoes,1],["FGTS sobre as provisões","8%",cu.fgtsProv],...(cu.patProv?[["INSS patronal sobre as provisões",pctPat,cu.patProv]]:[])];
+  pintar("s-res",`
     <div class="only-print"><b style="font:800 15px var(--f-disp)">EXATO SOLUÇÕES CONTÁBEIS · Simulação de salário</b><div class="note">${esc(quem)} · tabelas de ${$("s-ano").value} · ${new Date().toLocaleDateString("pt-BR")}</div></div>
-    <div class="row no-print" style="justify-content:space-between"><h2>Holerite simulado${quem?" · "+esc(quem):""}</h2><div class="row"><button class="btn sm" type="button" data-print>Imprimir / PDF</button><button class="btn ghost sm" type="button" data-copy>Copiar para WhatsApp</button></div></div>
+    <div class="row no-print" style="justify-content:space-between"><h2>Holerite simulado${quem?" · "+esc(quem):""}</h2><div class="row"><button class="btn sm" type="button" data-print>Baixar PDF</button><button class="btn ghost sm" type="button" data-copy>Copiar para WhatsApp</button></div></div>
     <div class="kpis"><div class="kpi"><b>${b2(r.bruto)}</b><span>salário bruto</span></div><div class="kpi main"><b>${b2(r.liquido)}</b><span>salário líquido</span></div>
       <div class="kpi"><b>${b2(r.totDesc)}</b><span>descontos</span></div><div class="kpi"><b>${b2(r.custo.total)}</b><span>custo mensal estimado</span></div></div>
     <div class="tbox"><table><thead><tr><th>Proventos</th><th>Referência</th><th class="n">Valor</th></tr></thead><tbody>${P.map(x=>L(x)).join("")}
       <tr class="tot"><td>Total bruto</td><td></td><td class="n">${b2(r.bruto)}</td></tr></tbody></table></div>
     <div class="tbox"><table><thead><tr><th>Descontos</th><th>Referência</th><th class="n">Valor</th></tr></thead><tbody>${Dd.map(x=>L(x,1)).join("")}
       <tr class="tot"><td>Total de descontos</td><td></td><td class="n">− ${b2(r.totDesc)}</td></tr><tr class="liq"><td>Salário líquido</td><td></td><td class="n">${b2(r.liquido)}</td></tr></tbody></table></div>
-    <div class="tbox"><table><thead><tr><th>Custo para a empresa (estimativa mensal)</th><th></th><th class="n">Valor</th></tr></thead><tbody>
-      ${L(["Salário bruto","",r.bruto])}${L(["FGTS","8% (não sai do salário)",r.custo.fgts])}${r.custo.patronal?L(["INSS patronal + RAT×FAP + terceiros",`${(20+C.num(e.rat)+C.num(e.terceiros)).toFixed(1).replace(".",",")}%`,r.custo.patronal]):""}
-      ${L(["Provisão de férias + 1/3 e 13º","19,44% ao mês",r.custo.provisoes])}${L(["Encargos sobre as provisões","",r.custo.encProv])}
+    <div class="tbox"><table><thead><tr><th>Custo para a empresa (estimativa mensal)</th><th>Referência</th><th class="n">Valor</th></tr></thead><tbody>${CU.map(x=>x[3]?`<tr class="tot"><td>${esc(x[0])}</td><td>${esc(x[1])}</td><td class="n">${b2(x[2])}</td></tr>`:L(x)).join("")}
       <tr class="tot"><td>Custo mensal estimado</td><td></td><td class="n">${b2(r.custo.total)}</td></tr></tbody></table></div>
     <p class="note"><b>Memória:</b> hora normal = (salário${r.insal?" + insalubridade":""}${r.peric?" + periculosidade":""}) ÷ ${C.num(e.horasMes)||220} h = ${brl(r.vh)} (OJ 47 SDI-1 e Súmula 132 do TST).
       ${r.dsr?`DSR = variáveis ÷ ${r.dias.uteis} dias úteis × ${r.dias.dsr} (${r.dias.domingos} domingos + ${r.dias.feriados} feriado(s)) — Súmula 172 do TST. `:""}
       IRRF: ${b2(r.baseTrib)} − ${r.ir.simpl?"desconto simplificado":"INSS"+(r.dep?" + dependentes":"")+(r.pen?" + pensão":"")} ${b2(r.ir.ded)} = base ${b2(r.ir.base)}; tabela ${brl(r.ir.bruto)}${r.ir.reducao?` − redução da Lei 15.270 ${brl(r.ir.reducao)}`:""} = ${brl(r.ir.devido)}.
       ${r.custo.patronal?"":"No Simples (exceto Anexo IV) o INSS patronal já está no DAS. "}Percentuais de HE, insalubridade e adicional noturno podem ser maiores na CCT.</p>
-    ${r.avisos.length?`<ul class="avisos">${r.avisos.map(a=>`<li>${esc(a)}</li>`).join("")}</ul>`:""}`;
-  TXT=[`*Simulação de salário*${quem?" – "+quem:""}`,...P.map(([a,,c])=>`${a}: R$ ${b2(c)}`),`*Bruto: R$ ${b2(r.bruto)}*`,...Dd.map(([a,,c])=>`(−) ${a}: R$ ${b2(c)}`),`*Líquido: R$ ${b2(r.liquido)}*`,
-    `FGTS (empresa): R$ ${b2(r.fgts)}`,"",`Simulação com as tabelas de ${$("s-ano").value}. Exato Soluções Contábeis.`].join("\n");
+    ${r.avisos.length?`<ul class="avisos">${r.avisos.map(a=>`<li>${esc(a)}</li>`).join("")}</ul>`:""}`);
+  TXT=[`*Simulação de salário*${quem?" – "+quem:""}`,...P.map(([a,,c])=>`${a}: R$ ${b2(c)}`),`*Bruto: R$ ${b2(r.bruto)}*`,...Dd.map(([a,,c])=>`(−) ${a}: R$ ${b2(c)}`),`*Líquido: R$ ${b2(r.liquido)}*`,"",
+    `*Custo para a empresa (estimativa mensal)*`,`FGTS do mês (8%): R$ ${b2(cu.fgts)}`,...(cu.patronal?[`INSS patronal + RAT + terceiros (${pctPat}): R$ ${b2(cu.patronal)}`]:[]),
+    `Provisão de 13º (1/12): R$ ${b2(cu.p13)}`,`Provisão de férias (1/12): R$ ${b2(cu.pFer)}`,`Provisão de 1/3 de férias (1/36): R$ ${b2(cu.pTer)}`,`FGTS sobre as provisões (8%): R$ ${b2(cu.fgtsProv)}`,
+    ...(cu.patProv?[`INSS patronal sobre as provisões: R$ ${b2(cu.patProv)}`]:[]),`*Custo mensal total: R$ ${b2(cu.total)}*`,"",
+    `Simulação com as tabelas de ${$("s-ano").value}${cu.patronal?"":"; no Simples (exceto Anexo IV) o INSS patronal está no DAS"}. Exato Soluções Contábeis.`].join("\n");
+  PDFDOC={titulo:"Simulação de salário",nome:"Simulacao_salario",quem,ano:$("s-ano").value,
+    kpis:[[b2(r.bruto),"salário bruto"],[b2(r.liquido),"salário líquido","ok"],[b2(r.totDesc),"descontos"],[b2(cu.total),"custo mensal"]],
+    tabelas:[["Proventos",P.map(([a,b,c])=>[a,b,b2(c)]).concat([["Total bruto","",b2(r.bruto),{negrito:true}]])],
+      ["Descontos",Dd.map(([a,b,c])=>[a,b,"− "+b2(c)]).concat([["Total de descontos","","− "+b2(r.totDesc),{negrito:true}],["Salário líquido","",b2(r.liquido),{negrito:true,cor:"ok"}]])],
+      ["Custo para a empresa (estimativa mensal)",CU.map(([a,b,c,t])=>[a,b,b2(c),t?{negrito:true}:null]).concat([["Custo mensal estimado","",b2(cu.total),{negrito:true}]])]],
+    notas:[`Hora normal = ${brl(r.vh)} (salário${r.insal?" + insalubridade":""}${r.peric?" + periculosidade":""} ÷ ${C.num(e.horasMes)||220} h).`,`IRRF: base ${b2(r.ir.base)}; imposto ${brl(r.ir.devido)}.`,
+      cu.patronal?"":"No Simples (exceto Anexo IV) o INSS patronal já está no DAS.","Percentuais de HE, insalubridade e adicional noturno podem ser maiores na CCT.",...r.avisos].filter(Boolean)};
 }
 
 // ---------- rescisão ----------
@@ -276,9 +294,9 @@ function calcRescisao(){
   if(r.erros.length){ $("r-res").innerHTML=`<ul class="avisos">${r.erros.map(x=>`<li class="er">${esc(x)}</li>`).join("")}</ul>`; TXT=""; return; }
   const inc=v=>[v.inc.inss?"INSS":"",v.inc.ir||v.inc.ir13?"IR":"",v.inc.fgts?"FGTS":""].filter(Boolean).join(" · ")||"isento";
   const f=r.fgts;
-  $("r-res").innerHTML=`
+  pintar("r-res",`
     <div class="only-print"><b style="font:800 15px var(--f-disp)">EXATO SOLUÇÕES CONTÁBEIS · Simulação de rescisão</b><div class="note">${esc(quem)} · tabelas de ${$("r-ano").value} · ${new Date().toLocaleDateString("pt-BR")}</div></div>
-    <div class="row no-print" style="justify-content:space-between"><h2>Rescisão simulada${quem?" · "+esc(quem):""}</h2><div class="row"><button class="btn sm" type="button" data-print>Imprimir / PDF</button><button class="btn ghost sm" type="button" data-copy>Copiar para WhatsApp</button></div></div>
+    <div class="row no-print" style="justify-content:space-between"><h2>Rescisão simulada${quem?" · "+esc(quem):""}</h2><div class="row"><button class="btn sm" type="button" data-print>Baixar PDF</button><button class="btn ghost sm" type="button" data-copy>Copiar para WhatsApp</button></div></div>
     <p class="note">Remuneração para aviso, 13º e férias: <b>${brl(r.rem)}</b>${r.rem>C.num(e.salario)?` (salário ${b2(C.num(e.salario))}${r.adicionais.insal?" + insalubridade "+b2(r.adicionais.insal):""}${r.adicionais.peric?" + periculosidade "+b2(r.adicionais.peric):""}${r.adicionais.quebra?" + quebra de caixa "+b2(r.adicionais.quebra):""}${C.num(e.medias)?" + médias "+b2(C.num(e.medias)):""})`:""}</p>
     <p class="note"><b>${esc(r.motivo)}</b> · admissão ${fmt(e.admissao)} · último dia ${fmt(e.saida)} · ${r.anos} ano(s) e ${r.tempo.meses%12} mês(es)${r.avisoTxt?" · "+esc(r.avisoTxt):""}${r.diasInd?" · data projetada "+fmt(r.proj):""}</p>
     <div class="kpis"><div class="kpi"><b>${b2(r.bruto)}</b><span>total bruto</span></div><div class="kpi main"><b>${b2(r.liquido)}</b><span>líquido a receber</span></div>
@@ -296,19 +314,47 @@ function calcRescisao(){
       <tr class="tot"><td>Guia rescisória (FGTS Digital)</td><td>depósito do mês + multa</td><td class="n">${b2(f.guia)}</td></tr>
       <tr><td>O empregado pode sacar</td><td>${f.saquePct?(f.saquePct<1?"até 80% do saldo + multa (acordo)":"saldo + depósito do mês + multa"):"não há saque neste motivo"}</td><td class="n">${b2(f.saque)}</td></tr></tbody></table></div>
     <p class="note"><b>Prazo de pagamento:</b> até ${fmt(r.prazo)} (10 dias do término, art. 477 §6º); atraso gera multa de um salário (art. 477 §8º). Aviso indenizado e férias indenizadas não têm INSS nem IRRF; o 13º tem INSS e IRRF calculados à parte. Simulação: confira CCT, médias, estabilidades e o saldo do FGTS antes do TRCT.</p>
-    <ul class="avisos">${r.avisos.map(a=>`<li>${esc(a)}</li>`).join("")}</ul>`;
+    <ul class="avisos">${r.avisos.map(a=>`<li>${esc(a)}</li>`).join("")}</ul>`);
   TXT=[`*Simulação de rescisão*${quem?" – "+quem:""}`,`${r.motivo}`,`Admissão ${fmt(e.admissao)} · último dia ${fmt(e.saida)}${r.avisoTxt?"\n"+r.avisoTxt:""}`,"",
     ...r.verbas.map(v=>`${v.desc} (${v.ref}): R$ ${b2(v.valor)}`),`*Bruto: R$ ${b2(r.bruto)}*`,...r.descontos.map(v=>`(−) ${v.desc}: R$ ${b2(v.valor)}`),`*Líquido: R$ ${b2(r.liquido)}*`,"",
     `FGTS: depósito do mês R$ ${b2(f.mes)} · multa R$ ${b2(f.multa)}${f.saldoInformado?"":" (saldo estimado)"}`,f.saquePct?`Saque do FGTS: R$ ${b2(f.saque)}`:"Sem saque do FGTS neste motivo",`Pagamento até ${fmt(r.prazo)}`,"",
     `Simulação com as tabelas de ${$("r-ano").value}; valores finais dependem da CCT e dos documentos. Exato Soluções Contábeis.`].join("\n");
+  PDFDOC={titulo:"Simulação de rescisão",nome:"Simulacao_rescisao",quem,ano:$("r-ano").value,
+    intro:[`${r.motivo} · admissão ${fmt(e.admissao)} · último dia ${fmt(e.saida)}${r.avisoTxt?" · "+r.avisoTxt:""}${r.diasInd?" · data projetada "+fmt(r.proj):""}`,`Remuneração para aviso, 13º e férias: ${brl(r.rem)}`],
+    kpis:[[b2(r.bruto),"total bruto"],[b2(r.liquido),"líquido a receber","ok"],[b2(f.guia),"FGTS (mês + multa)"],[b2(r.custo),"desembolso da empresa"]],
+    tabelas:[["Verbas",r.verbas.map(v=>[v.desc,v.ref,b2(v.valor)]).concat([["Total bruto","",b2(r.bruto),{negrito:true}]])],
+      ["Descontos",(r.descontos.length?r.descontos.map(v=>[v.desc,v.ref,"− "+b2(v.valor)]):[["Sem descontos","",""]]).concat([["Total de descontos","","− "+b2(r.totDesc),{negrito:true}],["Líquido a receber","",b2(r.liquido),{negrito:true,cor:"ok"}]])],
+      ["FGTS",[["Depósito do mês rescisório",`8% × ${b2(f.base)}`,b2(f.mes)],["Saldo do FGTS do contrato",f.saldoInformado?"informado (extrato)":"estimado",b2(f.saldo)],["Multa rescisória",f.pctMulta?`${f.pctMulta*100}% × (saldo + mês)`:"não há multa",b2(f.multa)],["Guia rescisória (FGTS Digital)","mês + multa",b2(f.guia),{negrito:true}],["O empregado pode sacar",f.saquePct?(f.saquePct<1?"até 80% + multa":"saldo + mês + multa"):"sem saque",b2(f.saque)]]]],
+    notas:[`Prazo de pagamento: até ${fmt(r.prazo)} (art. 477, § 6º, da CLT); atraso gera multa de um salário (§ 8º).`,"Aviso e férias indenizados não têm INSS nem IRRF; o 13º tem INSS e IRRF à parte.","Simulação: confira CCT, médias, estabilidades e o saldo do FGTS antes do TRCT.",...r.avisos]};
 }
 function calcular(){ ABA==="sal"?calcSalario():calcRescisao(); }
+// PDF gerado no próprio Flow (a impressão do navegador fica bloqueada dentro do Flow)
+async function baixarPdf(btn){
+  const d=PDFDOC; if(!d||!TXT){ toast("Preencha a simulação antes de gerar o PDF."); return; }
+  if(!window.PdfRel||!window.PDFLib){ toast("O gerador de PDF não carregou. Confira a internet e recarregue a página."); return; }
+  const tx=btn.textContent; btn.disabled=true; btn.textContent="Gerando PDF…";
+  try{
+    const r=await PdfRel.criar({titulo:d.titulo+(d.quem?" – "+d.quem:""),sub:`${d.titulo} · ${new Date().toLocaleDateString("pt-BR")}`,rodape:"Simulação – tabelas de "+d.ano});
+    r.h1(d.titulo+(d.quem?" · "+d.quem:"")); r.p(`Tabelas oficiais de ${d.ano} · gerado em ${new Date().toLocaleDateString("pt-BR")}`,{cor:"suave",tam:8.5,depois:6});
+    (d.intro||[]).forEach(t=>r.p(t,{tam:9}));
+    r.kpis(d.kpis.map(([v,t,c])=>["R$ "+v,t,c||"tinta"]));
+    for(const [tit,rows] of d.tabelas){ r.h2(tit); r.tabela(["Descrição","Referência","Valor (R$)"],rows); }
+    if(d.notas.length){ r.h2("Observações"); r.lista(d.notas,{tam:8.5}); }
+    r.p("Simulação para referência: não substitui o cálculo da folha nem o TRCT. Exato Soluções Contábeis.",{cor:"suave",tam:8});
+    const bytes=await r.salvar();
+    const nome=d.nome+(d.quem?"_"+d.quem.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9]+/g,"_").replace(/^_|_$/g,"").slice(0,40):"")+"_"+new Date().toISOString().slice(0,10)+".pdf";
+    const dl=window.FlowDados&&await FlowDados.use("downloads");
+    if(!dl){ toast("Download indisponível nesta visualização. Abra o Flow pelo link do claude.ai."); return; }
+    await dl.save({filename:nome,data:new Blob([bytes],{type:"application/pdf"})}); toast("PDF salvo: "+nome);
+  }catch(x){ console.error(x); toast(x&&x.code==="declined"?"Download cancelado.":"Não consegui gerar o PDF."+(x&&x.message?" ("+x.message+")":"")); }
+  finally{ btn.disabled=false; btn.textContent=tx; }
+}
 function aba(a){ ABA=a; $("aba-sal").hidden=a!=="sal"; $("aba-res").hidden=a!=="res"; $("t-sal").setAttribute("aria-selected",a==="sal"); $("t-res").setAttribute("aria-selected",a==="res"); calcular(); }
 document.querySelectorAll("[data-aba]").forEach(b=>b.onclick=()=>aba(b.dataset.aba));
 document.addEventListener("input",e=>{ if(e.target.closest(".cols")) calcular(); });
 document.addEventListener("change",e=>{ if(e.target.closest(".cols")) calcular(); });
 document.addEventListener("click",async e=>{
-  if(e.target.closest("[data-print]")) window.print();
+  if(e.target.closest("[data-print]")){ baixarPdf(e.target.closest("[data-print]")); return; }
   if(e.target.closest("[data-copy]")){ if(!TXT) return; try{ await navigator.clipboard.writeText(TXT); toast("Copiado: cole no WhatsApp ou e-mail."); }catch(x){ prompt("Copie o texto:",TXT); } }
 });
 // atalho do Painel: {flow:"simular"} abre a aba de salário; {flow:"rescisao"} a de rescisão
