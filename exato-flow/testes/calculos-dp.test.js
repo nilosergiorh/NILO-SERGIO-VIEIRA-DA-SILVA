@@ -101,4 +101,7 @@ eq('patronal fora do Simples: 27,8%',s.custo.patronal,1390);
 s=C.simularSalario({salario:'2000',he:[{pct:40,horas:1}]},T);
 eq('HE abaixo de 50% gera aviso',s.avisos.some(a=>/50%/.test(a)),true);
 
+let pv=C.simularSalario({salario:'2000'},T).custo;
+eq('provisões: 13º, férias, 1/3, FGTS e multa de 40%',[pv.p13,pv.pFer,pv.pTer,pv.fgtsProv,pv.multa40],[166.67,166.67,55.56,31.11,76.44]);
+eq('custo total inclui a multa de 40%',pv.total,Math.round((2000+160+388.9+31.11+76.44)*100)/100);
 console.log(`calculadoras: ${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);

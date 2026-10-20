@@ -88,11 +88,13 @@
     // provisões mensais: 13º = 1/12, férias = 1/12 e 1/3 de férias = 1/36 da remuneração; encargos (FGTS e, fora do Simples, INSS patronal) sobre elas
     const p13=r2(baseTrib/12), pFer=r2(baseTrib/12), pTer=r2(baseTrib/36), prov=r2(p13+pFer+pTer);
     const fgtsProv=r2(prov*T.fgts.aliquota), patProv=fora?r2(prov*(0.20+num(e.rat)/100+num(e.terceiros)/100)):0, provEnc=r2(fgtsProv+patProv);
+    // provisão da multa de 40% do FGTS (só é paga na dispensa sem justa causa; Lei 8.036/1990, art. 18, § 1º): 40% do FGTS do mês e das provisões
+    const multa40=r2((fgts+fgtsProv)*0.40);
     if(sal&&sal<sm*hm/220-0.005) avisos.push(`Salário abaixo do mínimo nacional proporcional a ${hm} h (${A.brl(r2(sm*hm/220))}).`);
     if(e.semInss) avisos.push("INSS não calculado (opção marcada): o IRRF foi calculado sem a dedução do INSS.");
     if(he.some(x=>x.pct<50)) avisos.push("Hora extra com adicional abaixo de 50% contraria a Constituição (art. 7º, XVI).");
     return {vh:r2(vh),insal,peric,quebra,insTxt:ad.insTxt,qTxt:ad.qTxt,he,noturno:{horas:noth,pct:notp,valor:not},dsr,dias,outrosT,naoT,baseTrib,bruto,inss,ir,dep,pen,vt,desc,totDesc,
-      liquido:r2(bruto-totDesc),fgts,custo:{fgts,patronal:pat,provisoes:prov,p13,pFer,pTer,fgtsProv,patProv,encProv:provEnc,total:r2(bruto+fgts+pat+prov+provEnc)},avisos};
+      liquido:r2(bruto-totDesc),fgts,custo:{fgts,patronal:pat,provisoes:prov,p13,pFer,pTer,fgtsProv,patProv,encProv:provEnc,multa40,total:r2(bruto+fgts+pat+prov+provEnc+multa40)},avisos};
   }
 
   // ---------- 2) rescisão ----------

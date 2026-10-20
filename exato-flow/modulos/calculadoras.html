@@ -241,7 +241,8 @@ function calcSalario(){
   const cu=r.custo, pctPat=(20+C.num(e.rat)+C.num(e.terceiros)).toFixed(1).replace(".",",")+"%";
   const CU=[["Salário bruto","",r.bruto],["FGTS do mês","8% (não sai do salário)",cu.fgts],...(cu.patronal?[["INSS patronal + RAT×FAP + terceiros",pctPat,cu.patronal]]:[]),
     ["Provisão de 13º salário","1/12 (8,33%)",cu.p13],["Provisão de férias","1/12 (8,33%)",cu.pFer],["Provisão de 1/3 de férias","1/36 (2,78%)",cu.pTer],
-    ["Total das provisões","19,44%",cu.provisoes,1],["FGTS sobre as provisões","8%",cu.fgtsProv],...(cu.patProv?[["INSS patronal sobre as provisões",pctPat,cu.patProv]]:[])];
+    ["Total das provisões","19,44%",cu.provisoes,1],["FGTS sobre as provisões","8%",cu.fgtsProv],...(cu.patProv?[["INSS patronal sobre as provisões",pctPat,cu.patProv]]:[]),
+    ["Provisão da multa de 40% do FGTS","40% × (FGTS do mês + FGTS das provisões)",cu.multa40]];
   pintar("s-res",`
     <div class="only-print"><b style="font:800 15px var(--f-disp)">EXATO SOLUÇÕES CONTÁBEIS · Simulação de salário</b><div class="note">${esc(quem)} · tabelas de ${$("s-ano").value} · ${new Date().toLocaleDateString("pt-BR")}</div></div>
     <div class="row no-print" style="justify-content:space-between"><h2>Holerite simulado${quem?" · "+esc(quem):""}</h2><div class="row"><button class="btn sm" type="button" data-print>Baixar PDF</button><button class="btn ghost sm" type="button" data-copy>Copiar para WhatsApp</button></div></div>
@@ -261,7 +262,7 @@ function calcSalario(){
   TXT=[`*Simulação de salário*${quem?" – "+quem:""}`,...P.map(([a,,c])=>`${a}: R$ ${b2(c)}`),`*Bruto: R$ ${b2(r.bruto)}*`,...Dd.map(([a,,c])=>`(−) ${a}: R$ ${b2(c)}`),`*Líquido: R$ ${b2(r.liquido)}*`,"",
     `*Custo para a empresa (estimativa mensal)*`,`FGTS do mês (8%): R$ ${b2(cu.fgts)}`,...(cu.patronal?[`INSS patronal + RAT + terceiros (${pctPat}): R$ ${b2(cu.patronal)}`]:[]),
     `Provisão de 13º (1/12): R$ ${b2(cu.p13)}`,`Provisão de férias (1/12): R$ ${b2(cu.pFer)}`,`Provisão de 1/3 de férias (1/36): R$ ${b2(cu.pTer)}`,`FGTS sobre as provisões (8%): R$ ${b2(cu.fgtsProv)}`,
-    ...(cu.patProv?[`INSS patronal sobre as provisões: R$ ${b2(cu.patProv)}`]:[]),`*Custo mensal total: R$ ${b2(cu.total)}*`,"",
+    ...(cu.patProv?[`INSS patronal sobre as provisões: R$ ${b2(cu.patProv)}`]:[]),`Provisão da multa de 40% do FGTS: R$ ${b2(cu.multa40)}`,`*Custo mensal total: R$ ${b2(cu.total)}*`,"",
     `Simulação com as tabelas de ${$("s-ano").value}${cu.patronal?"":"; no Simples (exceto Anexo IV) o INSS patronal está no DAS"}. Exato Soluções Contábeis.`].join("\n");
   PDFDOC={titulo:"Simulação de salário",nome:"Simulacao_salario",quem,ano:$("s-ano").value,
     kpis:[[b2(r.bruto),"salário bruto"],[b2(r.liquido),"salário líquido","ok"],[b2(r.totDesc),"descontos"],[b2(cu.total),"custo mensal"]],
@@ -269,7 +270,7 @@ function calcSalario(){
       ["Descontos",Dd.map(([a,b,c])=>[a,b,"− "+b2(c)]).concat([["Total de descontos","","− "+b2(r.totDesc),{negrito:true}],["Salário líquido","",b2(r.liquido),{negrito:true,cor:"ok"}]])],
       ["Custo para a empresa (estimativa mensal)",CU.map(([a,b,c,t])=>[a,b,b2(c),t?{negrito:true}:null]).concat([["Custo mensal estimado","",b2(cu.total),{negrito:true}]])]],
     notas:[`Hora normal = ${brl(r.vh)} (salário${r.insal?" + insalubridade":""}${r.peric?" + periculosidade":""} ÷ ${C.num(e.horasMes)||220} h).`,`IRRF: base ${b2(r.ir.base)}; imposto ${brl(r.ir.devido)}.`,
-      cu.patronal?"":"No Simples (exceto Anexo IV) o INSS patronal já está no DAS.","Percentuais de HE, insalubridade e adicional noturno podem ser maiores na CCT.",...r.avisos].filter(Boolean)};
+      cu.patronal?"":"No Simples (exceto Anexo IV) o INSS patronal já está no DAS.","A multa de 40% do FGTS só é paga na dispensa sem justa causa (20% no acordo do art. 484-A); a provisão mensal reserva esse valor.","Percentuais de HE, insalubridade e adicional noturno podem ser maiores na CCT.",...r.avisos].filter(Boolean)};
 }
 
 // ---------- rescisão ----------
