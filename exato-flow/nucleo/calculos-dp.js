@@ -225,7 +225,7 @@
     const fgts={base:baseF,mes:fgtsMes,saldo:saldoF,saldoInformado:informado,mesesContrato,pctMulta,multa,
       saque:saque?r2((saldoF+fgtsMes)*saque+multa):0,baseEstimativa:fixo,saquePct:saque,guia:r2(fgtsMes+multa),naoCalculado:!!e.semFgts};
     if(e.semFgts) avisos.push("FGTS não calculado (opção marcada): sem depósito do mês, sem multa rescisória e sem saque nesta simulação.");
-    else if(!informado) avisos.push(`Saldo do FGTS estimado (8% da remuneração fixa atual, ${A.brl(fixo)}, × ${mesesContrato} meses × 13/12). Para o valor certo da multa, use o saldo para fins rescisórios do extrato do FGTS Digital.`);
+    else if(!informado&&pctMulta) avisos.push("Multa do FGTS estimada: o saldo não foi informado. Para o valor certo, informe o saldo para fins rescisórios do extrato do FGTS Digital.");
     if(e.semInss) avisos.push("INSS não calculado (opção marcada): o IRRF foi calculado sem a dedução do INSS. Use quando o INSS já foi retido em outra folha ou não se aplica ao caso.");
     if(fixo>sal) avisos.push(`Remuneração usada no aviso, no 13º e nas férias: ${A.brl(rem)} (salário${ad.insal?" + insalubridade":""}${ad.peric?" + periculosidade":""}${ad.quebra?" + quebra de caixa":""}${med?" + médias":""}).`);
     if(med) avisos.push("Médias de variáveis entram no aviso, nas férias e no 13º; o saldo de salário usa só o salário fixo (lance variáveis do mês em outros proventos).");
