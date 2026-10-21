@@ -106,7 +106,7 @@
   // art. 130: dias de férias conforme as faltas injustificadas no período aquisitivo
   const diasFeriasPorFaltas=f=>f<=5?30:f<=14?24:f<=23?18:f<=32?12:0;
   // e: {salario, medias, admissao, saida, motivo, aviso ("indenizado"|"trabalhado"|"dispensado"|"nao_cumprido"), fimContrato,
-  //     feriasVencidas, feriasDobro, faltas, adiant13, dependentes, pensao, saldoFgts, outrosProv, outrosDesc}
+  //     feriasVencidas, feriasDobro, faltas, adiant13, feriasPagas, semAviso, semSaldo, dependentes, pensao, saldoFgts, outrosProv, outrosDesc}
   function calcularRescisao(e,T){
     const sal=num(e.salario), med=num(e.medias), adm=e.admissao, sai=e.saida, mot=e.motivo, erros=[];
     const ad=adicionais(e,sal,T), fixo=r2(sal+ad.insal+ad.peric+ad.quebra), rem=r2(fixo+med), avisos=[...ad.avisos];
@@ -123,7 +123,10 @@
     const avisoProp=Math.min(90,30+3*anos);
     let diasInd=0, avisoTxt="", descAviso=0;
     const temAviso=["sem_justa","indireta","acordo"].includes(mot);
-    if(temAviso){
+    if(e.semAviso&&(temAviso||mot==="pedido")){
+      avisoTxt="Aviso prévio não calculado nesta simulação (opção marcada)";
+      if(temAviso&&e.aviso!=="trabalhado"&&avisoProp) avisos.push(`Aviso não calculado: sem o aviso indenizado, a projeção de ${avisoProp} dias também não entrou nos avos de 13º e férias. Se o aviso for indenizado em outro documento, os avos podem aumentar.`);
+    } else if(temAviso){
       if(e.aviso==="trabalhado"){ diasInd=avisoProp-30; avisoTxt=diasInd?`Aviso trabalhado de 30 dias; os ${diasInd} dias da proporcionalidade são indenizados`:"Aviso trabalhado de 30 dias"; }
       else { diasInd=avisoProp; avisoTxt=`Aviso indenizado de ${avisoProp} dias (30 + 3 × ${anos} ano(s))`; }
     } else if(mot==="pedido"){
@@ -140,10 +143,13 @@
     const ds=D(sai), diasSaldo=Math.min(30,ds.d), saldo=r2(sal/30*diasSaldo);
     const verbas=[], descontos=[];
     const V=(cod,desc,ref,valor,inc,memoria)=>{ if(valor>0.004) verbas.push({cod,desc,ref,valor:r2(valor),inc,memoria}); };
+    if(e.semSaldo) avisos.push("Saldo de salário não calculado (pago na folha do mês). O INSS e o IRRF desta simulação ficam só sobre as verbas daqui; no TRCT, o INSS do mês soma com o que já foi retido na folha.");
+    else {
     V("saldo","Saldo de salário",`${diasSaldo} dia(s)`,saldo,{inss:1,ir:1,fgts:1},`${A.brl(sal)} ÷ 30 × ${diasSaldo}`);
     if(ad.insal) V("saldo_ins","Insalubridade (saldo)",`${diasSaldo} dia(s)`,ad.insal/30*diasSaldo,{inss:1,ir:1,fgts:1},`${A.brl(ad.insal)} (${ad.insTxt}) ÷ 30 × ${diasSaldo}`);
     if(ad.peric) V("saldo_per","Periculosidade (saldo)",`${diasSaldo} dia(s)`,ad.peric/30*diasSaldo,{inss:1,ir:1,fgts:1},`${A.brl(ad.peric)} (30% do salário) ÷ 30 × ${diasSaldo}`);
     if(ad.quebra) V("saldo_qc","Quebra de caixa (saldo)",`${diasSaldo} dia(s)`,ad.quebra/30*diasSaldo,{inss:1,ir:1,fgts:1},`${A.brl(ad.quebra)} (${ad.qTxt}) ÷ 30 × ${diasSaldo}`);
+    }
     if(valAviso) V("aviso","Aviso prévio indenizado",`${diasInd} dia(s)${metade?" × 50%":""}`,valAviso,{fgts:1},`${A.brl(rem)} ÷ 30 × ${diasInd}${metade?" × 50%":""}`);
 
     // 13º proporcional: meses do ano com 15 dias ou mais trabalhados (Lei 4.090/1962), até a data projetada
@@ -194,7 +200,12 @@
     if(ir) Dd("IRRF sobre saldo e outros",`base ${A.brl(ir.base)}`,ir.devido,`${A.brl(baseInss)} − ${ir.simpl?"desconto simplificado":"INSS e dependentes"} ${A.brl(ir.ded)}; tabela ${A.brl(ir.bruto)}${ir.reducao?" − redução Lei 15.270 "+A.brl(ir.reducao):""}`);
     if(ir13) Dd("IRRF sobre 13º",`base ${A.brl(ir13.base)}`,ir13.devido,`${A.brl(base13)} − INSS e dependentes ${A.brl(ir13.ded)}; tabela ${A.brl(ir13.bruto)}${ir13.reducao?" − redução Lei 15.270 "+A.brl(ir13.reducao)+" (confirmar aplicação ao 13º)":""}`);
     if(pen) Dd("Pensão alimentícia","",pen,"informada");
-    Dd("Adiantamento do 13º","",Math.min(num(e.adiant13),v13||num(e.adiant13)),"já pago na 1ª parcela");
+    const a13=num(e.adiant13), fPag=num(e.feriasPagas);
+    Dd("13º salário já pago","",Math.min(a13,v13||a13),"valor informado (adiantamento / parcela já paga)");
+    if(a13>v13+0.004&&v13) avisos.push(`O 13º já pago (${A.brl(a13)}) passa do 13º da rescisão (${A.brl(v13)}): o desconto ficou limitado a ${A.brl(v13)}. A diferença só pode ser descontada dentro do limite do art. 477 §5º; confira.`);
+    const totFer=soma(x=>["fv","fvd","fv13","fp","fp13"].includes(x.cod));
+    Dd("Férias já pagas","",fPag,"valor informado (férias pagas antecipadamente)");
+    if(fPag&&fPag>totFer+0.004) avisos.push(`As férias já pagas (${A.brl(fPag)}) passam das férias desta rescisão (${A.brl(totFer)}). Confira se o desconto é cabível e o limite do art. 477 §5º.`);
     if(descAviso) Dd("Aviso prévio não cumprido (art. 487 §2º)","30 dias",descAviso,`${A.brl(rem)}`);
     (e.outrosDesc||[]).filter(x=>num(x.valor)).forEach(x=>Dd(x.desc||"Outros descontos","",num(x.valor),"informado"));
 

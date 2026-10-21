@@ -104,4 +104,19 @@ eq('HE abaixo de 50% gera aviso',s.avisos.some(a=>/50%/.test(a)),true);
 let pv=C.simularSalario({salario:'2000'},T).custo;
 eq('provisões: 13º, férias, 1/3, FGTS e multa de 40%',[pv.p13,pv.pFer,pv.pTer,pv.fgtsProv,pv.multa40],[166.67,166.67,55.56,31.11,76.44]);
 eq('custo total inclui a multa de 40%',pv.total,Math.round((2000+160+388.9+31.11+76.44)*100)/100);
+
+// --- opções: sem aviso, sem saldo, 13º e férias já pagos ---
+let r0=C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado'},T);
+let ra=C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado',semAviso:true},T);
+eq('sem aviso: nenhuma verba de aviso e sem projeção',[ra.verbas.some(v=>v.cod==='aviso'),ra.diasInd,ra.proj],[false,0,base.saida]);
+eq('sem aviso: gera aviso sobre a projeção',ra.avisos.some(a=>/projeção/.test(a)),true);
+let rs=C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado',semSaldo:true},T);
+eq('sem saldo: nenhuma verba de saldo',rs.verbas.some(v=>/^saldo/.test(v.cod)),false);
+eq('sem saldo: aviso continua',rs.verbas.some(v=>v.cod==='aviso'),true);
+let v13=r0.verbas.find(v=>v.cod==='13').valor;
+let rd=C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado',adiant13:'500',feriasPagas:'300'},T);
+eq('13º e férias já pagos entram como desconto',[rd.descontos.find(d=>/13º salário já pago/.test(d.desc)).valor,rd.descontos.find(d=>d.desc==='Férias já pagas').valor],[500,300]);
+eq('líquido cai 800',Math.round((r0.liquido-rd.liquido)*100)/100,800);
+let rx=C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado',adiant13:String(v13+1000)},T);
+eq('13º pago acima do devido: desconto limitado',rx.descontos.find(d=>/13º salário já pago/.test(d.desc)).valor,v13);
 console.log(`calculadoras: ${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);

@@ -157,13 +157,16 @@ tr.liq td{font-weight:800;color:var(--red-hi);font-size:1rem}
         <label class="fld full">Motivo<select id="r-mot"></select></label>
         <label class="fld full" id="r-avw">Aviso prévio<select id="r-av"></select></label>
         <label class="fld full" id="r-fimw" hidden>Fim previsto do contrato a prazo<input id="r-fim" type="date"></label>
+        <label class="chk full"><input type="checkbox" id="r-semav"> Não calcular o aviso prévio</label>
+        <label class="chk full"><input type="checkbox" id="r-semsal"> Não calcular o saldo de salário do mês (já pago na folha)</label>
       </div>
       <h3>Férias e 13º</h3>
       <div class="fgrid">
         <label class="fld">Períodos de férias vencidas não gozadas<input id="r-fv" inputmode="numeric" value="0"><small id="r-fvh"></small></label>
         <label class="fld">Desses, quantos já em dobro<input id="r-fd" inputmode="numeric" value="0"><small>período concessivo vencido</small></label>
         <label class="fld">Faltas injustificadas no período atual<input id="r-fal" inputmode="numeric" value="0"><small>reduzem as férias (art. 130)</small></label>
-        <label class="fld">1ª parcela do 13º já paga (R$)<input id="r-ad13" inputmode="decimal"></label>
+        <label class="fld">13º já pago (R$)<input id="r-ad13" inputmode="decimal" placeholder="1ª parcela ou parte já paga"><small>entra como desconto</small></label>
+        <label class="fld">Férias já pagas (R$)<input id="r-fpag" inputmode="decimal" placeholder="férias pagas antecipadamente"><small>entra como desconto</small></label>
       </div>
       <h3>Encargos e FGTS</h3>
       <div class="fgrid">
@@ -288,7 +291,7 @@ function calcRescisao(){
   if(adm&&sai&&sai>=adm){ const n=C.anosCompletos(adm,sai); $("r-fvh").textContent=n?`O contrato tem ${n} período(s) completo(s): informe os que ele ainda não tirou`:"Menos de 1 ano: sem férias vencidas"; } else $("r-fvh").textContent="";
   $("r-insvw").hidden=$("r-insb").value!=="valor";
   const e={salario:$("r-sal").value,medias:$("r-med").value,insal:{grau:$("r-ins").value,base:$("r-insb").value,valorBase:$("r-insv").value},peric:$("r-per").checked,quebra:{tipo:$("r-qct").value,valor:$("r-qcv").value},admissao:adm,saida:sai,motivo:$("r-mot").value,aviso:$("r-av").value,fimContrato:$("r-fim").value,
-    feriasVencidas:$("r-fv").value,feriasDobro:$("r-fd").value,faltas:$("r-fal").value,adiant13:$("r-ad13").value,semInss:!$("r-inss").checked,dependentes:$("r-dep").value,pensao:$("r-pen").value,
+    feriasVencidas:$("r-fv").value,feriasDobro:$("r-fd").value,faltas:$("r-fal").value,adiant13:$("r-ad13").value,feriasPagas:$("r-fpag").value,semAviso:$("r-semav").checked,semSaldo:$("r-semsal").checked,semInss:!$("r-inss").checked,dependentes:$("r-dep").value,pensao:$("r-pen").value,
     saldoFgts:$("r-fgts").value,outrosProv:ler("r-out","ro"),outrosDesc:ler("r-out","rd")};
   if(!C.num(e.salario)||!adm||!sai){ $("r-res").innerHTML='<p class="note">Preencha o salário, a admissão, o último dia trabalhado e o motivo.</p>'; TXT=""; return; }
   const r=C.calcularRescisao(e,T);
