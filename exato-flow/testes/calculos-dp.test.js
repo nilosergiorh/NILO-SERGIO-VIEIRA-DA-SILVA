@@ -119,4 +119,11 @@ eq('13º e férias já pagos entram como desconto',[rd.descontos.find(d=>/13º s
 eq('líquido cai 800',Math.round((r0.liquido-rd.liquido)*100)/100,800);
 let rx=C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado',adiant13:String(v13+1000)},T);
 eq('13º pago acima do devido: desconto limitado',rx.descontos.find(d=>/13º salário já pago/.test(d.desc)).valor,v13);
+
+// --- opção de não calcular o FGTS ---
+let rf=C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado',semFgts:true},T);
+eq('rescisão sem FGTS: mês, multa, guia e saque zerados',[rf.fgts.mes,rf.fgts.multa,rf.fgts.guia,rf.fgts.saque],[0,0,0,0]);
+eq('rescisão sem FGTS: líquido igual',rf.liquido,C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado'},T).liquido);
+let sf=C.simularSalario({salario:'2000',semFgts:true},T);
+eq('salário sem FGTS: FGTS, FGTS das provisões e multa zerados',[sf.fgts,sf.custo.fgtsProv,sf.custo.multa40],[0,0,0]);
 console.log(`calculadoras: ${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);

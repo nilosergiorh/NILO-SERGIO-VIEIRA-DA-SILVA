@@ -82,16 +82,17 @@
     let vt=0; if(e.vt&&e.vt.usa){ vt=r2(sal*0.06); const c=num(e.vt.custo); if(c>0) vt=Math.min(vt,c); }
     const desc=(e.descontos||[]).filter(x=>num(x.valor)).map(x=>({desc:x.desc||"Outros descontos",valor:r2(num(x.valor))}));
     const totDesc=r2(inss+ir.devido+pen+vt+desc.reduce((s,x)=>s+x.valor,0));
-    const fgts=A.trunc(baseTrib*T.fgts.aliquota);
+    const fgts=e.semFgts?0:A.trunc(baseTrib*T.fgts.aliquota);
     // custo mensal para a empresa (estimativa): salário + FGTS + encargos patronais fora do Simples (20% + RAT×FAP + terceiros) + provisões de férias e 13º
     const fora=e.regime==="fora", pat=fora?r2(baseTrib*(0.20+num(e.rat)/100+num(e.terceiros)/100)):0;
     // provisões mensais: 13º = 1/12, férias = 1/12 e 1/3 de férias = 1/36 da remuneração; encargos (FGTS e, fora do Simples, INSS patronal) sobre elas
     const p13=r2(baseTrib/12), pFer=r2(baseTrib/12), pTer=r2(baseTrib/36), prov=r2(p13+pFer+pTer);
-    const fgtsProv=r2(prov*T.fgts.aliquota), patProv=fora?r2(prov*(0.20+num(e.rat)/100+num(e.terceiros)/100)):0, provEnc=r2(fgtsProv+patProv);
+    const fgtsProv=e.semFgts?0:r2(prov*T.fgts.aliquota), patProv=fora?r2(prov*(0.20+num(e.rat)/100+num(e.terceiros)/100)):0, provEnc=r2(fgtsProv+patProv);
     // provisão da multa de 40% do FGTS (só é paga na dispensa sem justa causa; Lei 8.036/1990, art. 18, § 1º): 40% do FGTS do mês e das provisões
     const multa40=r2((fgts+fgtsProv)*0.40);
     if(sal&&sal<sm*hm/220-0.005) avisos.push(`Salário abaixo do mínimo nacional proporcional a ${hm} h (${A.brl(r2(sm*hm/220))}).`);
     if(e.semInss) avisos.push("INSS não calculado (opção marcada): o IRRF foi calculado sem a dedução do INSS.");
+    if(e.semFgts) avisos.push("FGTS não calculado (opção marcada): o custo ficou sem o FGTS do mês, sem o FGTS das provisões e sem a provisão da multa de 40%.");
     if(he.some(x=>x.pct<50)) avisos.push("Hora extra com adicional abaixo de 50% contraria a Constituição (art. 7º, XVI).");
     return {vh:r2(vh),insal,peric,quebra,insTxt:ad.insTxt,qTxt:ad.qTxt,he,noturno:{horas:noth,pct:notp,valor:not},dsr,dias,outrosT,naoT,baseTrib,bruto,inss,ir,dep,pen,vt,desc,totDesc,
       liquido:r2(bruto-totDesc),fgts,custo:{fgts,patronal:pat,provisoes:prov,p13,pFer,pTer,fgtsProv,patProv,encProv:provEnc,multa40,total:r2(bruto+fgts+pat+prov+provEnc+multa40)},avisos};
@@ -214,16 +215,17 @@
     if(liquido<0){ avisos.push("Os descontos passam das verbas: o desconto na rescisão é limitado a um salário (art. 477 §5º). Confira."); }
 
     // FGTS: mês rescisório (saldo, aviso indenizado, 13º e outros) e multa sobre todos os depósitos do contrato
-    const baseF=soma(x=>x.inc.fgts), fgtsMes=A.trunc(baseF*T.fgts.aliquota);
+    const baseF=soma(x=>x.inc.fgts), fgtsMes=e.semFgts?0:A.trunc(baseF*T.fgts.aliquota);
     const informado=num(e.saldoFgts)>0;
     const mesesContrato=tempo.meses+(tempo.dias>=15?1:0);
     const saldoF=informado?r2(num(e.saldoFgts)):r2(fixo*T.fgts.aliquota*mesesContrato*13/12);
-    const pctMulta=["sem_justa","indireta","antecipada_emp"].includes(mot)?0.40:mot==="acordo"?0.20:0;
+    const pctMulta=e.semFgts?0:["sem_justa","indireta","antecipada_emp"].includes(mot)?0.40:mot==="acordo"?0.20:0;
     const multa=r2((saldoF+fgtsMes)*pctMulta);
-    const saque={sem_justa:1,indireta:1,antecipada_emp:1,termino:1,acordo:0.8}[mot]||0;
+    const saque=e.semFgts?0:{sem_justa:1,indireta:1,antecipada_emp:1,termino:1,acordo:0.8}[mot]||0;
     const fgts={base:baseF,mes:fgtsMes,saldo:saldoF,saldoInformado:informado,mesesContrato,pctMulta,multa,
-      saque:saque?r2((saldoF+fgtsMes)*saque+multa):0,baseEstimativa:fixo,saquePct:saque,guia:r2(fgtsMes+multa)};
-    if(!informado) avisos.push(`Saldo do FGTS estimado (8% da remuneração fixa atual, ${A.brl(fixo)}, × ${mesesContrato} meses × 13/12). Para o valor certo da multa, use o saldo para fins rescisórios do extrato do FGTS Digital.`);
+      saque:saque?r2((saldoF+fgtsMes)*saque+multa):0,baseEstimativa:fixo,saquePct:saque,guia:r2(fgtsMes+multa),naoCalculado:!!e.semFgts};
+    if(e.semFgts) avisos.push("FGTS não calculado (opção marcada): sem depósito do mês, sem multa rescisória e sem saque nesta simulação.");
+    else if(!informado) avisos.push(`Saldo do FGTS estimado (8% da remuneração fixa atual, ${A.brl(fixo)}, × ${mesesContrato} meses × 13/12). Para o valor certo da multa, use o saldo para fins rescisórios do extrato do FGTS Digital.`);
     if(e.semInss) avisos.push("INSS não calculado (opção marcada): o IRRF foi calculado sem a dedução do INSS. Use quando o INSS já foi retido em outra folha ou não se aplica ao caso.");
     if(fixo>sal) avisos.push(`Remuneração usada no aviso, no 13º e nas férias: ${A.brl(rem)} (salário${ad.insal?" + insalubridade":""}${ad.peric?" + periculosidade":""}${ad.quebra?" + quebra de caixa":""}${med?" + médias":""}).`);
     if(med) avisos.push("Médias de variáveis entram no aviso, nas férias e no 13º; o saldo de salário usa só o salário fixo (lance variáveis do mês em outros proventos).");

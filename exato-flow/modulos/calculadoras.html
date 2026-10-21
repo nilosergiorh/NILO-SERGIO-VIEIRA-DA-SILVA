@@ -121,6 +121,7 @@ tr.liq td{font-weight:800;color:var(--red-hi);font-size:1rem}
       <h3>Descontos</h3>
       <div class="fgrid">
         <label class="chk full"><input type="checkbox" id="s-inss" checked> Calcular INSS</label>
+        <label class="chk full"><input type="checkbox" id="s-fgts" checked> Calcular FGTS</label>
         <label class="fld">Dependentes para IR<input id="s-dep" inputmode="numeric" value="0"></label>
         <label class="fld">Pensão alimentícia (R$)<input id="s-pen" inputmode="decimal"></label>
         <label class="chk"><input type="checkbox" id="s-vt"> Vale-transporte (6%)</label>
@@ -171,6 +172,7 @@ tr.liq td{font-weight:800;color:var(--red-hi);font-size:1rem}
       <h3>Encargos e FGTS</h3>
       <div class="fgrid">
         <label class="chk full"><input type="checkbox" id="r-inss" checked> Calcular INSS</label>
+        <label class="chk full"><input type="checkbox" id="r-fgtsc" checked> Calcular FGTS</label>
         <label class="fld">Dependentes para IR<input id="r-dep" inputmode="numeric" value="0"></label>
         <label class="fld">Pensão alimentícia (R$)<input id="r-pen" inputmode="decimal"></label>
         <label class="fld full">Saldo do FGTS para fins rescisórios (R$)<input id="r-fgts" inputmode="decimal" placeholder="do extrato do FGTS Digital; vazio = estimativa"></label>
@@ -226,7 +228,7 @@ function calcSalario(){
   document.querySelectorAll(".s-fora").forEach(x=>x.hidden=$("s-reg").value!=="fora");
   const e={salario:$("s-sal").value,horasMes:$("s-hm").value,insal:{grau:$("s-ins").value,base:$("s-insb").value,valorBase:$("s-insv").value},peric:$("s-per").checked,quebra:{tipo:$("s-qct").value,valor:$("s-qcv").value},
     he:ler("s-he","he"),noturno:{horas:$("s-noth").value,pct:$("s-notp").value},comp:$("s-comp").value,feriados:$("s-fer").value,
-    outrosTrib:ler("s-out","o"),naoTrib:ler("s-out","n"),semInss:!$("s-inss").checked,dependentes:$("s-dep").value,pensao:$("s-pen").value,vt:{usa:$("s-vt").checked,custo:$("s-vtc").value},
+    outrosTrib:ler("s-out","o"),naoTrib:ler("s-out","n"),semInss:!$("s-inss").checked,semFgts:!$("s-fgts").checked,dependentes:$("s-dep").value,pensao:$("s-pen").value,vt:{usa:$("s-vt").checked,custo:$("s-vtc").value},
     descontos:ler("s-desc","d"),regime:$("s-reg").value,rat:$("s-rat").value,terceiros:$("s-ter").value};
   if(!C.num(e.salario)){ $("s-res").innerHTML='<p class="note">Digite o salário base para ver o holerite simulado.</p>'; TXT=""; return; }
   const r=C.simularSalario(e,T), quem=$("s-quem").value.trim();
@@ -291,7 +293,7 @@ function calcRescisao(){
   if(adm&&sai&&sai>=adm){ const n=C.anosCompletos(adm,sai); $("r-fvh").textContent=n?`O contrato tem ${n} período(s) completo(s): informe os que ele ainda não tirou`:"Menos de 1 ano: sem férias vencidas"; } else $("r-fvh").textContent="";
   $("r-insvw").hidden=$("r-insb").value!=="valor";
   const e={salario:$("r-sal").value,medias:$("r-med").value,insal:{grau:$("r-ins").value,base:$("r-insb").value,valorBase:$("r-insv").value},peric:$("r-per").checked,quebra:{tipo:$("r-qct").value,valor:$("r-qcv").value},admissao:adm,saida:sai,motivo:$("r-mot").value,aviso:$("r-av").value,fimContrato:$("r-fim").value,
-    feriasVencidas:$("r-fv").value,feriasDobro:$("r-fd").value,faltas:$("r-fal").value,adiant13:$("r-ad13").value,feriasPagas:$("r-fpag").value,semAviso:$("r-semav").checked,semSaldo:$("r-semsal").checked,semInss:!$("r-inss").checked,dependentes:$("r-dep").value,pensao:$("r-pen").value,
+    feriasVencidas:$("r-fv").value,feriasDobro:$("r-fd").value,faltas:$("r-fal").value,adiant13:$("r-ad13").value,feriasPagas:$("r-fpag").value,semAviso:$("r-semav").checked,semSaldo:$("r-semsal").checked,semInss:!$("r-inss").checked,semFgts:!$("r-fgtsc").checked,dependentes:$("r-dep").value,pensao:$("r-pen").value,
     saldoFgts:$("r-fgts").value,outrosProv:ler("r-out","ro"),outrosDesc:ler("r-out","rd")};
   if(!C.num(e.salario)||!adm||!sai){ $("r-res").innerHTML='<p class="note">Preencha o salário, a admissão, o último dia trabalhado e o motivo.</p>'; TXT=""; return; }
   const r=C.calcularRescisao(e,T);
@@ -314,21 +316,21 @@ function calcRescisao(){
     <div class="tbox"><table><thead><tr><th>FGTS</th><th>Cálculo</th><th class="n">Valor</th></tr></thead><tbody>
       <tr><td>Depósito do mês rescisório</td><td>8% × ${b2(f.base)} (saldo, aviso indenizado, 13º)</td><td class="n">${b2(f.mes)}</td></tr>
       <tr><td>Saldo do FGTS do contrato${f.saldoInformado?"":" <small>estimado</small>"}</td><td>${f.saldoInformado?"informado (extrato)":`8% × ${b2(f.baseEstimativa)} × ${f.mesesContrato} meses × 13/12`}</td><td class="n">${b2(f.saldo)}</td></tr>
-      <tr><td>Multa rescisória</td><td>${f.pctMulta?`${f.pctMulta*100}% × (saldo + depósito do mês)`:"não há multa neste motivo"}</td><td class="n">${b2(f.multa)}</td></tr>
+      <tr><td>Multa rescisória</td><td>${f.naoCalculado?"FGTS não calculado (opção marcada)":f.pctMulta?`${f.pctMulta*100}% × (saldo + depósito do mês)`:"não há multa neste motivo"}</td><td class="n">${b2(f.multa)}</td></tr>
       <tr class="tot"><td>Guia rescisória (FGTS Digital)</td><td>depósito do mês + multa</td><td class="n">${b2(f.guia)}</td></tr>
       <tr><td>O empregado pode sacar</td><td>${f.saquePct?(f.saquePct<1?"até 80% do saldo + multa (acordo)":"saldo + depósito do mês + multa"):"não há saque neste motivo"}</td><td class="n">${b2(f.saque)}</td></tr></tbody></table></div>
     <p class="note"><b>Prazo de pagamento:</b> até ${fmt(r.prazo)} (10 dias do término, art. 477 §6º); atraso gera multa de um salário (art. 477 §8º). Aviso indenizado e férias indenizadas não têm INSS nem IRRF; o 13º tem INSS e IRRF calculados à parte. Simulação: confira CCT, médias, estabilidades e o saldo do FGTS antes do TRCT.</p>
     <ul class="avisos">${r.avisos.map(a=>`<li>${esc(a)}</li>`).join("")}</ul>`);
   TXT=[`*Simulação de rescisão*${quem?" – "+quem:""}`,`${r.motivo}`,`Admissão ${fmt(e.admissao)} · último dia ${fmt(e.saida)}${r.avisoTxt?"\n"+r.avisoTxt:""}`,"",
     ...r.verbas.map(v=>`${v.desc} (${v.ref}): R$ ${b2(v.valor)}`),`*Bruto: R$ ${b2(r.bruto)}*`,...r.descontos.map(v=>`(−) ${v.desc}: R$ ${b2(v.valor)}`),`*Líquido: R$ ${b2(r.liquido)}*`,"",
-    `FGTS: depósito do mês R$ ${b2(f.mes)} · multa R$ ${b2(f.multa)}${f.saldoInformado?"":" (saldo estimado)"}`,f.saquePct?`Saque do FGTS: R$ ${b2(f.saque)}`:"Sem saque do FGTS neste motivo",`Pagamento até ${fmt(r.prazo)}`,"",
+    ...(f.naoCalculado?["FGTS: não calculado nesta simulação"]:[`FGTS: depósito do mês R$ ${b2(f.mes)} · multa R$ ${b2(f.multa)}${f.saldoInformado?"":" (saldo estimado)"}`,f.saquePct?`Saque do FGTS: R$ ${b2(f.saque)}`:"Sem saque do FGTS neste motivo"]),`Pagamento até ${fmt(r.prazo)}`,"",
     `Simulação com as tabelas de ${$("r-ano").value}; valores finais dependem da CCT e dos documentos. Exato Soluções Contábeis.`].join("\n");
   PDFDOC={titulo:"Simulação de rescisão",nome:"Simulacao_rescisao",quem,ano:$("r-ano").value,
     intro:[`${r.motivo} · admissão ${fmt(e.admissao)} · último dia ${fmt(e.saida)}${r.avisoTxt?" · "+r.avisoTxt:""}${r.diasInd?" · data projetada "+fmt(r.proj):""}`,`Remuneração para aviso, 13º e férias: ${brl(r.rem)}`],
     kpis:[[b2(r.bruto),"total bruto"],[b2(r.liquido),"líquido a receber","ok"],[b2(f.guia),"FGTS (mês + multa)"],[b2(r.custo),"desembolso da empresa"]],
     tabelas:[["Verbas",r.verbas.map(v=>[v.desc,v.ref,b2(v.valor)]).concat([["Total bruto","",b2(r.bruto),{negrito:true}]])],
       ["Descontos",(r.descontos.length?r.descontos.map(v=>[v.desc,v.ref,"− "+b2(v.valor)]):[["Sem descontos","",""]]).concat([["Total de descontos","","− "+b2(r.totDesc),{negrito:true}],["Líquido a receber","",b2(r.liquido),{negrito:true,cor:"ok"}]])],
-      ["FGTS",[["Depósito do mês rescisório",`8% × ${b2(f.base)}`,b2(f.mes)],["Saldo do FGTS do contrato",f.saldoInformado?"informado (extrato)":"estimado",b2(f.saldo)],["Multa rescisória",f.pctMulta?`${f.pctMulta*100}% × (saldo + mês)`:"não há multa",b2(f.multa)],["Guia rescisória (FGTS Digital)","mês + multa",b2(f.guia),{negrito:true}],["O empregado pode sacar",f.saquePct?(f.saquePct<1?"até 80% + multa":"saldo + mês + multa"):"sem saque",b2(f.saque)]]]],
+      ["FGTS",[["Depósito do mês rescisório",`8% × ${b2(f.base)}`,b2(f.mes)],["Saldo do FGTS do contrato",f.saldoInformado?"informado (extrato)":"estimado",b2(f.saldo)],["Multa rescisória",f.naoCalculado?"não calculado":f.pctMulta?`${f.pctMulta*100}% × (saldo + mês)`:"não há multa",b2(f.multa)],["Guia rescisória (FGTS Digital)","mês + multa",b2(f.guia),{negrito:true}],["O empregado pode sacar",f.saquePct?(f.saquePct<1?"até 80% + multa":"saldo + mês + multa"):"sem saque",b2(f.saque)]]]],
     notas:[`Prazo de pagamento: até ${fmt(r.prazo)} (art. 477, § 6º, da CLT); atraso gera multa de um salário (§ 8º).`,"Aviso e férias indenizados não têm INSS nem IRRF; o 13º tem INSS e IRRF à parte.","Simulação: confira CCT, médias, estabilidades e o saldo do FGTS antes do TRCT.",...r.avisos]};
 }
 function calcular(){ ABA==="sal"?calcSalario():calcRescisao(); }
