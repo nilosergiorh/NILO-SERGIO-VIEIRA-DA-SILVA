@@ -299,7 +299,7 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
       <h6>Cadastro</h6>
       <button class="nav" type="button" data-go="diagnostico">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6v3H9z"/><path d="M7 4.5H5.5V21h13V4.5H17"/><path d="m8.5 13 2 2 4.5-4.5"/></svg>
-        <span class="t"><b>Diagnóstico</b><small>Clientes novos e prospects</small></span>
+        <span class="t"><b>Diagnóstico</b><small>Clientes novos e prospects</small></span><span class="badge" id="b-diag" hidden></span>
       </button>
       <button class="nav" type="button" data-go="clientes">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6"/><path d="M17.5 14.3c1.6.6 2.7 2.2 3 4.7"/></svg>
@@ -403,6 +403,7 @@ td.pd small{color:var(--mute);font:500 10.5px var(--f-mono)}
 
 <script src="nucleo/flow-dados.js" charset="utf-8"></script>
 <script src="nucleo/sst.js" charset="utf-8"></script>
+<script src="nucleo/fichas-email.js" charset="utf-8"></script>
 <script src="nucleo/agenda-dp.js" charset="utf-8"></script>
 <script>
 // ---------- navegação ----------
@@ -489,8 +490,16 @@ function assinarPonto(){
   if(!S.db) return;
   try{ S.pararPonto=S.db.collection("ponto").where("comp","==",S.comp).onSnapshot(sn=>{ S.ponto=sn.docs.map(d=>({_id:d.id,status:(d.data()||{}).status,cnpj:(d.data()||{}).cnpj})); agendar(); },()=>{}); }catch(e){}
 }
+// fichas de início que chegaram por e-mail (conector Gmail): confere ao abrir e a cada 30 minutos
+let FICHAS=null, fichasIni=false;
+async function checarFichas(){
+  try{ const E=F&&F.estado; if(!window.FichasEmail||!E||!E.db||!E.pronto.diagnosticos) return;
+    const mcp=await F.use("mcp"); if(!mcp) return;
+    FICHAS=await FichasEmail.novas(mcp,E.db,E.diagnosticos||[]); agendar(); }catch(e){ /* sem Gmail: o aviso só não aparece */ }
+}
+window.addEventListener("message",e=>{ if(e.origin===location.origin&&e.data&&e.data.flow==="fichas") checarFichas(); });
 if(F){
-  F.assinar(()=>agendar());
+  F.assinar(()=>{ agendar(); if(!fichasIni&&F.estado&&F.estado.db&&F.estado.pronto.diagnosticos){ fichasIni=true; checarFichas(); setInterval(checarFichas,30*60*1000); } });
   F.conectar().then(db=>{
     if(!db){ S.base="off"; agendar(); return; }
     S.db=db; S.base="on";
@@ -728,6 +737,10 @@ function listaAlertas(x){
   const diags=[]; for(const c of ((EE&&EE.clientes)||[]).filter(c=>F.ativo(c))){ const d=F.diagDoCliente&&F.diagDoCliente(c); if(d) diags.push({c,d,r:F.diagRevisao(d)}); }
   const rev=diags.filter(x=>x.r.vencida).sort((a,b)=>b.r.dias-a.r.dias);
   if(rev.length) add("warn","Diagnóstico para revisar",`${rev.slice(0,3).map(x=>`<b>${esc(x.c.fant||x.c.nome)}</b> (há ${x.r.dias} dias)`).join(", ")}${rev.length>3?` e mais ${rev.length-3}`:""}: diagnóstico de DP sem revisão há mais de ${F.DIAG_REVISAO_DIAS} dias.`,"diagnostico","Revisar no Diagnóstico");
+  // fichas de início novas no e-mail, ainda sem diagnóstico
+  const nf=(FICHAS||[]).filter(f=>!((EE&&EE.diagnosticos)||[]).some(d=>d.email_id===f.id));
+  if(nf.length) add("warn","Ficha de início nova",`${nf.slice(0,3).map(f=>`<b>${esc(f.empresa||"Empresa sem nome")}</b> (${esc(FichasEmail.fmtData(f.data))})`).join(", ")}${nf.length>3?` e mais ${nf.length-3}`:""}: chegou por e-mail e ainda não tem diagnóstico.`,"diagnostico","Importar no Diagnóstico");
+  { const b=document.getElementById("b-diag"); if(b){ b.textContent=nf.length; b.hidden=!nf.length; } }
   // SST: documentos vencidos, faltando ou vencendo (clientes ativos com empregados)
   if(window.SST){ const hj=new Date().toISOString().slice(0,10), sv=[];
     for(const c of ((EE&&EE.clientes)||[]).filter(c=>F.ativo(c)&&!F.semEmpregados(c))){ const r=SST.resumo(F.sstDoCliente(c),hj,false); if(["vencido","falta","vence"].includes(r.pior)) sv.push({c,r}); }

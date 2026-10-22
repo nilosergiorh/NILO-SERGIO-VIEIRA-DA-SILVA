@@ -138,6 +138,12 @@ ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.9rem}
   </div>
   <div class="banner" id="aviso" hidden></div>
 
+  <section class="card no-print" id="caixa">
+    <div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Fichas recebidas no e-mail</h2><button class="btn ghost sm" type="button" id="btnCaixa">Verificar e-mail agora</button></div>
+    <p class="note" id="cx-st">Procurando fichas novas no Gmail…</p>
+    <div id="cx-lista" style="display:grid;gap:8px"></div>
+  </section>
+
   <section class="card" id="novo" hidden>
     <h2>Novo diagnóstico</h2>
     <p class="note">Copie o texto do e-mail do Netlify (campo “respostas”) ou da mensagem de WhatsApp do cliente, começando em “RESPOSTAS DA FICHA DE INÍCIO”, e cole abaixo. Se vier o código <span class="mono">#EXATO-FICHA</span> no fim, a leitura é exata.</p>
@@ -197,6 +203,7 @@ ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.9rem}
 <script src="../nucleo/flow-dados.js" charset="utf-8"></script>
 <script src="../nucleo/folha-auditoria.js" charset="utf-8"></script>
 <script src="../nucleo/diagnostico.js" charset="utf-8"></script>
+<script src="../nucleo/fichas-email.js" charset="utf-8"></script>
 <script>
 "use strict";
 const F=window.FlowDados, D=window.Diagnostico;
@@ -221,6 +228,7 @@ function ouvirLista(){
     if(v&&S.lista.some(d=>d._id===v)) sel.value=v;
     if(!S.id&&S.pend&&S.lista.some(d=>d._id===S.pend)&&S.E&&S.E.pronto.clientes){ const id=S.pend; S.pend=null; sel.value=id; abrir(id); }
     if(S.id){ const d=S.lista.find(x=>x._id===S.id); if(d&&!S.editando) { S.doc=d; render(); } }
+    if(!S.cxIni){ S.cxIni=true; verificarEmail(false); } else if(S.fichas) pintarFichas();
   },()=>setSync("err","Erro ao ler"));
 }
 function abrir(id){
@@ -337,13 +345,50 @@ async function gerar(){
   const R=D.diagnosticar(txt,ctxDe({},{}));
   const ref=S.db.collection("diagnosticos").doc(), f0=await foto(R,{},"criação");
   try{
-    await ref.set({texto:txt,tipo:$("n-tipo").value,origem:$("n-orig").value.trim(),empresa:L.v.razao||"",cnpj:L.v.cnpj||"",cidade:L.v.cidade||"",
+    const cli=dg&&(S.E&&S.E.clientes||[]).find(c=>F.digitos(c.cnpj)===dg);
+    await ref.set({texto:txt,tipo:cli?"Cliente":$("n-tipo").value,...(cli?{cliente_id:cli._id}:{}),email_id:S.emailId||"",origem:$("n-orig").value.trim(),empresa:L.v.razao||"",cnpj:L.v.cnpj||"",cidade:L.v.cidade||"",
       comp:{},feitos:{},notas:{},nota:R.nota.valor,contagem:{alta:R.nota.alta,media:R.nota.media,conf:R.nota.conf,ok:R.nota.ok},criado_em:f0.em,hist:[f0],revisado_em:f0.em,...(await F.carimbo())});
     $("novo").hidden=true; $("n-txt").value=""; $("n-orig").value=""; $("n-st").textContent="";
-    S.id=ref.id; S.lista.push({_id:ref.id,texto:txt,tipo:$("n-tipo").value,empresa:L.v.razao,cnpj:L.v.cnpj,comp:{},feitos:{},criado_em:new Date().toISOString()});
+    S.id=ref.id; S.lista.push({_id:ref.id,texto:txt,tipo:cli?"Cliente":$("n-tipo").value,email_id:S.emailId||"",...(cli?{cliente_id:cli._id}:{}),empresa:L.v.razao,cnpj:L.v.cnpj,comp:{},feitos:{},criado_em:new Date().toISOString()});
     abrir(ref.id); $("sel").value=ref.id; toast("Diagnóstico gerado e salvo.");
   }catch(e){ toast("Não foi possível salvar o diagnóstico."); }
 }
+// ---------- fichas que chegaram por e-mail (conector Gmail) ----------
+const FE=window.FichasEmail;
+const ERR_MCP={server_not_connected:"O conector Gmail não está conectado na sua conta do claude.ai (Configurações › Conectores).",not_granted:"Você não autorizou o Flow a ler o Gmail. Clique em Verificar e-mail agora e aprove.",needs_reauth:"Reconecte o Gmail em Configurações › Conectores do claude.ai.",rate_limited:"Muitas consultas seguidas ao Gmail. Tente de novo em alguns minutos.",approval_required:"O Gmail pediu aprovação: clique em Verificar e-mail agora e aprove."};
+async function verificarEmail(manual){
+  if(!FE||!S.db) return;
+  const st=$("cx-st"), box=$("cx-lista"); st.textContent="Procurando fichas novas no Gmail…";
+  const mcp=await F.use("mcp");
+  if(!mcp){ st.textContent="A leitura do e-mail não está disponível nesta visualização. Abra o Exato Flow pelo claude.ai."; box.innerHTML=""; return; }
+  try{
+    S.fichas=await FE.novas(mcp,S.db,S.lista); S.fichasEm=new Date();
+    pintarFichas();
+  }catch(e){ st.textContent=ERR_MCP[e&&e.code]||"Não consegui ler o Gmail agora."+(manual?" Tente de novo.":""); box.innerHTML=""; }
+}
+function pintarFichas(){
+  const L=(S.fichas||[]).filter(f=>!S.lista.some(d=>d.email_id===f.id)), st=$("cx-st"), box=$("cx-lista");
+  const hora=S.fichasEm?S.fichasEm.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):"";
+  st.innerHTML=L.length?`<b>${L.length} ficha${L.length>1?"s":""} nova${L.length>1?"s":""}</b> no e-mail, ainda sem diagnóstico. Verificado às ${hora}.`:`Nenhuma ficha nova no e-mail. Verificado às ${hora}.`;
+  box.innerHTML=L.map(f=>{ const c=F.digitos(f.cnpj)&&(S.E&&S.E.clientes||[]).find(x=>F.digitos(x.cnpj)===F.digitos(f.cnpj));
+    return `<div class="row" style="justify-content:space-between;gap:10px;border:1px solid var(--line,#ddd);border-radius:10px;padding:10px 12px">
+    <div><b>${esc(f.empresa||"Empresa sem nome")}</b><div class="meta">${esc(f.cnpj||"sem CNPJ")} · recebida em ${esc(FE.fmtData(f.data))}${c?` · já é cliente (${esc(c.fant||c.nome)}${c.cod?", cód. "+esc(c.cod):""})`:""}</div></div>
+    <div class="row"><button class="btn sm" type="button" data-imp="${esc(f.id)}">Importar e gerar diagnóstico</button><button class="btn ghost sm" type="button" data-ign="${esc(f.id)}">Ignorar</button></div></div>`; }).join("");
+  try{ window.parent!==window&&window.parent.postMessage({flow:"fichas",novas:L.length},location.origin); }catch(e){}
+}
+$("btnCaixa").onclick=()=>verificarEmail(true);
+$("cx-lista").addEventListener("click",async e=>{
+  const bi=e.target.closest("[data-imp]"), bg=e.target.closest("[data-ign]");
+  if(bi){ bi.disabled=true; bi.textContent="Importando…";
+    try{ const mcp=await F.use("mcp"), f=(S.fichas||[]).find(x=>x.id===bi.dataset.imp), txt=await FE.texto(mcp,bi.dataset.imp);
+      $("n-txt").value=txt; $("n-orig").value=`Ficha de Início (e-mail Netlify de ${f&&f.data?new Date(f.data).toLocaleDateString("pt-BR"):"—"})`; $("n-tipo").value="Cliente novo";
+      S.emailId=bi.dataset.imp; await gerar(); }
+    catch(er){ toast(ERR_MCP[er&&er.code]||"Não consegui abrir esse e-mail."); }
+    finally{ S.emailId=null; pintarFichas(); } }
+  if(bg){ if(!confirm("Ignorar esta ficha? Ela deixa de aparecer como nova (o e-mail continua no Gmail).")) return;
+    try{ await FE.ignorar(S.db,bg.dataset.ign,(await F.carimbo()).upd_by); S.fichas=(S.fichas||[]).filter(x=>x.id!==bg.dataset.ign); pintarFichas(); toast("Ficha ignorada."); }
+    catch(er){ toast("Não foi possível ignorar agora."); } }
+});
 // ---------- converter em cliente ----------
 async function cadastrarCliente(){
   const d=S.doc; if(!d||!S.db) return;
@@ -507,7 +552,7 @@ window.addEventListener("message",e=>{ if(e.origin!==location.origin||!e.data||e
   const id=e.data.diag; if(S.lista.some(d=>d._id===id)){ $("sel").value=id; abrir(id); $("area").scrollIntoView({block:"start"}); } else S.pend=id; });
 F.assinar(est=>{
   S.E=est;
-  if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }
+  if(est.erro==="sem_base"){ setSync("err","Sem conexão"); $("cx-st").textContent="Sem conexão com a base: a busca de fichas no e-mail não roda nesta visualização."; $("aviso").hidden=false; $("aviso").textContent="Não foi possível conectar à base. Abra o Exato Flow pelo link do claude.ai com sua conta da organização."; return; }
   if(est.db&&!S.db){ S.db=est.db; ouvirLista(); }
   if(est.pronto.clientes){ setSync("on","Sincronizado");
     if(!S.id&&S.pend===undefined){ try{ S.pend=localStorage.getItem("flow.diag.sel")||null; }catch(e){ S.pend=null; }
