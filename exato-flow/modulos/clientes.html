@@ -579,19 +579,37 @@ async function salvarArquivo(nome,blob){
   if(!dl){ toast("Download indisponível nesta visualização. Abra o Flow pelo link do claude.ai."); return false; }
   await dl.save({filename:nome,data:blob}); toast("Arquivo salvo: "+nome); return true;
 }
+// regime para o relatório: o do cadastro; sem ele, o que o Extrato Mensal indicou (gravado nas observações de DP)
+function regimeRel(c){
+  const o=String(c.dp_obs||"");
+  if(c.dp_regime) return {rot:c.dp_regime+(/deduzido do Extrato/i.test(o)?" (deduzido do extrato)":""),grupo:c.dp_regime,alerta:/pode ser do Anexo IV/i.test(o)};
+  if(/INSS patronal de 20%/i.test(o)) return {rot:"A confirmar: recolhe INSS patronal de 20%",grupo:"A confirmar (INSS patronal de 20%)",alerta:false};
+  return {rot:"Não informado",grupo:"Regime não informado",alerta:false};
+}
+const ORDEM_REG=["Simples Nacional","MEI","Lucro Presumido","Lucro Real","A confirmar (INSS patronal de 20%)","Imune / isenta","Pessoa física / CAEPF","Regime não informado"];
 async function relProlabore(fmt,btn){
   if(!E.pronto.clientes){ toast("O cadastro ainda está carregando."); return; }
   const L=listaProlabore(), hoje=new Date().toLocaleDateString("pt-BR"), dia=new Date().toISOString().slice(0,10);
   if(!L.length){ toast("Nenhum cliente ativo com tipo de folha “Só pró-labore”."); return; }
-  const socios=L.reduce((s,c)=>s+(parseInt(c.dp_prolab)||0),0), semReg=L.filter(c=>!c.dp_regime).length;
+  L.forEach(c=>c._reg=regimeRel(c));
+  const socios=L.reduce((s,c)=>s+(parseInt(c.dp_prolab)||0),0);
+  const grupos={}; L.forEach(c=>(grupos[c._reg.grupo]=grupos[c._reg.grupo]||[]).push(c));
+  const nomesG=Object.keys(grupos).sort((a,b)=>(ORDEM_REG.indexOf(a)+1||99)-(ORDEM_REG.indexOf(b)+1||99));
+  const alertas=L.filter(c=>c._reg.alerta);
+  const nSimples=(grupos["Simples Nacional"]||[]).length, nConf=L.length-nSimples-(grupos["Imune / isenta"]||[]).length;
   const tx=btn.textContent; btn.disabled=true; btn.textContent="Gerando…";
   try{
     if(fmt==="xlsx"){
       if(!window.XLSX){ toast("O gerador de planilha não carregou. Recarregue a página."); return; }
-      const linhas=L.map(c=>({"Cód.":parseInt(c.cod)||c.cod||"","Razão social":c.nome||"","Nome fantasia":c.fant||"","CNPJ":F.fmtCnpj(c.cnpj)||"","Município":c.mun||"",
-        "Regime":c.dp_regime||"","Sócios com pró-labore":c.dp_prolab===""||c.dp_prolab==null?"":+c.dp_prolab,"Observações de DP":c.dp_obs||""}));
-      const ws=XLSX.utils.json_to_sheet(linhas); ws["!cols"]=[{wch:7},{wch:46},{wch:30},{wch:20},{wch:22},{wch:18},{wch:12},{wch:70}];
-      const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Só pró-labore");
+      const ord=nomesG.flatMap(g=>grupos[g]);
+      const linhas=ord.map(c=>({"Cód.":parseInt(c.cod)||c.cod||"","Razão social":c.nome||"","Nome fantasia":c.fant||"","CNPJ":F.fmtCnpj(c.cnpj)||"","Município":c.mun||"",
+        "Regime":c._reg.rot,"Atenção":c._reg.alerta?"Possível Anexo IV com INSS patronal zerado: conferir":"","Sócios com pró-labore":c.dp_prolab===""||c.dp_prolab==null?"":+c.dp_prolab,"Observações de DP":c.dp_obs||""}));
+      const ws=XLSX.utils.json_to_sheet(linhas); ws["!cols"]=[{wch:7},{wch:46},{wch:30},{wch:20},{wch:22},{wch:40},{wch:44},{wch:12},{wch:90}];
+      ws["!autofilter"]={ref:"A1:I"+(linhas.length+1)};
+      const res=nomesG.map(g=>({"Regime":g,"Empresas":grupos[g].length,"Sócios com pró-labore":grupos[g].reduce((s,c)=>s+(parseInt(c.dp_prolab)||0),0)}));
+      res.push({"Regime":"TOTAL","Empresas":L.length,"Sócios com pró-labore":socios});
+      const ws2=XLSX.utils.json_to_sheet(res); ws2["!cols"]=[{wch:40},{wch:10},{wch:22}];
+      const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Só pró-labore"); XLSX.utils.book_append_sheet(wb,ws2,"Resumo por regime");
       const buf=XLSX.write(wb,{bookType:"xlsx",type:"array"});
       await salvarArquivo(`Empresas_so_prolabore_${dia}.xlsx`,new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
       return;
@@ -599,12 +617,22 @@ async function relProlabore(fmt,btn){
     if(!window.PdfRel||!window.PDFLib){ toast("O gerador de PDF não carregou. Confira a internet e recarregue a página."); return; }
     const r=await PdfRel.criar({titulo:"Empresas com folha só de pró-labore",sub:"Clientes · "+hoje,rodape:"Exato Flow – cadastro de clientes"});
     r.h1("Empresas com folha só de pró-labore");
-    r.p(`Clientes ativos cujo tipo de folha é “Só pró-labore” (sem empregados CLT) · gerado em ${hoje}`,{cor:"suave",tam:8.5,depois:6});
-    r.kpis([[String(L.length),"empresas"],[String(socios),"sócios com pró-labore"],[String(semReg),"sem regime informado",semReg?"media":"ok"]]);
-    r.h2("Relação");
-    r.tabela(["Cód. · Razão social","CNPJ · Município · Regime","Sócios"],
-      L.map(c=>[`${c.cod||"—"} · ${c.nome||""}`,[F.fmtCnpj(c.cnpj)||"sem CNPJ",c.mun||"",c.dp_regime||"regime?"].filter(Boolean).join(" · "),c.dp_prolab===""||c.dp_prolab==null?"—":String(c.dp_prolab)]));
-    r.p("Fonte: tipo de folha do cadastro de clientes (atualizado pelo Extrato Mensal do Domínio). Confira no Domínio antes de usar em cobrança ou obrigações.",{cor:"suave",tam:8});
+    r.p(`Clientes ativos cujo tipo de folha é “Só pró-labore” (sem empregados CLT), separados por regime tributário · gerado em ${hoje}`,{cor:"suave",tam:8.5,depois:6});
+    r.kpis([[String(L.length),"empresas"],[String(socios),"sócios com pró-labore"],[String(nSimples),"Simples Nacional","ok"],[String(nConf),"regime a confirmar",nConf?"media":"ok"]]);
+    r.h2("Resumo por regime");
+    r.tabela(["Regime","Empresas","Sócios"],nomesG.map(g=>[g,String(grupos[g].length),String(grupos[g].reduce((s,c)=>s+(parseInt(c.dp_prolab)||0),0))]).concat([["Total",String(L.length),String(socios),{negrito:true}]]));
+    if(alertas.length){
+      r.h2("Atenção: possível Anexo IV com INSS patronal zerado");
+      r.p("A atividade destas empresas costuma ser do Anexo IV do Simples, em que o INSS patronal de 20% sobre o pró-labore é recolhido fora do DAS (LC 123/2006, art. 18, § 5º-C). No extrato saiu zerado. Conferir o anexo no PGDAS-D e a parametrização no Domínio.",{tam:8.5});
+      r.tabela(["Cód. · Razão social","CNPJ · CNAE","Sócios"],alertas.map(c=>[`${c.cod||"—"} · ${c.nome||""}`,`${F.fmtCnpj(c.cnpj)||""} · ${c.cnae||""}`,String(c.dp_prolab??"—"),{cor:"alta"}]));
+    }
+    for(const g of nomesG){
+      r.h2(`${g} (${grupos[g].length})`);
+      if(g.startsWith("A confirmar")) r.p("Recolhem INSS patronal de 20% sobre o pró-labore. Em comércio e indústria isso indica Lucro Presumido ou Real; em construção pode ser Simples Anexo IV. Confirmar e preencher o regime no cadastro.",{tam:8.5});
+      r.tabela(["Cód. · Razão social","CNPJ · Município","Sócios"],
+        grupos[g].map(c=>[`${c.cod||"—"} · ${c.nome||""}`,[F.fmtCnpj(c.cnpj)||"sem CNPJ",c.mun||""].filter(Boolean).join(" · "),c.dp_prolab===""||c.dp_prolab==null?"—":String(c.dp_prolab),c._reg.alerta?{cor:"alta"}:null]));
+    }
+    r.p("Fonte: cadastro de clientes do Flow. Regimes marcados como “deduzidos” vêm do Extrato Mensal 09/2026 (INSS patronal sobre o pró-labore zerado = CPP dentro do DAS) e devem ser confirmados no PGDAS-D.",{cor:"suave",tam:8});
     await salvarArquivo(`Empresas_so_prolabore_${dia}.pdf`,new Blob([await r.salvar()],{type:"application/pdf"}));
   }catch(x){ console.error(x); toast(x&&x.code==="declined"?"Download cancelado.":"Não consegui gerar o relatório."+(x&&x.message?" ("+x.message+")":"")); }
   finally{ btn.disabled=false; btn.textContent=tx; }
