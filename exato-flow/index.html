@@ -554,7 +554,7 @@ function render(){
 
   // KPI CCT em dia
   const comCct=at.filter(c=>c.cct), emDia=at.filter(c=>["VIGENTE","VENCE"].includes(stDe(c)));
-  const venc=at.filter(c=>stDe(c)==="VENCIDA").length, semCct=at.length-comCct.length;
+  const venc=at.filter(c=>stDe(c)==="VENCIDA").length, semCct=at.filter(c=>!c.cct&&!F.semEmpregados(c)).length;
   const pC=pct(emDia.length,at.length); ring($("r-cct"),pC,corQual(pC)); $("k-cct").textContent=emDia.length;
   linha("k-cct-d",venc?"crit":semCct?"warn":"ok",venc?`${venc} com CCT vencida`:semCct?`${semCct} sem convenção`:"Todas vigentes");
 
@@ -659,7 +659,7 @@ function graficoPrazos(datados,semData,hoje){
 
 // ---------- gráfico B: clientes por convenção ----------
 function graficoConvencoes(at,stDe,I){
-  const cont={}; at.forEach(c=>{ const k=c.cct||"(sem convenção)"; cont[k]=(cont[k]||0)+1; });
+  const cont={}; at.forEach(c=>{ if(!c.cct&&F.semEmpregados(c)) return; const k=c.cct||"(sem convenção)"; cont[k]=(cont[k]||0)+1; });
   let lin=Object.entries(cont).sort((a,b)=>b[1]-a[1]);
   const top=lin.slice(0,7), resto=lin.slice(7);
   if(resto.length) top.push([`Outras ${resto.length} convenções`,resto.reduce((s,x)=>s+x[1],0),true]);

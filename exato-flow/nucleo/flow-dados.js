@@ -5,7 +5,7 @@
  * que o Painel Sindical sempre usou). Campos do Painel: cod, nome, fant,
  * cnpj, mun, cnae, ativ, cct, lab, pat, conf, confirmado, temEmp, obs.
  * Campos de Departamento Pessoal (prefixo dp_): dp_situacao, dp_regime,
- * dp_func, dp_ponto, dp_resp, dp_contato, dp_email, dp_fone, dp_obs.
+ * dp_func, dp_prolab, dp_folha, dp_ponto, dp_resp, dp_contato, dp_email, dp_fone, dp_obs.
  *
  * Cole\u00e7\u00e3o "auditorias": um documento por CNPJ (s\u00f3 d\u00edgitos), com a \u00faltima
  * auditoria de guias e o hist\u00f3rico das \u00faltimas 12 compet\u00eancias.
@@ -132,6 +132,8 @@
   // ---------- pend\u00eancias do cadastro ----------
   const REGIMES=["Simples Nacional","Lucro Presumido","Lucro Real","MEI","Pessoa f\u00edsica / CAEPF","Imune / isenta"];
   const SITUACOES=["Ativo","Sem movimento","Inativo"];
+  // quem está na folha: empregados CLT, só os sócios (pró-labore) ou ministros religiosos (sustento pastoral)
+  const FOLHAS=["Só funcionários","Funcionários e pró-labore","Só pró-labore","Sustento pastoral (igreja)","Sem folha"];
   const PONTO=["Sem controle (at\u00e9 20 empregados)","Manual / livro","Cart\u00e3o / rel\u00f3gio","Eletr\u00f4nico (REP)","Aplicativo","Ponto por exce\u00e7\u00e3o"];
   const ativo=c=>(c.dp_situacao||"Ativo")!=="Inativo";
 
@@ -145,11 +147,14 @@
     if(!String(c.cod||"").trim()) add("media","Sem c\u00f3digo do Dom\u00ednio");
     else if((ctx.porCod[String(c.cod).trim()]||[]).length>1) add("alta","C\u00f3digo do Dom\u00ednio repetido");
     if(!ativo(c)) return p;
+    // sem empregados (s\u00f3 pr\u00f3-labore ou sustento pastoral) n\u00e3o h\u00e1 conven\u00e7\u00e3o coletiva a aplicar
+    if(!semEmpregados(c)){
     const st=statusCct(ctx.cctPorRamo[c.cct]);
     if(!c.cct) add("alta","Sem conven\u00e7\u00e3o coletiva definida");
     else if(st==="SEM") add("media","CCT do cliente n\u00e3o est\u00e1 no Painel Sindical");
     else if(st==="VENCIDA") add("alta","CCT vencida");
     if(c.cct && c.confirmado!=="Sim") add("baixa","Enquadramento sindical ainda n\u00e3o confirmado");
+    }
     if(!c.dp_regime) add("media","Sem regime tribut\u00e1rio");
     if(c.dp_func==null || c.dp_func==="") add("baixa","Sem n\u00famero de funcion\u00e1rios");
     return p;
@@ -274,6 +279,6 @@
   const funcAtivo=(f,ref)=>!(f.rescisao&&ref&&f.rescisao<ref)&&!/demit|rescind|deslig/i.test(f.situacao||"");
 
   window.FlowDados={use,imagemClaude,digitos,fmtCnpj,cnpjValido,raiz,hoje,isoData,fmtData,statusCct,ROTULO_CCT,compChave,
-    REGIMES,SITUACOES,PONTO,ativo,pendencias,indices,conectar,assinar,estado,usuarioId,carimbo,DIAG_REVISAO_DIAS,diagDoCliente,diagRevisao,sstDoCliente,semEmpregados,
+    REGIMES,SITUACOES,FOLHAS,PONTO,ativo,pendencias,indices,conectar,assinar,estado,usuarioId,carimbo,DIAG_REVISAO_DIAS,diagDoCliente,diagRevisao,sstDoCliente,semEmpregados,
     chaveNome,assinarFuncionarios,mesclarFuncionarios,salvarFuncionarios,funcAtivo,experiencia,EXP_RESCISAO,EXP_AVISO,addDias};
 })();

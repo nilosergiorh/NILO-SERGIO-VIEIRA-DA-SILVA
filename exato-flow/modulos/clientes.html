@@ -150,6 +150,7 @@ td small{display:block;color:var(--mute);font-family:var(--f-mono);font-size:.72
     <input type="search" id="busca" placeholder="Buscar por nome, fantasia, CNPJ ou código" aria-label="Buscar cliente">
     <select id="fSit" aria-label="Situação"><option value="">Todas as situações</option></select>
     <select id="fReg" aria-label="Regime tributário"><option value="">Todos os regimes</option><option value="-">Sem regime informado</option></select>
+    <select id="fFolha" aria-label="Tipo de folha"><option value="">Todos os tipos de folha</option><option value="-">Tipo de folha não informado</option></select>
     <span class="count" id="cnt"></span>
   </div>
 
@@ -181,6 +182,7 @@ let E=F.estado, IDX={porCnpj:{},porCod:{},cctPorRamo:{}}, AUD={};
 
 F.SITUACOES.forEach(s=>$("fSit").insertAdjacentHTML("beforeend",`<option>${esc(s)}</option>`));
 F.REGIMES.forEach(s=>$("fReg").insertAdjacentHTML("beforeend",`<option>${esc(s)}</option>`));
+(F.FOLHAS||[]).forEach(s=>$("fFolha").insertAdjacentHTML("beforeend",`<option>${esc(s)}</option>`));
 
 const ST_AUD={ok:["Correta","p-ok"],atencao:["Atenção","p-at"],erro:["Erro","p-er"]};
 const ST_CCT={VIGENTE:"p-ok",VENCE:"p-at",VENCIDA:"p-er",SEM:"p-nt"};
@@ -199,11 +201,12 @@ function preparar(){
 
 function filtrar(){
   const q=norm($("busca").value.trim()), qd=F.digitos($("busca").value);
-  const sit=$("fSit").value, reg=$("fReg").value;
+  const sit=$("fSit").value, reg=$("fReg").value, fol=$("fFolha").value;
   return E.clientes.filter(c=>{
     if(q && !(norm(c.nome).includes(q)||norm(c.fant).includes(q)||(qd&&F.digitos(c.cnpj).includes(qd))||String(c.cod)===q)) return false;
     if(sit && (c.dp_situacao||"Ativo")!==sit) return false;
     if(reg==="-" ? !!c.dp_regime : (reg && c.dp_regime!==reg)) return false;
+    if(fol==="-" ? !!c.dp_folha : (fol && c.dp_folha!==fol)) return false;
     if(S.filtro==="ativos" && !F.ativo(c)) return false;
     if(S.filtro==="pend" && !c._p.some(p=>p.nivel==="alta")) return false;
     if(S.filtro==="cct" && !(F.ativo(c)&&(c._cct==="VENCIDA"||c._cct==="VENCE"))) return false;
@@ -232,7 +235,7 @@ function render(){
       <td>${esc(c.mun||"—")}</td>
       <td>${c.cct?esc(c.cct)+"<br>":""}${pillCct(c._cct)}</td>
       <td>${esc(c.dp_regime||"—")}${c.dp_situacao&&c.dp_situacao!=="Ativo"?`<br><span class="pill p-nt">${esc(c.dp_situacao)}</span>`:""}</td>
-      <td class="num">${c.dp_func===""||c.dp_func==null?"—":esc(c.dp_func)}</td>
+      <td class="num">${c.dp_func===""||c.dp_func==null?"—":esc(c.dp_func)}${+c.dp_prolab?`<small>${esc(c.dp_prolab)} pró-labore</small>`:""}${c.dp_folha?`<small>${esc(c.dp_folha)}</small>`:""}</td>
       <td>${c._aud?`${esc(c._aud.comp)} ${pillAud(c._aud)}`:'<span class="meta">—</span>'}</td>
       <td>${c._p.length?`<span class="pend">${alta?`<i class="alta"></i>${alta}`:""}${out?`<i class="${c._p.some(p=>p.nivel==="media")?"media":"baixa"}"></i>${out}`:""}</span>`:'<span class="pill p-ok">OK</span>'}</td>
     </tr>`;}).join(""):`<tr><td colspan="8" class="empty">Nenhum cliente com esses filtros.</td></tr>`;
@@ -244,7 +247,7 @@ const CAMPOS=[
   ["mun","Município",""],["cnae","CNAE principal",""],["ativ","Atividade","full"]];
 const CAMPOS_DP=[
   ["dp_situacao","Situação","sel",F.SITUACOES],["dp_regime","Regime tributário","sel",F.REGIMES],
-  ["dp_func","Nº de funcionários","num"],["dp_ponto","Controle de ponto","sel",F.PONTO],
+  ["dp_folha","Tipo de folha","sel",F.FOLHAS||[]],["dp_func","Nº de funcionários (CLT)","num"],["dp_prolab","Nº de sócios com pró-labore","num"],["dp_ponto","Controle de ponto","sel",F.PONTO],
   ["dp_resp","Responsável na Exato","txt"],["dp_contato","Contato no cliente","txt"],
   ["dp_email","E-mail do contato","txt"],["dp_fone","Telefone do contato","txt"],["dp_obs","Observações de DP","area"]];
 
@@ -334,6 +337,7 @@ async function salvar(c){
   for(const [k] of [...CAMPOS,...CAMPOS_DP]) d[k]=v(k);
   d.nome=d.nome.toUpperCase();
   if(d.dp_func!==""){ const n=parseInt(F.digitos(d.dp_func)); d.dp_func=Number.isFinite(n)?n:""; }
+  if(d.dp_prolab!==""){ const n=parseInt(F.digitos(d.dp_prolab)); d.dp_prolab=Number.isFinite(n)?n:""; }
   if(!d.nome){ toast("Informe a razão social."); $("f-nome").focus(); return; }
   const dg=F.digitos(d.cnpj);
   if(dg){
@@ -598,7 +602,7 @@ $("drawer").addEventListener("click",async e=>{
 });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("drawer").hidden) fechar(); });
 document.querySelectorAll(".st").forEach(b=>b.onclick=()=>{ S.filtro=S.filtro===b.dataset.f?"":b.dataset.f; render(); });
-["busca","fSit","fReg"].forEach(id=>$(id).addEventListener("input",render));
+["busca","fSit","fReg","fFolha"].forEach(id=>$(id).addEventListener("input",render));
 
 F.assinar(est=>{
   E=est;
