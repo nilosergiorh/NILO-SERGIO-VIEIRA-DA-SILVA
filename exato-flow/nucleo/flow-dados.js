@@ -141,7 +141,8 @@
   function pendencias(c,ctx){
     const p=[]; const add=(nivel,texto)=>p.push({nivel,texto});
     const d=digitos(c.cnpj);
-    if(!d) add("alta","Sem CNPJ");
+    // obra ou empregador pessoa f\u00edsica: identificado por CPF/CNO, que o Flow n\u00e3o guarda (LGPD)
+    if(!d){ if(c.dp_regime!=="Pessoa f\u00edsica / CAEPF") add("alta","Sem CNPJ"); }
     else if(!cnpjValido(d)) add("alta","CNPJ inv\u00e1lido (d\u00edgito verificador n\u00e3o confere)");
     else if((ctx.porCnpj[d]||[]).length>1) add("alta","CNPJ repetido em outro cliente");
     if(!String(c.cod||"").trim()) add("media","Sem c\u00f3digo do Dom\u00ednio");
