@@ -133,7 +133,7 @@
   const REGIMES=["Simples Nacional","Lucro Presumido","Lucro Real","MEI","Pessoa f\u00edsica / CAEPF","Imune / isenta"];
   const SITUACOES=["Ativo","Sem movimento","Inativo"];
   // quem está na folha: empregados CLT, só os sócios (pró-labore) ou ministros religiosos (sustento pastoral)
-  const FOLHAS=["Só funcionários","Funcionários e pró-labore","Só pró-labore","Sustento pastoral (igreja)","Sem folha"];
+  const FOLHAS=["Só funcionários","Funcionários e pró-labore","Só pró-labore","Autônomos (RPA)","Sustento pastoral (igreja)","Sem folha"];
   const PONTO=["Sem controle (at\u00e9 20 empregados)","Manual / livro","Cart\u00e3o / rel\u00f3gio","Eletr\u00f4nico (REP)","Aplicativo","Ponto por exce\u00e7\u00e3o"];
   const ativo=c=>(c.dp_situacao||"Ativo")!=="Inativo";
 
