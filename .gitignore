@@ -32,3 +32,6 @@ build/
 # Dados reais de clientes: nunca versionar
 exportacao/
 *.zip
+
+# Planilhas e arquivos de clientes gerados para entrega (dados pessoais: não versionar)
+entregas/
