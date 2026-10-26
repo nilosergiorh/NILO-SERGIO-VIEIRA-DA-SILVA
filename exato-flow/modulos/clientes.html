@@ -133,6 +133,8 @@ td small{display:block;color:var(--mute);font-family:var(--f-mono);font-size:.72
     </div>
     <div class="acts">
       <span class="sync" id="sync"><i></i><span>Conectando…</span></span>
+      <button class="btn ghost" type="button" id="btnRelPL" title="Empresas ativas com folha só de pró-labore">Relatório pró-labore (PDF)</button>
+      <button class="btn ghost" type="button" id="btnRelPLx" title="A mesma lista em planilha">Excel</button>
       <button class="btn" type="button" id="btnNovo">Novo cliente</button>
     </div>
   </header>
@@ -166,6 +168,8 @@ td small{display:block;color:var(--mute);font-family:var(--f-mono);font-size:.72
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="../nucleo/pdf-relatorio.js" charset="utf-8"></script>
 <script src="../nucleo/flow-dados.js" charset="utf-8"></script>
 <script src="../nucleo/sst.js" charset="utf-8"></script>
 <script src="../nucleo/dominio-relatorios.js" charset="utf-8"></script>
@@ -565,6 +569,48 @@ async function aplicarRev(){
 
 // ---------- eventos ----------
 $("btnNovo").onclick=()=>ficha(null);
+// ---------- relatório: empresas ativas com folha só de pró-labore ----------
+function listaProlabore(){
+  return (E.clientes||[]).filter(c=>F.ativo(c)&&c.dp_folha==="Só pró-labore")
+    .sort((a,b)=>(parseInt(a.cod)||1e9)-(parseInt(b.cod)||1e9)||String(a.nome).localeCompare(b.nome,"pt-BR"));
+}
+async function salvarArquivo(nome,blob){
+  const dl=await F.use("downloads");
+  if(!dl){ toast("Download indisponível nesta visualização. Abra o Flow pelo link do claude.ai."); return false; }
+  await dl.save({filename:nome,data:blob}); toast("Arquivo salvo: "+nome); return true;
+}
+async function relProlabore(fmt,btn){
+  if(!E.pronto.clientes){ toast("O cadastro ainda está carregando."); return; }
+  const L=listaProlabore(), hoje=new Date().toLocaleDateString("pt-BR"), dia=new Date().toISOString().slice(0,10);
+  if(!L.length){ toast("Nenhum cliente ativo com tipo de folha “Só pró-labore”."); return; }
+  const socios=L.reduce((s,c)=>s+(parseInt(c.dp_prolab)||0),0), semReg=L.filter(c=>!c.dp_regime).length;
+  const tx=btn.textContent; btn.disabled=true; btn.textContent="Gerando…";
+  try{
+    if(fmt==="xlsx"){
+      if(!window.XLSX){ toast("O gerador de planilha não carregou. Recarregue a página."); return; }
+      const linhas=L.map(c=>({"Cód.":parseInt(c.cod)||c.cod||"","Razão social":c.nome||"","Nome fantasia":c.fant||"","CNPJ":F.fmtCnpj(c.cnpj)||"","Município":c.mun||"",
+        "Regime":c.dp_regime||"","Sócios com pró-labore":c.dp_prolab===""||c.dp_prolab==null?"":+c.dp_prolab,"Observações de DP":c.dp_obs||""}));
+      const ws=XLSX.utils.json_to_sheet(linhas); ws["!cols"]=[{wch:7},{wch:46},{wch:30},{wch:20},{wch:22},{wch:18},{wch:12},{wch:70}];
+      const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Só pró-labore");
+      const buf=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+      await salvarArquivo(`Empresas_so_prolabore_${dia}.xlsx`,new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+      return;
+    }
+    if(!window.PdfRel||!window.PDFLib){ toast("O gerador de PDF não carregou. Confira a internet e recarregue a página."); return; }
+    const r=await PdfRel.criar({titulo:"Empresas com folha só de pró-labore",sub:"Clientes · "+hoje,rodape:"Exato Flow – cadastro de clientes"});
+    r.h1("Empresas com folha só de pró-labore");
+    r.p(`Clientes ativos cujo tipo de folha é “Só pró-labore” (sem empregados CLT) · gerado em ${hoje}`,{cor:"suave",tam:8.5,depois:6});
+    r.kpis([[String(L.length),"empresas"],[String(socios),"sócios com pró-labore"],[String(semReg),"sem regime informado",semReg?"media":"ok"]]);
+    r.h2("Relação");
+    r.tabela(["Cód. · Razão social","CNPJ · Município · Regime","Sócios"],
+      L.map(c=>[`${c.cod||"—"} · ${c.nome||""}`,[F.fmtCnpj(c.cnpj)||"sem CNPJ",c.mun||"",c.dp_regime||"regime?"].filter(Boolean).join(" · "),c.dp_prolab===""||c.dp_prolab==null?"—":String(c.dp_prolab)]));
+    r.p("Fonte: tipo de folha do cadastro de clientes (atualizado pelo Extrato Mensal do Domínio). Confira no Domínio antes de usar em cobrança ou obrigações.",{cor:"suave",tam:8});
+    await salvarArquivo(`Empresas_so_prolabore_${dia}.pdf`,new Blob([await r.salvar()],{type:"application/pdf"}));
+  }catch(x){ console.error(x); toast(x&&x.code==="declined"?"Download cancelado.":"Não consegui gerar o relatório."+(x&&x.message?" ("+x.message+")":"")); }
+  finally{ btn.disabled=false; btn.textContent=tx; }
+}
+$("btnRelPL").onclick=e=>relProlabore("pdf",e.currentTarget);
+$("btnRelPLx").onclick=e=>relProlabore("xlsx",e.currentTarget);
 $("tb").addEventListener("click",e=>{const r=e.target.closest("tr.row"); if(r) ficha(r.dataset.id);});
 $("tb").addEventListener("keydown",e=>{ if(e.key==="Enter"){const r=e.target.closest("tr.row"); if(r) ficha(r.dataset.id);} });
 $("drawer").addEventListener("change",e=>{
