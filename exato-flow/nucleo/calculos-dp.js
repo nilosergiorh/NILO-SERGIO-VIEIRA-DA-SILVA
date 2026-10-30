@@ -61,8 +61,12 @@
   //     regime:"simples"|"fora", rat, terceiros}
   function simularSalario(e,T){
     const sal=num(e.salario), hm=num(e.horasMes)||220, sm=T.salarioMinimo.valor;
-    const ad=adicionais(e,sal,T), {insal,peric,quebra}=ad, avisos=[...ad.avisos];
-    const vh=(sal+insal+peric)/hm;              // hora normal sobre salário + adicional (OJ 47 SDI-1 e Súmula 132 do TST); sem arredondar antes de multiplicar
+    const ad=adicionais(e,sal,T), avisos=[...ad.avisos];
+    const vh=(sal+ad.insal+ad.peric)/hm;        // a hora vale pelo salário do mês inteiro, mesmo em mês proporcional              // hora normal sobre salário + adicional (OJ 47 SDI-1 e Súmula 132 do TST); sem arredondar antes de multiplicar
+    // mês proporcional (admissão ou saída no mês): salário e adicionais fixos ÷ 30 × dias (mês comercial)
+    const dRaw=parseInt(e.diasTrab), diasMes=Number.isFinite(dRaw)&&dRaw>=1&&dRaw<30?dRaw:30, fp=diasMes/30;
+    const salP=diasMes<30?r2(sal*fp):sal, insal=diasMes<30?r2(ad.insal*fp):ad.insal, peric=diasMes<30?r2(ad.peric*fp):ad.peric, quebra=diasMes<30?r2(ad.quebra*fp):ad.quebra;
+    if(diasMes<30) avisos.push(`Mês proporcional: salário e adicionais fixos calculados por ${diasMes}/30 dias (mês comercial). A hora extra usa o valor da hora do mês inteiro. Provisões sobre o valor do mês; o avo de 13º e férias só conta com 15 dias ou mais trabalhados no mês.`);
     const he=(e.he||[]).filter(x=>num(x.horas)>0).map(x=>{ const p=num(x.pct), h=num(x.horas); return {pct:p,horas:h,valor:r2(h*vh*(1+p/100))}; });
     const noth=num(e.noturno&&e.noturno.horas), notp=num(e.noturno&&e.noturno.pct)||20, not=noth?r2(noth*vh*notp/100):0;
     // DSR sobre variáveis: variáveis ÷ dias úteis × domingos e feriados do mês (Lei 605/1949 art. 7º; Súmula 172 do TST)
@@ -75,11 +79,11 @@
     }
     const outrosT=(e.outrosTrib||[]).filter(x=>num(x.valor)).map(x=>({desc:x.desc||"Outros proventos",valor:r2(num(x.valor))}));
     const naoT=(e.naoTrib||[]).filter(x=>num(x.valor)).map(x=>({desc:x.desc||"Verba indenizatória",valor:r2(num(x.valor))}));
-    const baseTrib=r2(sal+insal+peric+quebra+variaveis+dsr+outrosT.reduce((s,x)=>s+x.valor,0));
+    const baseTrib=r2(salP+insal+peric+quebra+variaveis+dsr+outrosT.reduce((s,x)=>s+x.valor,0));
     const bruto=r2(baseTrib+naoT.reduce((s,x)=>s+x.valor,0));
     const inss=e.semInss?0:A.inssEmpregado(baseTrib,T), dep=Math.max(0,parseInt(e.dependentes)||0), pen=r2(num(e.pensao));
     const ir=irrf(baseTrib,inss+dep*T.irrf.dependente+pen,T);
-    let vt=0; if(e.vt&&e.vt.usa){ vt=r2(sal*0.06); const c=num(e.vt.custo); if(c>0) vt=Math.min(vt,c); }
+    let vt=0; if(e.vt&&e.vt.usa){ vt=r2(salP*0.06); const c=num(e.vt.custo); if(c>0) vt=Math.min(vt,c); }
     const desc=(e.descontos||[]).filter(x=>num(x.valor)).map(x=>({desc:x.desc||"Outros descontos",valor:r2(num(x.valor))}));
     const totDesc=r2(inss+ir.devido+pen+vt+desc.reduce((s,x)=>s+x.valor,0));
     const fgts=e.semFgts?0:A.trunc(baseTrib*T.fgts.aliquota);
@@ -94,7 +98,7 @@
     if(e.semInss) avisos.push("INSS não calculado (opção marcada): o IRRF foi calculado sem a dedução do INSS.");
     if(e.semFgts) avisos.push("FGTS não calculado (opção marcada): o custo ficou sem o FGTS do mês, sem o FGTS das provisões e sem a provisão da multa de 40%.");
     if(he.some(x=>x.pct<50)) avisos.push("Hora extra com adicional abaixo de 50% contraria a Constituição (art. 7º, XVI).");
-    return {vh:r2(vh),insal,peric,quebra,insTxt:ad.insTxt,qTxt:ad.qTxt,he,noturno:{horas:noth,pct:notp,valor:not},dsr,dias,outrosT,naoT,baseTrib,bruto,inss,ir,dep,pen,vt,desc,totDesc,
+    return {vh:r2(vh),sal,salP,diasMes,insal,peric,quebra,insTxt:ad.insTxt,qTxt:ad.qTxt,he,noturno:{horas:noth,pct:notp,valor:not},dsr,dias,outrosT,naoT,baseTrib,bruto,inss,ir,dep,pen,vt,desc,totDesc,
       liquido:r2(bruto-totDesc),fgts,custo:{fgts,patronal:pat,provisoes:prov,p13,pFer,pTer,fgtsProv,patProv,encProv:provEnc,multa40,total:r2(bruto+fgts+pat+prov+provEnc+multa40)},avisos};
   }
 
@@ -141,7 +145,8 @@
     const proj=diasInd?addDias(sai,diasInd):sai;     // a projeção do aviso indenizado conta para 13º e férias (art. 487 §1º; OJ 82 SDI-1)
 
     // saldo de salário: dias do mês até o desligamento (mês comercial de 30 dias)
-    const ds=D(sai), diasSaldo=Math.min(30,ds.d), saldo=r2(sal/30*diasSaldo);
+    const ds=D(sai), da=D(adm), mesmoMes=da.a===ds.a&&da.m===ds.m;
+    const diasSaldo=Math.min(30,mesmoMes?ds.d-da.d+1:ds.d), saldo=r2(sal/30*diasSaldo);   // admitido no mês da saída: conta da admissão em diante
     const verbas=[], descontos=[];
     const V=(cod,desc,ref,valor,inc,memoria)=>{ if(valor>0.004) verbas.push({cod,desc,ref,valor:r2(valor),inc,memoria}); };
     if(e.semSaldo) avisos.push("Saldo de salário não calculado (pago na folha do mês). O INSS e o IRRF desta simulação ficam só sobre as verbas daqui; no TRCT, o INSS do mês soma com o que já foi retido na folha.");

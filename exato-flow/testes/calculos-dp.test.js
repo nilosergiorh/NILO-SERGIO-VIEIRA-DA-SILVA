@@ -126,4 +126,15 @@ eq('rescisão sem FGTS: mês, multa, guia e saque zerados',[rf.fgts.mes,rf.fgts.
 eq('rescisão sem FGTS: líquido igual',rf.liquido,C.calcularRescisao({...base,motivo:'sem_justa',aviso:'indenizado'},T).liquido);
 let sf=C.simularSalario({salario:'2000',semFgts:true},T);
 eq('salário sem FGTS: FGTS, FGTS das provisões e multa zerados',[sf.fgts,sf.custo.fgtsProv,sf.custo.multa40],[0,0,0]);
+
+// --- mês proporcional (admissão ou saída no mês) ---
+let mp=C.simularSalario({salario:'3000',insal:{grau:20},diasTrab:'9',he:[{pct:50,horas:2}]},T), mc=C.simularSalario({salario:'3000',insal:{grau:20},he:[{pct:50,horas:2}]},T);
+eq('proporcional: salário e insalubridade ÷ 30 × 9',[mp.salP,mp.insal,mp.diasMes],[900,Math.round(324.2*9/30*100)/100,9]);
+eq('proporcional: hora extra pelo valor do mês inteiro',mp.he[0].valor,mc.he[0].valor);
+eq('proporcional: aviso na tela',mp.avisos.some(a=>/9\/30/.test(a)),true);
+eq('dias 30 ou vazio = mês cheio',C.simularSalario({salario:'3000',diasTrab:''},T).salP,3000);
+let rr=C.calcularRescisao({...base,admissao:'2026-10-23',saida:'2026-10-31',motivo:'pedido',aviso:'dispensado'},T);
+eq('rescisão: admitido no mesmo mês conta da admissão (23 a 31 = 9 dias)',rr.verbas.find(v=>v.cod==='saldo').ref,'9 dia(s)');
+let rc=C.calcularRescisao({...base,admissao:'2026-10-01',saida:'2026-10-31',motivo:'pedido',aviso:'dispensado'},T);
+eq('rescisão: mês inteiro limita a 30',rc.verbas.find(v=>v.cod==='saldo').ref,'30 dia(s)');
 console.log(`calculadoras: ${ok} ok, ${fail} falha(s)`); process.exit(fail?1:0);

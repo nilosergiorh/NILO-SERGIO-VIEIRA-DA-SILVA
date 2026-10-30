@@ -99,6 +99,7 @@ tr.liq td{font-weight:800;color:var(--red-hi);font-size:1rem}
         <label class="fld full">Para quem é a simulação (opcional)<input id="s-quem" placeholder="ex.: Empresa X · cargo de auxiliar"></label>
         <label class="fld">Salário base (R$)<input id="s-sal" inputmode="decimal" placeholder="ex.: 2.500,00"></label>
         <label class="fld">Horas por mês<input id="s-hm" inputmode="numeric" value="220"><small>220 = 44h semanais</small></label>
+        <label class="fld">Dias trabalhados no mês<input id="s-dias" inputmode="numeric" value="30"><small>admissão ou saída no mês: salário ÷ 30 × dias</small></label>
         <label class="fld">Insalubridade<select id="s-ins"><option value="0">Não tem</option><option value="10">Grau mínimo (10%)</option><option value="20">Grau médio (20%)</option><option value="40">Grau máximo (40%)</option></select></label>
         <label class="fld">Base da insalubridade<select id="s-insb"><option value="minimo">Salário mínimo</option><option value="salario">Salário base</option><option value="valor">Outro valor (CCT)</option></select></label>
         <label class="fld" id="s-insvw" hidden>Valor da base (R$)<input id="s-insv" inputmode="decimal"></label>
@@ -226,15 +227,15 @@ function calcSalario(){
   const T=A.TABELAS[$("s-ano").value];
   $("s-insvw").hidden=$("s-insb").value!=="valor";
   document.querySelectorAll(".s-fora").forEach(x=>x.hidden=$("s-reg").value!=="fora");
-  const e={salario:$("s-sal").value,horasMes:$("s-hm").value,insal:{grau:$("s-ins").value,base:$("s-insb").value,valorBase:$("s-insv").value},peric:$("s-per").checked,quebra:{tipo:$("s-qct").value,valor:$("s-qcv").value},
+  const e={salario:$("s-sal").value,horasMes:$("s-hm").value,diasTrab:$("s-dias").value,insal:{grau:$("s-ins").value,base:$("s-insb").value,valorBase:$("s-insv").value},peric:$("s-per").checked,quebra:{tipo:$("s-qct").value,valor:$("s-qcv").value},
     he:ler("s-he","he"),noturno:{horas:$("s-noth").value,pct:$("s-notp").value},comp:$("s-comp").value,feriados:$("s-fer").value,
     outrosTrib:ler("s-out","o"),naoTrib:ler("s-out","n"),semInss:!$("s-inss").checked,semFgts:!$("s-fgts").checked,dependentes:$("s-dep").value,pensao:$("s-pen").value,vt:{usa:$("s-vt").checked,custo:$("s-vtc").value},
     descontos:ler("s-desc","d"),regime:$("s-reg").value,rat:$("s-rat").value,terceiros:$("s-ter").value};
   if(!C.num(e.salario)){ $("s-res").innerHTML='<p class="note">Digite o salário base para ver o holerite simulado.</p>'; TXT=""; return; }
   const r=C.simularSalario(e,T), quem=$("s-quem").value.trim();
-  const P=[["Salário base",`${C.num(e.horasMes)||220} h`,C.num(e.salario)]];
-  if(r.insal) P.push(["Adicional de insalubridade",`${e.insal.grau}% de ${e.insal.base==="salario"?"salário base":e.insal.base==="valor"?"base informada":"salário mínimo"}`,r.insal]);
-  if(r.peric) P.push(["Adicional de periculosidade","30% do salário",r.peric]);
+  const P=[["Salário base",r.diasMes<30?`${r.diasMes}/30 dias de ${b2(r.sal)}`:`${C.num(e.horasMes)||220} h`,r.salP]];
+  if(r.insal) P.push(["Adicional de insalubridade",`${e.insal.grau}% de ${e.insal.base==="salario"?"salário base":e.insal.base==="valor"?"base informada":"salário mínimo"}${r.diasMes<30?` · ${r.diasMes}/30 dias`:""}`,r.insal]);
+  if(r.peric) P.push(["Adicional de periculosidade",`30% do salário${r.diasMes<30?` · ${r.diasMes}/30 dias`:""}`,r.peric]);
   if(r.quebra) P.push(["Quebra de caixa",r.qTxt,r.quebra]);
   r.he.forEach(h=>P.push([`Horas extras ${h.pct}%`,`${String(h.horas).replace(".",",")} h × ${b2(r.vh*(1+h.pct/100))}`,h.valor]));
   if(r.noturno.valor) P.push([`Adicional noturno ${r.noturno.pct}%`,`${r.noturno.horas} h`,r.noturno.valor]);
