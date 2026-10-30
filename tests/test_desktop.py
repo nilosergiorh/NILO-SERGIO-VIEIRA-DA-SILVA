@@ -152,7 +152,7 @@ class TestServidor(unittest.TestCase):
         self.assertEqual(self.req("GET", "/_blob/" + "0" * 32)[0], 404)
 
     def test_colecoes_do_ponto(self):
-        for col in ("ponto", "ponto_regras", "funcionarios", "cct_ponto"):
+        for col in ("ponto", "ponto_regras", "funcionarios", "cct_ponto", "sst"):
             self.assertEqual(self.req("PUT", f"/api/doc/{col}/11657101000156_202610", {"x": 1})[0], 200, col)
 
     def test_mascote(self):
